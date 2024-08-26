@@ -1,0 +1,81 @@
+HTML {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px; HEIGHT: 100%
+}
+BODY {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px; HEIGHT: 100%
+}
+BODY {
+	BACKGROUND: #e1d4c0
+}
+BODY {
+	FONT: 11px tahoma; COLOR: #826c55
+}
+TABLE {
+	FONT: 11px tahoma; COLOR: #826c55
+}
+#colors {
+	MARGIN-TOP: 3px; MARGIN-LEFT: 22px; TEXT-ALIGN: center
+}
+#game {
+	BORDER-RIGHT: #baa68e 1px solid; BORDER-TOP: #baa68e 1px solid; BACKGROUND: #ffffff; MARGIN: 0px auto; BORDER-LEFT: #baa68e 1px solid; WIDTH: 352px; BORDER-BOTTOM: #baa68e 1px solid; POSITION: relative; HEIGHT: 242px
+}
+#legend {
+	BORDER-RIGHT: #baa68e 1px solid; BORDER-TOP: #baa68e 1px solid; BACKGROUND: #f5ede3; MARGIN: 0px auto 5px; BORDER-LEFT: #baa68e 1px solid; WIDTH: 250px; BORDER-BOTTOM: #baa68e 1px solid; POSITION: relative; HEIGHT: 30px
+}
+#legend DIV {
+	PADDING-TOP: 4px; TEXT-ALIGN: center
+}
+.lnum {
+	PADDING-RIGHT: 5px; WIDTH: 30px
+}
+#game .left {
+	BACKGROUND: #f5ede3; LEFT: 0px; WIDTH: 130px; POSITION: absolute; TOP: 0px; HEIGHT: 100%
+}
+#game .left H1 {
+	MARGIN-TOP: 6px; FONT-SIZE: 11px; MARGIN-BOTTOM: 6px; COLOR: #3366cc; TEXT-ALIGN: center
+}
+#menu-start {
+	MARGIN-BOTTOM: 6px
+}
+#game .left .menu {
+	TEXT-ALIGN: center
+}
+#game .left INPUT {
+	BACKGROUND: #eae0d1; FONT: 10px tahoma; TEXT-TRANSFORM: uppercase; COLOR: #333333
+}
+#game .left .menu INPUT {
+	WIDTH: 90px
+}
+#game .left .stats {
+	LEFT: 10px; BOTTOM: 4px; POSITION: absolute
+}
+#game .stats TD {
+	PADDING-BOTTOM: 1px
+}
+#game .stats .label {
+	PADDING-RIGHT: 5px; TEXT-ALIGN: right
+}
+#game .stats .value {
+	FONT-WEIGHT: bold
+}
+#board {
+	BACKGROUND: #ffffff; LEFT: 131px; OVERFLOW: hidden; WIDTH: 220px; POSITION: absolute; TOP: 1px; HEIGHT: 240px
+}
+#game .window {
+	DISPLAY: none; Z-INDEX: 5; BACKGROUND: #fff; LEFT: 131px; WIDTH: 220px; POSITION: absolute; TOP: 1px; HEIGHT: 240px
+}
+#game .window .top {
+	BACKGROUND: #36c; FONT: bold 10px/20px tahoma; VERTICAL-ALIGN: middle; COLOR: #fff; TEXT-INDENT: 10px; BORDER-BOTTOM: #ffffff 1px solid; LETTER-SPACING: 1px; POSITION: relative; HEIGHT: 20px
+}
+#game .window .top .close {
+	RIGHT: 0px; BACKGROUND: #36c; FONT: bold 11px/19px verdana; BORDER-LEFT: #ffffff 1px solid; WIDTH: 21px; CURSOR: pointer; TEXT-INDENT: 7px; POSITION: absolute; TOP: 0px; HEIGHT: 20px
+}
+#game .window .top .close:hover {
+	BACKGROUND: #69f
+}
+#game .window .content {
+	MARGIN: 10px; FONT: 10px tahoma
+}
+#game .window .content TABLE {
+	FONT: 10px tahoma
+}
