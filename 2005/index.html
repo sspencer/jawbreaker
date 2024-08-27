@@ -1,0 +1,186 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml">
+<BODY>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3c.org/TR/1999/REC-html401-19991224/loose.dtd">
+<HEAD>
+    <TITLE>Jawbreaker - Javascript Game</TITLE>
+    <META http-equiv=Content-Type content="text/html; charset=utf-8">
+    <META content="Javascript Jawbreaker Game, also called Same Game"
+          name=description>
+    <META content="javascript game, javascript, online games, free games"
+          name=keywords>
+    <META content="Safe For Kids" name=rating>
+    <LINK media=screen
+          href="style.css" type=text/css
+          rel=Stylesheet>
+    <SCRIPT language=javascript
+            src="prototype.js"
+            type=text/javascript></SCRIPT>
+
+    <SCRIPT language=javascript
+            src="jawbreaker.js"
+            type=text/javascript></SCRIPT>
+
+    <META content="MSHTML 6.00.2800.1528" name=GENERATOR>
+</HEAD>
+
+<TABLE height="100%" cellSpacing=0 cellPadding=0 width="100%">
+    <TBODY>
+    <TR>
+        <TD vAlign=center align="center">
+            <DIV id=game>
+                <DIV class=left>
+                    <H1>Jawbreaker 1.0</H1>
+                    <DIV class=menu>
+                        <DIV><INPUT id=menu-start type=button value="New Game"></DIV>
+                        <DIV><INPUT id=menu-undo type=button value=Undo></DIV>
+                        <DIV><INPUT id=menu-help type=button value=Help></DIV>
+                        <DIV><INPUT id=menu-stats type=button value="Game Stats"></DIV>
+                    </DIV>
+                    <DIV id=colors>
+                        <TABLE cellSpacing=3 cellPadding=0>
+                            <TBODY>
+                            <TR>
+                                <TH><IMG height=9 alt="red dawn"
+                                         src="img/t_red.gif" width=9></TH>
+                                <TH><IMG height=9 alt="old yeller"
+                                         src="img/t_yellow.gif" width=9></TH>
+                                <TH><IMG height=9 alt="green mile"
+                                         src="img/t_green.gif" width=9></TH>
+                                <TH><IMG height=9 alt="blue velvet"
+                                         src="img/t_blue.gif" width=9></TH>
+                                <TH><IMG height=9 alt="the color purple"
+                                         src="img/t_purple.gif"
+                                         width=9></TH>
+                            </TR>
+                            <TR>
+                                <TD id=red>0</TD>
+                                <TD id=yellow>0</TD>
+                                <TD id=green>0</TD>
+                                <TD id=blue>0</TD>
+                                <TD id=purple>0</TD>
+                            </TR>
+                            </TBODY>
+                        </TABLE>
+                    </DIV>
+                    <DIV class=stats>
+                        <TABLE cellSpacing=0 cellPadding=0>
+                            <TBODY>
+                            <TR>
+                                <TD class=label>Block Count:</TD>
+                                <TD><SPAN class=value id=blockcount>0</SPAN></TD>
+                            </TR>
+                            <TR>
+                                <TD class=label>Block Score:</TD>
+                                <TD><SPAN class=value id=blockscore>0</SPAN></TD>
+                            </TR>
+                            <TR>
+                                <TD class=label>Total Score:</TD>
+                                <TD><SPAN class=value id=userscore>0</SPAN></TD>
+                            </TR>
+                            <TR>
+                                <TD colSpan=2>
+                                    <HR SIZE=1>
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD class=label>Games Played:</TD>
+                                <TD><SPAN class=value id=usergames>0</SPAN></TD>
+                            </TR>
+                            <TR>
+                                <TD class=label>Average Score:</TD>
+                                <TD><SPAN class=value id=useraverage>0</SPAN></TD>
+                            </TR>
+                            <TR>
+                                <TD class=label>Best Score:</TD>
+                                <TD><SPAN class=value
+                                          id=userbest>0</SPAN></TD>
+                            </TR>
+                            </TBODY>
+                        </TABLE>
+                    </DIV>
+                </DIV>
+                <TABLE id=board cellSpacing=0 cellPadding=0>
+                    <TBODY id=boardbody></TBODY>
+                </TABLE>
+                <DIV class=window id=game-help>
+                    <DIV class=top>Help <SPAN class=close id=game-help-close>x</SPAN></DIV>
+                    <DIV class=content><B>Rules:</B> <BR>
+                        <P>Click on two or more adjacent pieces of the same color to remove them.
+                            Score more points by removing as many adjacent pieces as
+                            possible.</P><B>Credits:</B> <BR>
+                        <P>This game is based largely on the work of Cezary Tomczak's <A
+                                href="http://gosu.pl/dhtml/JsTetris.html">JsTetris</A>. Please see <A
+                                href="imagesjb/jawbreaker.js">jawbreaker.js</A>
+                            for copyright notices.</P>
+                        <P>Thanks to June and Indra for testing.</P></DIV>
+                </DIV>
+                <DIV class=window id=game-stats>
+                    <DIV class=top>Game Stats <SPAN class=close id=game-stats-close>x</SPAN>
+                    </DIV>
+                    <DIV class=content>
+                        <DIV id=game-stats-content>
+                            <TABLE class=stats align=center>
+                                <TBODY>
+                                <TR>
+                                    <TD>&nbsp;</TD>
+                                    <TH>You</TH>
+                                    <TH>Site</TH>
+                                </TR>
+                                <TR>
+                                    <TD class=label>Games Played:</TD>
+                                    <TD align=right><SPAN class=value id=usergames1>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value id=sitegames>0</SPAN></TD>
+                                </TR>
+                                <TR>
+                                    <TD class=label>Average Score:</TD>
+                                    <TD align=right><SPAN class=value id=useraverage1>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value id=siteaverage>0</SPAN></TD>
+                                </TR>
+                                <TR>
+                                    <TD class=label>Top 5 Scores:</TD>
+                                    <TD align=right><SPAN class=value id=userbest1>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value id=sitebest>0</SPAN></TD>
+                                </TR>
+                                <TR>
+                                    <TD class=label>&nbsp;</TD>
+                                    <TD align=right><SPAN class=value id=userbest2>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value id=sitebest2>0</SPAN></TD>
+                                </TR>
+                                <TR>
+                                    <TD class=label>&nbsp;</TD>
+                                    <TD align=right><SPAN class=value id=userbest3>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value id=sitebest3>0</SPAN></TD>
+                                </TR>
+                                <TR>
+                                    <TD class=label>&nbsp;</TD>
+                                    <TD align=right><SPAN class=value id=userbest4>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value id=sitebest4>0</SPAN></TD>
+                                </TR>
+                                <TR>
+                                    <TD class=label>&nbsp;</TD>
+                                    <TD align=right><SPAN class=value id=userbest5>0</SPAN></TD>
+                                    <TD align=right><SPAN class=value
+                                                          id=sitebest5>0</SPAN></TD>
+                                </TR>
+                                </TBODY>
+                            </TABLE>
+                        </DIV>
+                        Note: a cookie was sent to your browser to keep track of your individual
+                        stats. If you would like to play with your same stats on another computer
+                        or browser just bookmark <A
+                            href="http://www.bigfrog.net/jawbreaker/aef65113a3c63fffbfe9bc7b4ec7e2df">this
+                        link</A>.
+                    </DIV>
+                </DIV>
+            </DIV>
+    </TR>
+    </TBODY>
+</TABLE>
+<SCRIPT type=text/javascript>
+    var jb = new JawBreaker();
+    jb.uuid = 'aef65113a3c63fffbfe9bc7b4ec7e2df';
+    jb.start();
+</SCRIPT>
+</BODY>
+</HTML>

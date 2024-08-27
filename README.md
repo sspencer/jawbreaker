@@ -1,4 +1,4 @@
-# Jawbreaker 
+# Jawbreaker 2005 
 
 I wrote Jawbreaker back in 2005.  The web hosting service went out of business somewhere along the way
 (was it Textdrive??) and I lost the code.  However, some gaming website had copied it, and are still hosting. 
@@ -23,4 +23,10 @@ August, 2024
 
 ![Jawbreaker Screenshot](img/jawbreaker.png "Jawbreaker")
 
+## Jawbreaker 2024
 
+Pseudo random number generator that produces the same random numbers for
+the current day.  For example, always produce 2,9,5,... on 20240827 and then
+1,6,3,... on 20240828.  This way, all users see the same board for each day,
+but the board switches daily.  User's then compete globally for the highest
+score and fewest moves.
