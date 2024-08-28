@@ -5,7 +5,7 @@ I wrote Jawbreaker back in 2005.  The web hosting service went out of business s
 The Javascript still works, ancient as it is.  The backend has been lost-in-time, probably was PHP with 
 MySQL as the datastore.  
 
-Remember adding some advertising to the page and making $75-$300 per month for close to a year.  
+Remember adding some advertising to the page and making $75-$300 per month for close to a year. 
 Unfortunately, Google changed advertising algorithms and making significantly less thereafter.
 The Javascript is ancient, using the `prototype.js` library (don't remember that), that provides a 
 **Ajax** library.
