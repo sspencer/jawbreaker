@@ -12,7 +12,7 @@ The Javascript is ancient, using the `prototype.js` library (don't remember that
 
 If I were to rewrite this, I'd remove the reliance on Prototype.js, write a new backend (to keep track
 of scores), and replace the GIFs with Emojis.  For example, the red gif 
-![Jawbreaker Screenshot](img/p_red.gif "Jawbreaker") could be replaced with the
+![Jawbreaker Screenshot](2005/img/p_red.gif "Jawbreaker") could be replaced with the
 red emoji: 🔴. 
 
 Steve Spencer  
@@ -21,7 +21,7 @@ August, 2024
 🟣🔵🟢🔴🟡
 
 
-![Jawbreaker Screenshot](img/jawbreaker.png "Jawbreaker")
+![Jawbreaker Screenshot](2005/img/jawbreaker.png "Jawbreaker")
 
 ## Jawbreaker 2024
 
