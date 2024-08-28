@@ -32,26 +32,21 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 28px; /* Adjust size for emojis */
-            cursor: pointer; /* Show a pointer cursor when hovering over the squares */
+            font-size: 28px;
+            cursor: pointer;
         }
 
     </style>
 </head>
 <body>
-<div id="board" class="grid-container">
-    <!-- The grid will be generated here by JavaScript -->
-</div>
+<div id="board" class="grid-container"></div>
 
 <script>
     class Random {
-        constructor() {
-            const date = new Date();
-            let dateSeed = date.toISOString().split("T")[0].split("-").join("");
-
+        constructor(seed) {
             this.mask = 0xffffffff;
-            this.m_w = (123456789 + dateSeed) & this.mask;
-            this.m_z = (987654321 - dateSeed) & this.mask;
+            this.m_w = (123456789 + seed) & this.mask;
+            this.m_z = (987654321 - seed) & this.mask;
         }
 
         random() {
@@ -65,47 +60,33 @@
 
     class Jawbreaker {
         constructor(rows, cols) {
-            this.rnd = new Random();
+            // 1 seed per day (ex/ "20240827")
+            const date = new Date();
+            let dateSeed = date.toISOString().split("T")[0].split("-").join("");
+            this.rnd = new Random(dateSeed);
+
             this.rows = rows;
             this.cols = cols;
             this.emptyCell = '';
             this.board = new Array(this.rows);
             this.colors = ["🟣", "🔵", "🟢", "🔴", "🟡"];
-            this.gridContainer = document.querySelector('.grid-container');
+            this.bonus = Array(150, 100, 75, 50, 25, 10, 5);
+
             this.gridContainer = document.querySelector('.grid-container');
             this.score = 0;
-            this.uuid = this.generateUUID();
-
-            let item = localStorage.getItem('highScore');
-            if (item === null) {
-                item = "0";
-            }
-
-            console.log(`High Score: ${item}`)
+            this.moves = 0;
 
             this.populateBoard();
             this.boardCopy = this.copyArray(this.board);
             this.createGrid();
-        }
-
-        copyArray(src) {
-            let dst = [];
-            for (let i = 0; i < src.length; i++) {
-                dst[i] = [];
-                for (let j = 0; j < src[i].length; j++) {
-                    dst[i][j] = src[i][j];
-                }
-            }
-
-            return dst;
+            this.retrieveScores();
         }
 
         populateBoard() {
             for (let row = 0; row < this.rows; row++) {
                 this.board[row] = new Array(this.cols);
                 for (let col = 0; col < this.cols; col++) {
-                    let color = this.colors[Math.floor(this.rnd.random() * this.colors.length)];
-                    this.board[row][col] = color;
+                    this.board[row][col] = this.colors[Math.floor(this.rnd.random() * this.colors.length)];
                 }
             }
         }
@@ -128,56 +109,36 @@
             this.gridContainer.appendChild(cell);
         }
 
-        resetBoard() {
-            /*
-            for (let row = 0; row < this.rows; row++) {
-                for (let col = 0; col < this.cols; col++) {
-                    let color = this.colors[Math.floor(this.rnd.random() * this.colors.length)];
-                    this.board[row][col] = color;
-                }
-            }
-             */
-            this.board = this.copyArray(this.boardCopy);
-        }
-
-        generateUUID() {
-            // Generate a simple UUID for the current game instance
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                const r = Math.random() * 16 | 0,
-                    v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
         async saveScore() {
-            const response = await fetch('/api/jawbreaker/score', {
+            const body = JSON.stringify({score: this.score, moves: this.moves, pieces: this.piecesRemaining()});
+            console.log("Sending:", body);
+            const response = await fetch('/api/scores', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({score: this.score, uuid: this.uuid})
+                body: body
             });
             if (!response.ok) {
                 console.error('Failed to save score.');
             } else {
-                console.log('Score successfully saved.');
+                const data = await response.json();
+                console.log('POST High Score:', data.score, 'Fewest Moves:', data.moves, 'Fewest Pieces:', data.pieces);
             }
         }
 
         async retrieveScores() {
             try {
-                const response = await fetch('/api/jawbreaker/score');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                const response = await fetch('/api/scores');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('GET High Score:', data.score, 'Fewest Moves:', data.moves, 'Fewest Pieces:', data.pieces);
                 }
-                const data = await response.json();
-                console.log('High Score:', data.highScore, 'Fewest Moves:', data.fewestMoves);
             } catch (error) {
                 console.error('Failed to retrieve high scores:', error);
             }
         }
 
-        // Function to handle clicks on the grid cells
         handleClick(row, col) {
             const clickedCell = document.getElementById(`cell-${row}-${col}`);
 
@@ -190,21 +151,28 @@
             if (numCells < 2) {
                 return;
             }
+
             this.moveCellsDown();
             this.shiftCellsRight();
             this.draw();
             this.score += numCells * (numCells - 1);
+            this.moves++;
 
             if (this.isGameOver()) {
-                alert(`Game over!  You scored ${this.score} points.`)
-                console.log("Game over!  Score:", this.score);
-                // this.saveScore();
-                this.resetBoard();
-                localStorage.setItem('highScore', '' + this.score);
-
-                this.score = 0;
-                this.draw();
+                this.gameOver();
             }
+        }
+
+        gameOver() {
+            this.saveScore();
+            alert(`Game over!  You scored ${this.score} points.`)
+            console.log("Game over!  Score:", this.score);
+
+            this.board = this.copyArray(this.boardCopy);
+            this.score = 0;
+            this.moves = 0;
+            this.draw();
+
         }
 
         draw() {
@@ -220,7 +188,7 @@
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
                     let color = this.board[row][col];
-                    if (color != this.emptyCell) {
+                    if (color !== this.emptyCell) {
                         if (this.floodCount(color, row, col) > 1) {
                             return false
                         }
@@ -229,6 +197,20 @@
             }
 
             return true
+        }
+
+        piecesRemaining() {
+            let count = 0;
+
+            for (let row = 0; row < this.rows; row++) {
+                for (let col = 0; col < this.cols; col++) {
+                    if (this.board[row][col] !== this.emptyCell) {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
         }
 
         floodFill(color, row, col) {
@@ -323,18 +305,25 @@
                 }
             }
 
-            // Update the original board to the new shifted board
             this.board = newBoard;
         }
 
+        copyArray(src) {
+            let dst = [];
+            for (let i = 0; i < src.length; i++) {
+                dst[i] = [];
+                for (let j = 0; j < src[i].length; j++) {
+                    dst[i][j] = src[i][j];
+                }
+            }
+
+            return dst;
+        }
     }
 
-    // Initialize the game when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', () => {
-        new Jawbreaker(12, 11); // You can change the grid size by passing a different number
+        new Jawbreaker(12, 11);
     });
-
-
 </script>
 </body>
 </html>
