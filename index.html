@@ -109,10 +109,22 @@
             this.gridContainer.appendChild(cell);
         }
 
-        async saveScore() {
+        async retrieveScores() {
+            try {
+                const response = await fetch('scores');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('GET High Score:', data.score, 'Fewest Moves:', data.moves, 'Fewest Pieces:', data.pieces);
+                }
+            } catch (error) {
+                console.error('Failed to retrieve high scores:', error);
+            }
+        }
+
+        async saveScores() {
             const body = JSON.stringify({score: this.score, moves: this.moves, pieces: this.piecesRemaining()});
             console.log("Sending:", body);
-            const response = await fetch('/api/scores', {
+            const response = await fetch('scores', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -127,17 +139,6 @@
             }
         }
 
-        async retrieveScores() {
-            try {
-                const response = await fetch('/api/scores');
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('GET High Score:', data.score, 'Fewest Moves:', data.moves, 'Fewest Pieces:', data.pieces);
-                }
-            } catch (error) {
-                console.error('Failed to retrieve high scores:', error);
-            }
-        }
 
         handleClick(row, col) {
             const clickedCell = document.getElementById(`cell-${row}-${col}`);
@@ -164,7 +165,7 @@
         }
 
         gameOver() {
-            this.saveScore();
+            this.saveScores();
             alert(`Game over!  You scored ${this.score} points.`)
             console.log("Game over!  Score:", this.score);
 

@@ -39,31 +39,39 @@ func main() {
 		date:        formattedDate(), // "20240827"
 	}
 
-	http.HandleFunc("POST /scores", saveScoresHandler)        // via proxy
-	http.HandleFunc("POST /api/scores", saveScoresHandler)    // local dev
-	http.HandleFunc("GET /scores", retrieveScoresHandler)     // via proxy
-	http.HandleFunc("GET /api/scores", retrieveScoresHandler) // local dev
-	http.HandleFunc("GET /", indexHandler)
-	http.HandleFunc("GET /index.html", indexHandler)
+	mount := os.Getenv("MOUNT")
+	http.HandleFunc("POST "+mount+"/scores", saveScoresHandler)
+	http.HandleFunc("GET "+mount+"/scores", retrieveScoresHandler)
+	http.HandleFunc("GET "+mount+"/", indexHandler)
+	http.HandleFunc("GET "+mount+"/index.html", indexHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5454"
 	}
 
-	fmt.Printf("Starting server at port %s\n", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	log.Printf("Starting server at port %s\n", port)
+	if err := http.ListenAndServe(":"+port, LoggingMiddleware(http.DefaultServeMux)); err != nil {
 		log.Fatal(err)
 	}
 }
 
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := r.URL.String()
+		referer := r.Header.Get("Referer")
+		log.Printf("%s %s, Ref: %q\n", r.Method, url, referer)
+
+		// Pass the request to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("GET /index.html\n")
 	http.ServeFile(w, r, "index.html")
 }
 
 func retrieveScoresHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("GET /api/scores\n")
 	currentDate := formattedDate()
 	result := GameResults{}
 
@@ -94,7 +102,6 @@ func saveScoresHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("POST /api/scores %+v\n", input)
 
 	date := formattedDate()
 	result := GameResults{}
@@ -126,7 +133,7 @@ func saveScoresHandler(w http.ResponseWriter, r *http.Request) {
 	currentScore.mu.Unlock()
 	// -------- UNLOCK --------
 
-	fmt.Printf("Saving on %q score=%d, moves=%d, pieces=%d\n", date, result.Score, result.Moves, result.Pieces)
+	log.Printf("Saving on %q score=%d, moves=%d, pieces=%d\n", date, result.Score, result.Moves, result.Pieces)
 
 	err = sendJSON(w, http.StatusOK, result)
 	if err != nil {
