@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -16,15 +18,15 @@ import (
 var ErrBodyMustNotBeEmpty = errors.New("body must not be empty")
 
 type GameResults struct {
-	Score  int `json:"score"`
-	Moves  int `json:"moves"`
-	Pieces int `json:"pieces"`
+	Date   string `json:"date"`
+	Score  int    `json:"score"`
+	Moves  int    `json:"moves"`
+	Pieces int    `json:"pieces"`
 }
 
 type GlobalScore struct {
 	GameResults
-	date string
-	mu   sync.RWMutex
+	mu sync.RWMutex
 }
 
 var currentScore GlobalScore
@@ -35,8 +37,9 @@ func formattedDate() string {
 
 func main() {
 	currentScore = GlobalScore{
-		GameResults: GameResults{},
-		date:        formattedDate(), // "20240827"
+		GameResults: GameResults{
+			Date: formattedDate(),
+		},
 	}
 
 	mount := os.Getenv("MOUNT")
@@ -68,16 +71,37 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "index.html")
+	templatePath := filepath.Join("index.html")
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		log.Printf("Error parsing template: %s\n", err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// inline template to pass Date to index.html rand seed
+	data := struct{ Date string }{
+		Date: formattedDate(),
+	}
+
+	// Execute the template and write the response
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Error executing template: %s\n", err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 }
 
 func retrieveScoresHandler(w http.ResponseWriter, r *http.Request) {
 	currentDate := formattedDate()
-	result := GameResults{}
+	result := GameResults{
+		Date: currentDate,
+	}
 
 	// --------- LOCK ---------
 	currentScore.mu.RLock()
-	if currentDate == currentScore.date {
+	if currentDate == currentScore.Date {
 		result.Score = currentScore.Score
 		result.Moves = currentScore.Moves
 		result.Pieces = currentScore.Pieces
@@ -103,13 +127,18 @@ func saveScoresHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	date := formattedDate()
-	result := GameResults{}
+	//TODO: only consider server date here -- if input.Date != server date,
+	// just return Results with new date + 0 scores
+
+	date := input.Date
+	if date == "" {
+		date = formattedDate()
+	}
 
 	// --------- LOCK ---------
 	currentScore.mu.Lock()
 
-	if currentScore.date == date {
+	if currentScore.Date == date {
 		if input.Score > currentScore.Score {
 			currentScore.Score = input.Score
 		}
@@ -120,20 +149,23 @@ func saveScoresHandler(w http.ResponseWriter, r *http.Request) {
 			currentScore.Pieces = input.Pieces
 		}
 	} else {
-		currentScore.date = date
+		currentScore.Date = date
 		currentScore.Score = input.Score
 		currentScore.Moves = input.Moves
 		currentScore.Pieces = input.Pieces
 	}
 
-	result.Score = currentScore.Score
-	result.Moves = currentScore.Moves
-	result.Pieces = currentScore.Pieces
+	result := GameResults{
+		Date:   currentScore.Date,
+		Score:  currentScore.Score,
+		Moves:  currentScore.Moves,
+		Pieces: currentScore.Pieces,
+	}
 
 	currentScore.mu.Unlock()
 	// -------- UNLOCK --------
 
-	log.Printf("Saving on %q score=%d, moves=%d, pieces=%d\n", date, result.Score, result.Moves, result.Pieces)
+	log.Printf("Saving %+v\n", result)
 
 	err = sendJSON(w, http.StatusOK, result)
 	if err != nil {
