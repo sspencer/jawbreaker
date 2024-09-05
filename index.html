@@ -94,6 +94,10 @@
             justify-content: center;
         }
 
+        .doc {
+            margin: 20px auto;
+        }
+
         /* Page Sections */
         .page {
             display: none;
@@ -105,15 +109,94 @@
             display: block;
         }
 
+        .score-table {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 500px;
+            margin: auto;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-header {
+            background-color: #d75825;
+            color: white;
+            font-size: 1.5em;
+            padding: 8px 0;
+            grid-column: span 4;
+        }
+
+        .table-row {
+            display: contents;
+        }
+
+        .row-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .row-item:nth-child(odd) {
+            background-color: #f2f2f2;
+        }
+
+        .row-item:nth-child(even) {
+            background-color: #ffffff;
+        }
+
+        .table-header .header-item {
+            grid-column: span 4;
+        }
+
+        .table-ledger {
+            grid-column: span 4;
+            background-color: #f0f0f0;
+            font-size: 0.8em;
+            padding: 6px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .rounded-button {
+            background-color: #414141;
+            border: none;
+            color: white;
+            padding: 8px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1em;
+            margin-top: 12px;
+            cursor: pointer;
+            border-radius: 24px;
+            transition: background-color 0.3s;
+        }
+
+        .rounded-button:hover {
+            background-color: #1b1b1b;
+        }
+
+
         /* Game Grid */
         .game-grid {
             display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            grid-template-rows: repeat(12, 1fr);
+            grid-template-columns: repeat({{.Cols}}, 1fr);
+            grid-template-rows: repeat({{.Rows}}, 1fr);
             margin: 20px auto;
             gap: 1px;
             background: #f5f4ec;
-
             box-shadow: 0 0 10px rgba(28, 28, 26, 0.1);
             padding: 4px;
         }
@@ -144,16 +227,14 @@
         <label for="menu-toggle" class="menu-icon">&#9776;</label>
         <nav class="menu">
             <ul>
-                <li><a href="#" onclick="selectMenuItem('gamePage')">Daily Game</a></li>
-                <li><a href="#" onclick="selectMenuItem('gamePage')">Random Game</a></li>
-                <li><a href="#" onclick="selectMenuItem('highScoresPage')">High Scores</a></li>
+                <li><a href="#" onclick="selectMenuItem('gamePage')">Game</a></li>
+                <li><a href="#" onclick="selectMenuItem('scorePage')">Scores</a></li>
                 <li><a href="#" onclick="selectMenuItem('helpPage')">Help</a></li>
             </ul>
         </nav>
     </div>
     <h1>Jawbreaker</h1>
 </header>
-
 <main>
     <div id="gamePage" class="page">
         <div class="game-grid"></div>
@@ -166,39 +247,56 @@
             possible.</p>
     </div>
 
-    <div id="highScoresPage" class="page hidden">
-        <h2>High Scores</h2>
-        <p>1. Player A - 120 points</p>
-        <p>2. Player B - 110 points</p>
-        <p>3. Player C - 100 points</p>
+    <div id="scorePage" class="doc page ">
+        <div class="score-table">
+            <div class="table-header">
+                <div class="header-item">Scores</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item"></div>
+                <div class="row-item">Last</div>
+                <div class="row-item">Daily</div>
+                <div class="row-item">Global</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item">Score</div>
+                <div class="row-item" id="points3">0</div>
+                <div class="row-item" id="points2">0</div>
+                <div class="row-item" id="points1">{{.Score}}</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item">Moves</div>
+                <div class="row-item" id="moves3">0</div>
+                <div class="row-item" id="moves2">0</div>
+                <div class="row-item" id="moves1">{{.Moves}}</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item">Pieces</div>
+                <div class="row-item" id="pieces3">0</div>
+                <div class="row-item" id="pieces2">0</div>
+                <div class="row-item" id="pieces1">{{.Pieces}}</div>
+            </div>
+            <div class="table-ledger">
+                For <em>Moves</em> and <em>Pieces</em>, lower is better.
+                <em>Last</em> is your last completed game. <em>Best</em> is an amalgamation of
+                your best scores.
+            </div>
+        </div>
+        <div class="button-container">
+            <button class="rounded-button" onclick="selectMenuItem('gamePage')">Play</button>
+        </div>
     </div>
 
-    <div id="gameOverPage" class="page hidden">
+    <div id="gameOverPage" class="doc page hidden">
         <h2>Game Over</h2>
         <p>Your score: <span id="userScore">0</span></p>
         <button id="sendTextButton" onclick="sendHighScore()">Send High Score via Text</button>
     </div>
 </main>
-
 <script>
-    class Random {
-        constructor(seed) {
-            this.mask = 0xffffffff;
-            this.m_w = (123456789 + seed) & this.mask;
-            this.m_z = (987654321 - seed) & this.mask;
-        }
-
-        random() {
-            this.m_z = (36969 * (this.m_z & 65535) + (this.m_z >> 16)) & this.mask;
-            this.m_w = (18000 * (this.m_w & 65535) + (this.m_w >> 16)) & this.mask;
-            let result = ((this.m_z << 16) + (this.m_w & 65535)) >>> 0;
-            result /= 4294967296;
-            return result;
-        }
-    }
-
     class Jawbreaker {
-        static Colors = ["🟣", "🔵", "🟢", "🔴", "🟡"];
+        static Pieces = ["🟣", "🔵", "🟢", "🔴", "🟡"];
+        static Key = "Jawbreaker";
         static EmptyCell = "";
         static Delta = [
             {r: -1, c: 0},
@@ -208,40 +306,70 @@
         ];
 
         constructor(rows, cols) {
-            // 1 seed per day (ex/ "20240827")
-            // const date = new Date();
-            // let dateSeed = date.toISOString().split("T")[0].split("-").join("");
-            //this.date = "{{.Date}}";
-            this.date = "20240829";
-            this.rnd = new Random(this.date);
-            // this.rnd = Math;
-
+            this.date = {{.Date}};
             this.rows = rows;
             this.cols = cols;
-            this.board = new Array(this.rows);
-            for (let row = 0; row < rows; row++) {
-                this.board[row] = new Array(cols);
-            }
-
             this.gridContainer = document.querySelector('.game-grid');
             this.score = 0;
             this.moves = 0;
+            this.highScore = Number.MIN_VALUE;
+            this.leastMoves = Number.MAX_VALUE;
+            this.leastPieces = Number.MAX_VALUE;
+            this.alreadyPlayedToday = false;
 
-            this.populateBoard();
-            this.boardCopy = this.copyArray(this.board);
+            let gs = localStorage.getItem(Jawbreaker.Key);
+
+            if (gs != null) {
+                try {
+                    let gameStatus = JSON.parse(gs);
+                    let { date, score, moves, pieces } =  gameStatus;
+                    // game was already played today, create random board
+                    console.log(`GameStatus: ${gs}`)
+                    if (date === this.date) {
+                        this.updateScore(2, score, moves, pieces);
+                        console.log("Game already played today, create random board");
+                        this.alreadyPlayedToday = true;
+                    }
+
+                } catch (e) {}
+            }
+
+            if (this.alreadyPlayedToday) {
+                this.board = this.generateRandomBoard();
+            } else {
+                this.board = this.generateDailyBoard();
+            }
+
             this.createGrid();
-            this.retrieveScores();
         }
 
-        // enableRandomMode(enable)
-        // restartGame()
+        generateDailyBoard() {
+            const src = {{.DailyBoard}};
+            let board = new Array(this.rows);
+            for (let i = 0; i < src.length; i++) {
+                const row = Math.floor(i / this.cols);
+                const col = i % this.cols;
+                if (col === 0) {
+                    board[row] = new Array(this.cols);
+                }
 
-        populateBoard() {
+                board[row][col] = src[i];
+            }
+
+            return board;
+        }
+
+        generateRandomBoard() {
+            const numPieces = Jawbreaker.Pieces.length;
+            let board = new Array(this.rows);
             for (let row = 0; row < this.rows; row++) {
+                board[row] = new Array(this.cols);
                 for (let col = 0; col < this.cols; col++) {
-                    this.board[row][col] = Jawbreaker.Colors[Math.floor(this.rnd.random() * Jawbreaker.Colors.length)];
+                    board[row][col] = Jawbreaker.Pieces[Math.floor(Math.random() * numPieces)];
                 }
             }
+
+            return board;
         }
 
         createGrid() {
@@ -254,11 +382,16 @@
 
         createCell(color, row, col) {
             const cell = document.createElement('div');
-            // cell.classList.add('grid-item');
             cell.id = `cell-${row}-${col}`;
             cell.textContent = color;
             cell.addEventListener('click', () => this.handleClick(row, col));
             this.gridContainer.appendChild(cell);
+        }
+
+        updateScore(index, score, moves, pieces) {
+            document.getElementById("points" + index).textContent = score;
+            document.getElementById("moves" + index).textContent = moves;
+            document.getElementById("pieces" + index).textContent = pieces;
         }
 
         async retrieveScores() {
@@ -266,7 +399,7 @@
                 const response = await fetch('scores');
                 if (response.ok) {
                     const data = await response.json();
-                    console.log(`GET date=${data.date} score=${data.score} moves=${data.moves} pieces=${data.pieces}`);
+                    this.updateScore(1, data.score, data.moves, data.pieces);
                 }
             } catch (error) {
                 console.error('Failed to retrieve high scores:', error);
@@ -274,12 +407,18 @@
         }
 
         async saveScores() {
+            let pieces = this.piecesRemaining();
+            this.updateScore(2, this.score, this.moves, pieces);
+            //this.updateScore(3, this.score, this.moves, pieces);
+
             const body = JSON.stringify({
                 date: this.date,
                 score: this.score,
                 moves: this.moves,
-                pieces: this.piecesRemaining()
+                pieces: pieces,
             });
+
+            localStorage.setItem(Jawbreaker.Key, body);
             console.log("POST:", body);
             const response = await fetch('scores', {
                 method: 'POST',
@@ -290,10 +429,9 @@
                 console.error('Failed to save score.');
             } else {
                 const data = await response.json();
-                console.log(`RESPONSE date=${data.date} score=${data.score} moves=${data.moves} pieces=${data.pieces}`);
+                this.updateScore(1, data.score, data.moves, data.pieces);
             }
         }
-
 
         handleClick(row, col) {
             const clickedCell = document.getElementById(`cell-${row}-${col}`);
@@ -320,12 +458,13 @@
         }
 
         gameOver() {
-            this.saveScores();
-            alert(`Game over!  You scored ${this.score} points.`)
-            console.log("Game over!  Score:", this.score);
-
-            this.board = this.copyArray(this.boardCopy);
-            // this.populateBoard();
+            if (this.alreadyPlayedToday) {
+                this.updateScore(3, this.score, this.moves, this.piecesRemaining())
+            } else {
+                this.saveScores();
+            }
+            showPage('scorePage')
+            this.board = this.generateRandomBoard();
             this.score = 0;
             this.moves = 0;
             this.draw();
@@ -451,40 +590,6 @@
             this.board = newBoard;
         }
 
-        copyArray(src) {
-            let dst = [];
-            for (let i = 0; i < src.length; i++) {
-                dst[i] = [];
-                for (let j = 0; j < src[i].length; j++) {
-                    dst[i][j] = src[i][j];
-                }
-            }
-
-            return dst;
-        }
-
-        selectMenuItem(pageId) {
-            this.showPage(pageId);
-            this.closeMenu();
-        }
-
-        showPage(pageId) {
-            const pages = document.querySelectorAll('.page');
-            pages.forEach(page => {
-                page.classList.remove('active');
-            });
-            document.getElementById(pageId).classList.add('active');
-        }
-
-        closeMenu() {
-            document.getElementById('menu-toggle').checked = false;
-        }
-
-        gameOverSteve(score) {
-            document.getElementById('userScore').textContent = score;
-            this.showPage('gameOverPage');
-        }
-
         sendHighScore() {
             const score = document.getElementById('userScore').textContent;
             const message = `I scored ${score} in the TBD game!`;
@@ -492,10 +597,30 @@
         }
     }
 
+    function selectMenuItem(pageId) {
+        if (pageId === "scorePage") {
+            jb.retrieveScores();
+        }
+        showPage(pageId);
+        closeMenu();
+    }
+
+    function showPage(pageId) {
+        const pages = document.querySelectorAll('.page');
+        pages.forEach(page => {
+            page.classList.remove('active');
+        });
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    function closeMenu() {
+        document.getElementById('menu-toggle').checked = false;
+    }
+
+    let jb;
     document.addEventListener('DOMContentLoaded', () => {
-        let j = new Jawbreaker(12, 12);
-        j.showPage('gamePage');
-        // score could be score + (50 - numMoves)*2 + (25 - numPieces)*2
+        jb = new Jawbreaker({{.Rows}}, {{.Cols}});
+        showPage('gamePage');
     });
 </script>
 </body>
