@@ -1,3 +1,14 @@
 Replace GIFs with Emojis: https://www.piliapp.com/emoji/list/circle/
 
-test
+Daily Game:
+    random seed is *today's date*, e.g. 20240828
+    server keeps track of global high score, etc
+    index page is served with initial date
+    thereafter, everytime api is access, date is served
+
+Random Game:
+    Math.random
+
+LocalStore keeps track of both daily and random game so user can
+switch back and forth (this means 2 current scores are needed)
+

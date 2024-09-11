@@ -6,92 +6,372 @@
     <title>Jawbreaker</title>
     <style>
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
-            background: #e1d4c0;
+            background-color: #efeee6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .grid-container {
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #414141;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5em;
+            text-align: center;
+            flex: 1;
+        }
+
+        /* Hamburger Menu */
+        .hamburger-menu {
+            position: relative;
+        }
+
+        #menu-toggle {
+            display: none; /* Hides the checkbox */
+        }
+
+        .menu-icon {
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+
+        .menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: #333;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+
+        .menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 10px 0;
+            width: 160px;
+        }
+
+        .menu ul li {
+            padding: 10px 20px;
+        }
+
+        .menu ul li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+        }
+
+        .menu ul li a:hover {
+            background-color: #444;
+        }
+
+        #menu-toggle:checked + .menu-icon + .menu {
+            display: block;
+        }
+
+        /* Main Content */
+        main {
+            margin-top: 80px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .doc {
+            margin: 20px auto;
+        }
+
+        /* Page Sections */
+        .page {
+            display: none;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .score-table {
             display: grid;
-            background: #fff8ef;
-            padding: 2px;
-            border: 1px solid #796856;
-            grid-template-columns: repeat(11, 30px);
-            grid-template-rows: repeat(12, 30px);
-            gap: 1px;
-            margin-top: -10%;
+            grid-template-columns: repeat(4, 1fr);
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 500px;
+            margin: auto;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .grid-item {
-            width: 30px;
-            height: 30px;
+        .table-header {
+            background-color: #d75825;
+            color: white;
+            font-size: 1.5em;
+            padding: 8px 0;
+            grid-column: span 4;
+        }
+
+        .table-row {
+            display: contents;
+        }
+
+        .row-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .row-item:nth-child(odd) {
+            background-color: #f2f2f2;
+        }
+
+        .row-item:nth-child(even) {
+            background-color: #ffffff;
+        }
+
+        .table-header .header-item {
+            grid-column: span 4;
+        }
+
+        .table-ledger {
+            grid-column: span 4;
+            background-color: #f0f0f0;
+            font-size: 0.8em;
+            padding: 6px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .button-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 28px;
+        }
+
+        .rounded-button {
+            background-color: #414141;
+            border: none;
+            color: white;
+            padding: 8px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1em;
+            margin-top: 12px;
             cursor: pointer;
+            border-radius: 24px;
+            transition: background-color 0.3s;
+        }
+
+        .rounded-button:hover {
+            background-color: #1b1b1b;
+        }
+
+
+        /* Game Grid */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat({{.Cols}}, 1fr);
+            grid-template-rows: repeat({{.Rows}}, 1fr);
+            margin: 20px auto;
+            gap: 1px;
+            background: #f5f4ec;
+            box-shadow: 0 0 10px rgba(28, 28, 26, 0.1);
+            padding: 4px;
+        }
+
+        .game-grid div {
+            width: 22pt;
+            height: 22pt;
+            font-size: 21pt;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.2em;
+            }
         }
 
     </style>
 </head>
 <body>
-<div id="board" class="grid-container"></div>
+<header>
+    <div class="hamburger-menu">
+        <input type="checkbox" id="menu-toggle">
+        <label for="menu-toggle" class="menu-icon">&#9776;</label>
+        <nav class="menu">
+            <ul>
+                <li><a href="#" onclick="selectMenuItem('gamePage')">Game</a></li>
+                <li><a href="#" onclick="selectMenuItem('scorePage')">Scores</a></li>
+                <li><a href="#" onclick="selectMenuItem('helpPage')">Help</a></li>
+            </ul>
+        </nav>
+    </div>
+    <h1>Jawbreaker</h1>
+</header>
+<main>
+    <div id="gamePage" class="page">
+        <div class="game-grid"></div>
+    </div>
 
+    <div id="helpPage" class="page hidden">
+        <h2>Help</h2>
+        <p>Click on two or more adjacent pieces of the same color to remove them.
+            Score more points by removing as many adjacent pieces as
+            possible.</p>
+    </div>
+
+    <div id="scorePage" class="doc page ">
+        <div class="score-table">
+            <div class="table-header">
+                <div class="header-item">Scores</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item"></div>
+                <div class="row-item">Last</div>
+                <div class="row-item">Daily</div>
+                <div class="row-item">Global</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item">Score</div>
+                <div class="row-item" id="points3">0</div>
+                <div class="row-item" id="points2">0</div>
+                <div class="row-item" id="points1">{{.Score}}</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item">Moves</div>
+                <div class="row-item" id="moves3">0</div>
+                <div class="row-item" id="moves2">0</div>
+                <div class="row-item" id="moves1">{{.Moves}}</div>
+            </div>
+            <div class="table-row">
+                <div class="row-item">Pieces</div>
+                <div class="row-item" id="pieces3">0</div>
+                <div class="row-item" id="pieces2">0</div>
+                <div class="row-item" id="pieces1">{{.Pieces}}</div>
+            </div>
+            <div class="table-ledger">
+                For <em>Moves</em> and <em>Pieces</em>, lower is better.
+                <em>Last</em> is your last completed game. <em>Best</em> is an amalgamation of
+                your best scores.
+            </div>
+        </div>
+        <div class="button-container">
+            <button class="rounded-button" onclick="selectMenuItem('gamePage')">Play</button>
+        </div>
+    </div>
+
+    <div id="gameOverPage" class="doc page hidden">
+        <h2>Game Over</h2>
+        <p>Your score: <span id="userScore">0</span></p>
+        <button id="sendTextButton" onclick="sendHighScore()">Send High Score via Text</button>
+    </div>
+</main>
 <script>
-    class Random {
-        constructor(seed) {
-            this.mask = 0xffffffff;
-            this.m_w = (123456789 + seed) & this.mask;
-            this.m_z = (987654321 - seed) & this.mask;
-        }
-
-        random() {
-            this.m_z = (36969 * (this.m_z & 65535) + (this.m_z >> 16)) & this.mask;
-            this.m_w = (18000 * (this.m_w & 65535) + (this.m_w >> 16)) & this.mask;
-            let result = ((this.m_z << 16) + (this.m_w & 65535)) >>> 0;
-            result /= 4294967296;
-            return result;
-        }
-    }
-
     class Jawbreaker {
-        constructor(rows, cols) {
-            // 1 seed per day (ex/ "20240827")
-            const date = new Date();
-            let dateSeed = date.toISOString().split("T")[0].split("-").join("");
-            this.rnd = new Random(dateSeed);
+        static Pieces = ["🟣", "🔵", "🟢", "🔴", "🟡"];
+        static Key = "Jawbreaker";
+        static EmptyCell = "";
+        static Delta = [
+            {r: -1, c: 0},
+            {r: 1, c: 0},
+            {r: 0, c: -1},
+            {r: 0, c: 1}
+        ];
 
+        constructor(rows, cols) {
+            this.date = {{.Date}};
             this.rows = rows;
             this.cols = cols;
-            this.emptyCell = '';
-            this.board = new Array(this.rows);
-            this.colors = ["🟣", "🔵", "🟢", "🔴", "🟡"];
-            this.bonus = Array(150, 100, 75, 50, 25, 10, 5);
-
-            this.gridContainer = document.querySelector('.grid-container');
+            this.gridContainer = document.querySelector('.game-grid');
             this.score = 0;
             this.moves = 0;
+            this.highScore = Number.MIN_VALUE;
+            this.leastMoves = Number.MAX_VALUE;
+            this.leastPieces = Number.MAX_VALUE;
+            this.alreadyPlayedToday = false;
 
-            this.populateBoard();
-            this.boardCopy = this.copyArray(this.board);
+            let gs = localStorage.getItem(Jawbreaker.Key);
+
+            if (gs != null) {
+                try {
+                    let gameStatus = JSON.parse(gs);
+                    let { date, score, moves, pieces } =  gameStatus;
+                    // game was already played today, create random board
+                    console.log(`GameStatus: ${gs}`)
+                    if (date === this.date) {
+                        this.updateScore(2, score, moves, pieces);
+                        console.log("Game already played today, create random board");
+                        this.alreadyPlayedToday = true;
+                    }
+
+                } catch (e) {}
+            }
+
+            if (this.alreadyPlayedToday) {
+                this.board = this.generateRandomBoard();
+            } else {
+                this.board = this.generateDailyBoard();
+            }
+
             this.createGrid();
-            this.retrieveScores();
         }
 
-        populateBoard() {
+        generateDailyBoard() {
+            const src = {{.DailyBoard}};
+            let board = new Array(this.rows);
+            for (let i = 0; i < src.length; i++) {
+                const row = Math.floor(i / this.cols);
+                const col = i % this.cols;
+                if (col === 0) {
+                    board[row] = new Array(this.cols);
+                }
+
+                board[row][col] = src[i];
+            }
+
+            return board;
+        }
+
+        generateRandomBoard() {
+            const numPieces = Jawbreaker.Pieces.length;
+            let board = new Array(this.rows);
             for (let row = 0; row < this.rows; row++) {
-                this.board[row] = new Array(this.cols);
+                board[row] = new Array(this.cols);
                 for (let col = 0; col < this.cols; col++) {
-                    this.board[row][col] = this.colors[Math.floor(this.rnd.random() * this.colors.length)];
+                    board[row][col] = Jawbreaker.Pieces[Math.floor(Math.random() * numPieces)];
                 }
             }
+
+            return board;
         }
 
-        // Function to create the grid
         createGrid() {
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
@@ -102,40 +382,54 @@
 
         createCell(color, row, col) {
             const cell = document.createElement('div');
-            cell.classList.add('grid-item');
             cell.id = `cell-${row}-${col}`;
             cell.textContent = color;
             cell.addEventListener('click', () => this.handleClick(row, col));
             this.gridContainer.appendChild(cell);
         }
 
-        async saveScore() {
-            const body = JSON.stringify({score: this.score, moves: this.moves, pieces: this.piecesRemaining()});
-            console.log("Sending:", body);
-            const response = await fetch('/api/scores', {
+        updateScore(index, score, moves, pieces) {
+            document.getElementById("points" + index).textContent = score;
+            document.getElementById("moves" + index).textContent = moves;
+            document.getElementById("pieces" + index).textContent = pieces;
+        }
+
+        async retrieveScores() {
+            try {
+                const response = await fetch('scores');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.updateScore(1, data.score, data.moves, data.pieces);
+                }
+            } catch (error) {
+                console.error('Failed to retrieve high scores:', error);
+            }
+        }
+
+        async saveScores() {
+            let pieces = this.piecesRemaining();
+            this.updateScore(2, this.score, this.moves, pieces);
+            //this.updateScore(3, this.score, this.moves, pieces);
+
+            const body = JSON.stringify({
+                date: this.date,
+                score: this.score,
+                moves: this.moves,
+                pieces: pieces,
+            });
+
+            localStorage.setItem(Jawbreaker.Key, body);
+            console.log("POST:", body);
+            const response = await fetch('scores', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: body
             });
             if (!response.ok) {
                 console.error('Failed to save score.');
             } else {
                 const data = await response.json();
-                console.log('POST High Score:', data.score, 'Fewest Moves:', data.moves, 'Fewest Pieces:', data.pieces);
-            }
-        }
-
-        async retrieveScores() {
-            try {
-                const response = await fetch('/api/scores');
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('GET High Score:', data.score, 'Fewest Moves:', data.moves, 'Fewest Pieces:', data.pieces);
-                }
-            } catch (error) {
-                console.error('Failed to retrieve high scores:', error);
+                this.updateScore(1, data.score, data.moves, data.pieces);
             }
         }
 
@@ -143,7 +437,7 @@
             const clickedCell = document.getElementById(`cell-${row}-${col}`);
 
             let c = clickedCell.textContent;
-            if (c === this.emptyCell) {
+            if (c === Jawbreaker.EmptyCell) {
                 return;
             }
 
@@ -164,15 +458,16 @@
         }
 
         gameOver() {
-            this.saveScore();
-            alert(`Game over!  You scored ${this.score} points.`)
-            console.log("Game over!  Score:", this.score);
-
-            this.board = this.copyArray(this.boardCopy);
+            if (this.alreadyPlayedToday) {
+                this.updateScore(3, this.score, this.moves, this.piecesRemaining())
+            } else {
+                this.saveScores();
+            }
+            showPage('scorePage')
+            this.board = this.generateRandomBoard();
             this.score = 0;
             this.moves = 0;
             this.draw();
-
         }
 
         draw() {
@@ -188,9 +483,9 @@
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
                     let color = this.board[row][col];
-                    if (color !== this.emptyCell) {
-                        if (this.floodCount(color, row, col) > 1) {
-                            return false
+                    if (color !== Jawbreaker.EmptyCell) {
+                        if (this.hasRemainingMoves(color, row, col)) {
+                            return false;
                         }
                     }
                 }
@@ -204,7 +499,7 @@
 
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
-                    if (this.board[row][col] !== this.emptyCell) {
+                    if (this.board[row][col] !== Jawbreaker.EmptyCell) {
                         count++;
                     }
                 }
@@ -218,7 +513,7 @@
                 return 0;
             }
 
-            this.board[row][col] = this.emptyCell;
+            this.board[row][col] = Jawbreaker.EmptyCell;
 
             return 1 +
                 this.floodFill(color, row - 1, col) +
@@ -227,32 +522,19 @@
                 this.floodFill(color, row, col + 1);
         }
 
-        floodCount(color, startRow, startCol) {
-            if (this.board[startRow][startCol] !== color) {
-                return 0;
-            }
+        hasRemainingMoves(color, startRow, startCol) {
+            for (let i = 0; i < Jawbreaker.Delta.length; i++) {
+                let row = startRow + Jawbreaker.Delta[i].r;
+                let col = startCol + Jawbreaker.Delta[i].c;
 
-            const visited = new Set();
-
-            function dfs(row, col) {
-                if (row < 0 || row >= this.rows || col < 0 || col >= this.cols ||
-                    this.board[row][col] !== color || visited.has(`${row},${col}`)) {
-                    return 0;
+                if (row < 0 || row >= this.rows || col < 0 || col >= this.cols || this.board[row][col] !== color) {
+                    continue
                 }
 
-                visited.add(`${row},${col}`);
-
-                let count = 1;
-
-                count += dfs.call(this, row, col + 1);
-                count += dfs.call(this, row + 1, col);
-                count += dfs.call(this, row, col - 1);
-                count += dfs.call(this, row - 1, col);
-
-                return count;
+                return true;
             }
 
-            return dfs.call(this, startRow, startCol);
+            return false;
         }
 
         moveCellsDown() {
@@ -260,7 +542,7 @@
                 const nonEmptyItems = [];
                 // Collect non-empty items from the current column
                 for (let row = 0; row < this.rows; row++) {
-                    if (this.board[row][col] !== this.emptyCell) {
+                    if (this.board[row][col] !== Jawbreaker.EmptyCell) {
                         nonEmptyItems.push(this.board[row][col]);
                     }
                 }
@@ -271,7 +553,7 @@
                         this.board[row][col] = nonEmptyItems[nonEmptyIndex];
                         nonEmptyIndex--;
                     } else {
-                        this.board[row][col] = this.emptyCell;
+                        this.board[row][col] = Jawbreaker.EmptyCell;
                     }
                 }
             }
@@ -279,7 +561,7 @@
 
         shiftCellsRight() {
             const newBoard = Array.from({length: this.rows}, () =>
-                Array(this.cols).fill(this.emptyCell)
+                Array(this.cols).fill(Jawbreaker.EmptyCell)
             );
             let shiftCount = 0;
 
@@ -288,7 +570,7 @@
 
                 // Check if the entire column is empty
                 for (let row = 0; row < this.rows; row++) {
-                    if (this.board[row][col] !== this.emptyCell) {
+                    if (this.board[row][col] !== Jawbreaker.EmptyCell) {
                         isEmptyColumn = false;
                         break;
                     }
@@ -308,21 +590,37 @@
             this.board = newBoard;
         }
 
-        copyArray(src) {
-            let dst = [];
-            for (let i = 0; i < src.length; i++) {
-                dst[i] = [];
-                for (let j = 0; j < src[i].length; j++) {
-                    dst[i][j] = src[i][j];
-                }
-            }
-
-            return dst;
+        sendHighScore() {
+            const score = document.getElementById('userScore').textContent;
+            const message = `I scored ${score} in the TBD game!`;
+            window.location.href = `sms:?&body=${encodeURIComponent(message)}`;
         }
     }
 
+    function selectMenuItem(pageId) {
+        if (pageId === "scorePage") {
+            jb.retrieveScores();
+        }
+        showPage(pageId);
+        closeMenu();
+    }
+
+    function showPage(pageId) {
+        const pages = document.querySelectorAll('.page');
+        pages.forEach(page => {
+            page.classList.remove('active');
+        });
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    function closeMenu() {
+        document.getElementById('menu-toggle').checked = false;
+    }
+
+    let jb;
     document.addEventListener('DOMContentLoaded', () => {
-        new Jawbreaker(12, 11);
+        jb = new Jawbreaker({{.Rows}}, {{.Cols}});
+        showPage('gamePage');
     });
 </script>
 </body>

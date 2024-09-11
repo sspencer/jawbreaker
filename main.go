@@ -4,85 +4,102 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 )
 
-var ErrBodyMustNotBeEmpty = errors.New("body must not be empty")
+const (
+	Rows        = 12
+	Cols        = 12
+	DefaultPort = "5454"
+)
+
+var (
+	Pieces      = []string{"🟣", "🔵", "🟢", "🔴", "🟡"}
+	globalScore GlobalScore
+)
 
 type GameResults struct {
-	Score  int `json:"score"`
-	Moves  int `json:"moves"`
-	Pieces int `json:"pieces"`
+	Date       int      `json:"date"`
+	DailyBoard []string `json:"daily_board,omitempty"`
+	Score      int      `json:"score"`
+	Moves      int      `json:"moves"`
+	Pieces     int      `json:"pieces"`
+}
+
+type PageData struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
+	GameResults
 }
 
 type GlobalScore struct {
 	GameResults
-	date string
-	mu   sync.RWMutex
-}
-
-var currentScore GlobalScore
-
-func formattedDate() string {
-	return time.Now().Format("20060102")
+	mu sync.RWMutex
 }
 
 func main() {
-	currentScore = GlobalScore{
-		GameResults: GameResults{},
-		date:        formattedDate(), // "20240827"
-	}
+	//globalScore = GlobalScore{}
+	maybeResetGlobalScores()
 
-	http.HandleFunc("POST /scores", saveScoresHandler)        // via proxy
-	http.HandleFunc("POST /api/scores", saveScoresHandler)    // local dev
-	http.HandleFunc("GET /scores", retrieveScoresHandler)     // via proxy
-	http.HandleFunc("GET /api/scores", retrieveScoresHandler) // local dev
-	http.HandleFunc("GET /", indexHandler)
-	http.HandleFunc("GET /index.html", indexHandler)
+	mount := os.Getenv("MOUNT")
+	http.HandleFunc("POST "+mount+"/scores", saveScoresHandler)
+	http.HandleFunc("GET "+mount+"/scores", retrieveScoresHandler)
+	http.HandleFunc("GET "+mount+"/", indexHandler)
+	http.HandleFunc("GET "+mount+"/index.html", indexHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "5454"
+		port = DefaultPort
 	}
 
-	fmt.Printf("Starting server at port %s\n", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	log.Printf("Starting server at port %s\n", port)
+	if err := http.ListenAndServe(":"+port, LoggingMiddleware(http.DefaultServeMux)); err != nil {
 		log.Fatal(err)
 	}
 }
 
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := r.URL.String()
+		referer := r.Header.Get("Referer")
+		log.Printf("%s %s, Ref: %q\n", r.Method, url, referer)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("GET /index.html\n")
-	http.ServeFile(w, r, "index.html")
+	templatePath := filepath.Join("index.html")
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		handleServerError(w, "Error parsing template", err)
+		return
+	}
+
+	data := getPageData()
+
+	if err := tmpl.Execute(w, data); err != nil {
+		handleServerError(w, "Error executing template", err)
+		return
+	}
 }
 
 func retrieveScoresHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("GET /api/scores\n")
-	currentDate := formattedDate()
-	result := GameResults{}
+	maybeResetGlobalScores()
+	results := getGameResults()
 
-	// --------- LOCK ---------
-	currentScore.mu.RLock()
-	if currentDate == currentScore.date {
-		result.Score = currentScore.Score
-		result.Moves = currentScore.Moves
-		result.Pieces = currentScore.Pieces
-	}
-	currentScore.mu.RUnlock()
-	// -------- UNLOCK --------
-
-	// if score wasn't set above (fell into new date), score/moves default to 0
-	// by nature of Go's default initialization
-
-	err := sendJSON(w, http.StatusOK, result)
+	err := sendJSON(w, http.StatusOK, results)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		handleServerError(w, "Error sending response", err)
 		return
 	}
 }
@@ -94,43 +111,14 @@ func saveScoresHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("POST /api/scores %+v\n", input)
 
-	date := formattedDate()
-	result := GameResults{}
+	results := updateGlobalScores(input)
 
-	// --------- LOCK ---------
-	currentScore.mu.Lock()
+	log.Printf("score=%d, moves=%d, pieces=%d\n", results.Score, results.Moves, results.Pieces)
 
-	if currentScore.date == date {
-		if input.Score > currentScore.Score {
-			currentScore.Score = input.Score
-		}
-		if currentScore.Moves == 0 || input.Moves < currentScore.Moves {
-			currentScore.Moves = input.Moves
-		}
-		if currentScore.Pieces == 0 || input.Pieces < currentScore.Pieces {
-			currentScore.Pieces = input.Pieces
-		}
-	} else {
-		currentScore.date = date
-		currentScore.Score = input.Score
-		currentScore.Moves = input.Moves
-		currentScore.Pieces = input.Pieces
-	}
-
-	result.Score = currentScore.Score
-	result.Moves = currentScore.Moves
-	result.Pieces = currentScore.Pieces
-
-	currentScore.mu.Unlock()
-	// -------- UNLOCK --------
-
-	fmt.Printf("Saving on %q score=%d, moves=%d, pieces=%d\n", date, result.Score, result.Moves, result.Pieces)
-
-	err = sendJSON(w, http.StatusOK, result)
+	err = sendJSON(w, http.StatusOK, results)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		handleServerError(w, "Error sending response", err)
 		return
 	}
 }
@@ -180,7 +168,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst interface{}, disallo
 			return fmt.Errorf("body contains incorrect JSON type (at character %d)", unmarshalTypeError.Offset)
 
 		case errors.Is(err, io.EOF):
-			return ErrBodyMustNotBeEmpty
+			return errors.New("body must not be empty")
 
 		case strings.HasPrefix(err.Error(), "json: unknown field "):
 			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
@@ -203,4 +191,92 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst interface{}, disallo
 	}
 
 	return nil
+}
+
+func handleServerError(w http.ResponseWriter, message string, err error) {
+	log.Printf("%s: %s\n", message, err.Error())
+	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+}
+
+func generateDailyBoard(seed int) []string {
+	rnd := rand.New(rand.NewSource(int64(seed)))
+	size := Rows * Cols
+	num := len(Pieces)
+	board := make([]string, size)
+	for i := 0; i < size; i++ {
+		board[i] = Pieces[rnd.Intn(num)]
+	}
+
+	return board
+}
+
+func currentDate() int {
+	now := time.Now()
+	return now.Year()*10000 + int(now.Month())*100 + now.Day()
+}
+
+func getPageData() PageData {
+	data := PageData{
+		Rows: Rows,
+		Cols: Cols,
+	}
+	globalScore.mu.RLock()
+	data.GameResults = globalScore.GameResults
+	globalScore.mu.RUnlock()
+	return data
+}
+
+func getGameResults() GameResults {
+	data := GameResults{}
+	globalScore.mu.RLock()
+	data = globalScore.GameResults
+	data.DailyBoard = nil
+	globalScore.mu.RUnlock()
+	return data
+}
+
+func updateGlobalScores(input GameResults) GameResults {
+	now := currentDate()
+
+	globalScore.mu.Lock()
+	defer globalScore.mu.Unlock()
+
+	if globalScore.Date == now && input.Date == now {
+		if input.Score > globalScore.Score {
+			globalScore.Score = input.Score
+		}
+		if globalScore.Moves == 0 || input.Moves < globalScore.Moves {
+			globalScore.Moves = input.Moves
+		}
+		if globalScore.Pieces == 0 || input.Pieces < globalScore.Pieces {
+			globalScore.Pieces = input.Pieces
+		}
+	} else {
+		globalScore.Date = now
+		globalScore.DailyBoard = generateDailyBoard(now)
+		globalScore.Score = 0
+		globalScore.Moves = 0
+		globalScore.Pieces = 0
+	}
+
+	data := GameResults{}
+	data = globalScore.GameResults
+	return data
+}
+
+func maybeResetGlobalScores() {
+	date := currentDate()
+	globalScore.mu.Lock()
+	defer globalScore.mu.Unlock()
+
+	if globalScore.Date == date {
+		return // If the dates are the same, do nothing
+	}
+
+	// Update the global score
+	globalScore.Date = date
+	globalScore.DailyBoard = generateDailyBoard(date)
+	globalScore.Score = 0
+	globalScore.Moves = 0
+	globalScore.Pieces = 0
 }
