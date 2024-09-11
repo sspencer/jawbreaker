@@ -1,38 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jawbreaker</title>
+    <title>Jawbreaker - Javascript Game</title>
+    <meta charset="UTF-8"/>
+    <meta http-equiv=Content-Type content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Javascript Jawbreaker Game, also called Same Game">
+    <meta name="keywords" content="javascript game, javascript, online games, free games">
+    <meta name="rating" content="Safe For Kids">
     <style>
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
-        }
-
-        header {
-            background-color: #414141;
-            color: white;
-            text-align: center;
-            padding: 20px 0;
-            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.5);
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 1.5em;
+            font-family: Impact, "Arial Black", Arial, sans-serif;
+            background-color: #efeee6;
+            color: #414141;
         }
 
         main {
-            margin-top: 50px;
+            margin-top: 20px;
             display: flex;
             justify-content: center;
         }
 
-        .game-board {
-            background-color: #d3d3d3;
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            /*background-color: #00d3d3;*/
+            background-color: #d75825;
             padding: 8px;
-            border-radius: 8px;
+            border-radius: 12px;
+        }
+
+        .game-title {
+            padding: 5px 0 10px 0;
+            font-size: 1.5em;
+            color: white;
+            letter-spacing: 0.12em;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9)
         }
 
         .game-grid {
@@ -41,7 +47,7 @@
             grid-gap: 2px;
             background-color: #f5f5f5;
             padding: 4px;
-            border-radius: 8px;
+            border-radius: 4px;
         }
 
         .game-grid div {
@@ -81,52 +87,107 @@
             background: linear-gradient(to bottom, #d0a2f2, #a033f7, #9d32f2);
             border: 1px solid #6a21a3;
         }
+
+        .score-table {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            text-align: center;
+            padding-top: 8px;
+        }
+
+        .table-row, .table-header {
+            display: contents;
+        }
+
+        .table-header > div {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+            background-color: #efeee6;
+        }
+
+        .table-row > div {
+            padding: 8px 0;
+            background-color: #f5f5f5;
+        }
+
     </style>
 </head>
 <body>
-<header>
-    <h1>Jawbreaker</h1>
-</header>
 <main>
-    <div class="game-board">
-        <div class="game-grid"></div>
+    <div class="game-container">
+        <div class="game-title">
+            Jawbreaker
+        </div>
+        <div class="game-board">
+            <div class="game-grid"></div>
+        </div>
+        <div class="score-board">
+            <div class="score-table">
+                <div class="table-header">
+                    <div>Current</div>
+                    <div>Last</div>
+                    <div>Best</div>
+                </div>
+                <div class="table-row">
+                    <div id="current-score">0</div>
+                    <div id="last-score">0</div>
+                    <div id="best-score">0</div>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 <script>
     class Jawbreaker {
         static Pieces = ["purple", "blue", "green", "red", "yellow"];
         static EmptyPiece = "empty";
-        static VisitAttr = "visit"
+        static VisitAttr = "visit";
 
         constructor(rows, cols) {
             this.rows = rows;
             this.cols = cols;
             this.score = 0;
-            this.moves = 0;
-            this.pieces = 0;
+            this.bestScore = 0;
             this.gridMap = new Map();
             this.createGrid();
+            const child1 = document.querySelector(".game-board");
+            const child2 = document.querySelector(".score-board");
+
+            const child1Width = child1.offsetWidth;
+            child2.style.width = child1Width + "px";
+
+            let item = localStorage.getItem("score");
+            if (item != null) {
+                let {score} = JSON.parse(item);
+                if (score) {
+                    this.bestScore = score;
+                    document.getElementById("best-score").textContent = `${this.bestScore}`;
+                }
+            }
         }
 
         createGrid() {
             let fragment = document.createDocumentFragment();
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
-                    let cell = document.createElement('div');
-                    cell.addEventListener('click', () => this.handleClick(row, col));
+                    let cell = document.createElement("div");
+                    cell.addEventListener("click", () => this.handleClick(row, col));
                     this.gridMap.set(`cell-${row}-${col}`, cell);
                     fragment.appendChild(cell);
                 }
             }
 
-            document.querySelector('.game-grid').appendChild(fragment);
+            document.querySelector(".game-grid").appendChild(fragment);
             this.generateRandomBoard();
         }
 
         generateRandomBoard() {
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
-                    let piece = Jawbreaker.Pieces[Math.floor(Math.random() * Jawbreaker.Pieces.length)];
+                    let piece =
+                        Jawbreaker.Pieces[
+                            Math.floor(Math.random() * Jawbreaker.Pieces.length)
+                            ];
                     this.setPiece(row, col, piece);
                 }
             }
@@ -152,17 +213,30 @@
             this.shiftPiecesRight();
 
             this.score += numPieces * (numPieces - 1);
-            this.moves++;
+            this.updateScore(this.score, false);
 
             if (this.isGameOver()) {
-                const msg = `Game over!  You scored ${this.score} points in ${this.moves} moves, leaving ${this.pieces} pieces behind.`;
-                alert(msg);
-                console.log(msg);
-                this.generateRandomBoard();
-                this.score = 0;
-                this.moves = 0;
-                this.pieces = 0;
+                setTimeout(() => this.endGame(), 84);
             }
+        }
+
+        endGame() {
+            let pieces = this.getRemainingPieces();
+            let bonus = this.calculateScore(pieces);
+            let score = this.score + bonus;
+            let msg;
+            if (bonus === 0) {
+                msg = `Game over!  You scored ${score} points, leaving ${pieces} pieces behind.`;
+            } else {
+                msg = `Game over!  You scored ${score} points, which includes a bonus of ${bonus} for leaving only ${pieces} pieces on the board.`;
+            }
+            console.log(msg);
+            alert(msg);
+            this.updateScore(score, true);
+            this.score = 0;
+
+            this.generateRandomBoard();
+            this.updateScore(0, false);
         }
 
         isGameOver() {
@@ -179,11 +253,36 @@
                 }
             }
 
-            this.pieces = this.piecesRemaining();
-            return true
+            return true;
         }
 
-        piecesRemaining() {
+        calculateScore(pieces) {
+            const max = 20;
+            if (pieces <= max) {
+                let p = max - pieces;
+                return p * p;
+            }
+
+            return 0;
+        }
+
+        updateScore(score, gameOver) {
+            if (gameOver) {
+                if (score > this.bestScore) {
+                    this.bestScore = score;
+                }
+                let body = {score: this.bestScore};
+                localStorage.setItem("score", JSON.stringify(body));
+
+                document.getElementById("best-score").textContent = `${this.bestScore}`;
+                document.getElementById("last-score").textContent = `${score}`;
+                document.getElementById("current-score").textContent = "0";
+            } else {
+                document.getElementById("current-score").textContent = this.score;
+            }
+        }
+
+        getRemainingPieces() {
             let count = 0;
             for (let row = 0; row < this.rows; row++) {
                 for (let col = 0; col < this.cols; col++) {
@@ -198,18 +297,23 @@
 
         floodFill(row, col, piece) {
             let cell = this.getCell(row, col);
-            if (!(row >= 0 && row < this.rows && col >= 0 && col < this.cols) ||
-                cell.className !== piece || cell.dataset[Jawbreaker.VisitAttr]) {
+            if (
+                !(row >= 0 && row < this.rows && col >= 0 && col < this.cols) ||
+                cell.className !== piece ||
+                cell.dataset[Jawbreaker.VisitAttr]
+            ) {
                 return 0;
             }
 
             cell.dataset[Jawbreaker.VisitAttr] = true;
 
-            return 1 +
+            return (
+                1 +
                 this.floodFill(row - 1, col, piece) +
                 this.floodFill(row + 1, col, piece) +
                 this.floodFill(row, col - 1, piece) +
-                this.floodFill(row, col + 1, piece);
+                this.floodFill(row, col + 1, piece)
+            );
         }
 
         resetVisits(removePieces) {
@@ -243,7 +347,7 @@
 
                 for (let row = this.rows - 1; row >= 0; row--) {
                     let piece = this.getPiece(row, col);
-                    if (piece != Jawbreaker.EmptyPiece) {
+                    if (piece !== Jawbreaker.EmptyPiece) {
                         let shift = rowsToShift[row];
                         if (shift > 0) {
                             this.setPiece(row + shift, col, piece);
@@ -262,7 +366,7 @@
                 for (let row = 0; row < this.rows; row++) {
                     if (this.getPiece(row, col) !== Jawbreaker.EmptyPiece) {
                         empty = false;
-                        break
+                        break;
                     }
                 }
 
@@ -307,7 +411,7 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener("DOMContentLoaded", () => {
         new Jawbreaker(12, 12);
     });
 </script>
