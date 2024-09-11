@@ -12,7 +12,7 @@ The Javascript is ancient, using the `prototype.js` library (don't remember that
 
 If I were to rewrite this, I'd remove the reliance on Prototype.js, write a new backend (to keep track
 of scores), and replace the GIFs with Emojis.  For example, the red gif 
-![Jawbreaker Screenshot](2005/img/p_red.gif "Jawbreaker") could be replaced with the
+![Jawbreaker 2005 Screenshot](2005/img/p_red.gif "Jawbreaker") could be replaced with the
 red emoji: 🔴. 
 
 Steve Spencer  
@@ -25,8 +25,7 @@ August, 2024
 
 ## Jawbreaker 2024
 
-Pseudo random number generator that produces the same random numbers for
-the current day.  For example, always produce 2,9,5,... on 20240827 and then
-1,6,3,... on 20240828.  This way, all users see the same board for each day,
-but the board switches daily.  User's then compete globally for the highest
-score and fewest moves.
+Rewrote Javascript with modern javascript.  No external dependencies required,
+first or third party.  No images used, just CSS.  Single file.  
+
+![Jawbreaker 2024 Screenshot](jawbreaker.png "Jawbreaker")
