@@ -1,4 +1,6 @@
-# Jawbreaker 2005 
+# Jawbreaker Game 
+
+## Jawbreaker 2005
 
 I wrote Jawbreaker back in 2005.  The web hosting service went out of business somewhere along the way
 (was it Textdrive??) and I lost the code.  However, some gaming website had copied it, and are still hosting. 
