@@ -11,7 +11,7 @@
     <style>
         body {
             margin: 0;
-            font-family: Impact, "Arial Black", Arial, sans-serif;
+            font-family: Arial, sans-serif;
             background-color: #efeee6;
             color: #414141;
         }
@@ -22,23 +22,29 @@
             justify-content: center;
         }
 
-        .game-container {
+        .container {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 20px;
+        }
 
-            /*background-color: #00d3d3;*/
-            background-color: #d75825;
+        .game-container {
+            background-color: #c1decf;
             padding: 8px;
             border-radius: 12px;
+            border: 1px solid #aac1b5;
         }
 
         .game-title {
-            padding: 5px 0 10px 0;
-            font-size: 1.5em;
-            color: white;
-            letter-spacing: 0.12em;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9)
+            padding-bottom: 4px;
+            font-size: 1.8em;
+            color: #2f2f2e;
+            letter-spacing: 0.04em;
+            font-family: Garamond;
+            font-weight: bold;
+            font-style: italic;
+            text-align: center;
+            text-shadow: 1px 1px 0 #ffffff, /* Right shadow */ -1px 1px 0 #ffffff, /* Left shadow */ 1px -1px 0 #ffffff, /* Top-right shadow */ -1px -1px 0 #ffffff, /* Top-left shadow */ 1px 0 0 #ffffff, /* Right vertical shadow */ -1px 0 0 #ffffff, /* Left vertical shadow */ 0 1px 0 #ffffff, /* Bottom vertical shadow */ 0 -1px 0 #ffffff;
         }
 
         .game-grid {
@@ -47,7 +53,8 @@
             grid-gap: 2px;
             background-color: #f5f5f5;
             padding: 4px;
-            border-radius: 4px;
+            border: 1px solid #aac1b5;
+            border-radius: 8px;
         }
 
         .game-grid div {
@@ -92,34 +99,37 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             text-align: center;
-            padding-top: 8px;
+            font-size: 1.2em;
         }
 
         .table-row, .table-header {
             display: contents;
+            padding: 4px 0;
         }
 
         .table-header > div {
-            padding: 8px 0;
-            border-bottom: 1px solid #ddd;
-            background-color: #efeee6;
+            padding: 4px 0;
         }
 
         .table-row > div {
-            padding: 8px 0;
+            padding: 4px 0;
             background-color: #f5f5f5;
+            border-top: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
         }
 
     </style>
 </head>
 <body>
 <main>
-    <div class="game-container">
-        <div class="game-title">
-            Jawbreaker
-        </div>
-        <div class="game-board">
-            <div class="game-grid"></div>
+    <div class="container">
+        <div class="game-container">
+            <div class="game-title">
+                Jawbreaker
+            </div>
+            <div class="game-board">
+                <div class="game-grid"></div>
+            </div>
         </div>
         <div class="score-board">
             <div class="score-table">
@@ -241,7 +251,7 @@
         }
 
         saveScore(score) {
-            fetch(`score/${score}`, { method: 'POST' })
+            fetch(`score/${score}`, {method: 'POST'})
         }
 
         isGameOver() {
