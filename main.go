@@ -41,7 +41,16 @@ func main() {
 	}
 
 	log.Printf("Starting server at port %s\n", port)
-	if err := http.ListenAndServe(":"+port, LoggingMiddleware(http.DefaultServeMux)); err != nil {
+
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%s", port),
+		Handler:      LoggingMiddleware(http.DefaultServeMux),
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
