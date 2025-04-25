@@ -42,7 +42,7 @@ func gameToHTML(g *Game) string {
 		sb.WriteString("\"></div>")
 	}
 
-	return fmt.Sprintf("<div id=\"game\" data-on-click=\"@post('/move/'+evt.target.id)\">%s</div>", sb.String())
+	return fmt.Sprintf("<div id=\"game\" data-on-click=\"@post('move/'+evt.target.id)\">%s</div>", sb.String())
 }
 
 func (s ScoreData) serialize() string {

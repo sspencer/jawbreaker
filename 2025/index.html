@@ -8,8 +8,8 @@
     <meta name="description" content="Jawbreaker Game, also called Same Game">
     <meta name="keywords" content="jawbreaker, same game, online games, free games">
     <meta name="rating" content="Safe For Kids">
-    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="static/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="static/style.css">
     <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"></script>
 </head>
 <body>
@@ -21,7 +21,7 @@
                 <div class="game-over-content">
                     <h2>Game Over!</h2>
                     <p>You scored <span data-text="$currentScore">0</span> points</p>
-                    <button class="new-game-btn" data-on-click="@post('/new')">New Game</button>
+                    <button class="new-game-btn" data-on-click="@post('new')">New Game</button>
                 </div>
             </div>
         </div>

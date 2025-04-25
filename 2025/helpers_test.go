@@ -47,7 +47,7 @@ func TestGameToHTML(t *testing.T) {
 	if !strings.HasPrefix(html, "<div id=\"game\"") {
 		t.Errorf("gameToHTML() output does not start with expected game div")
 	}
-	if !strings.Contains(html, "data-on-click=\"@post('/move/'+evt.target.id)\"") {
+	if !strings.Contains(html, "data-on-click=\"@post('move/'+evt.target.id)\"") {
 		t.Errorf("gameToHTML() output missing expected data-on-click attribute")
 	}
 	if !strings.HasSuffix(html, "</div>") {
