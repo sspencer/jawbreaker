@@ -71,18 +71,12 @@ func PieceFromChar(c rune) Piece {
 	}
 }
 
-func randomPiece() Piece {
-	return colorPieces[rand.IntN(len(colorPieces))]
-}
-
 // NewGame initializes a new Game instance with the given rows and columns, populating the board with random pieces.
 func NewGame(rows, cols int) *Game {
-	pieces := make([]Piece, 0, rows*cols)
+	pieces := make([]Piece, rows*cols)
 
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
-			pieces = append(pieces, randomPiece())
-		}
+	for i := 0; i < len(pieces); i++ {
+		pieces[i] = colorPieces[rand.IntN(len(colorPieces))]
 	}
 
 	return &Game{pieces: pieces, rows: rows, cols: cols}
@@ -91,11 +85,11 @@ func NewGame(rows, cols int) *Game {
 // RestoreGame restores a game state based on the given board string, dimensions, and score.
 // It returns a pointer to a Game instance or an error if the board size does not match the expected size.
 func RestoreGame(board string, rows, cols, score int) (*Game, error) {
-	pieces := make([]Piece, rows*cols)
-	if len(pieces) != len(board) {
+	if len(board) != rows*cols {
 		return nil, ErrGameSize
 	}
 
+	pieces := make([]Piece, rows*cols)
 	for i, c := range board {
 		pieces[i] = PieceFromChar(c)
 	}
@@ -103,13 +97,13 @@ func RestoreGame(board string, rows, cols, score int) (*Game, error) {
 	return &Game{pieces: pieces, rows: rows, cols: cols, score: score}, nil
 }
 
-// String returns the current state of the board as a string.
+// String returns the current state of the board as a string,
+// where each character in the string represents a color
 func (g *Game) String() string {
 	return string(g.pieces)
 }
 
 // Score returns the current score of the game.
-// The score increases when pieces are removed and when the game is over with few remaining pieces.
 func (g *Game) Score() int {
 	return g.score
 }
@@ -199,7 +193,7 @@ func (g *Game) countConnectedPieces(index int) int {
 	count := 0
 	stack := []int{index}
 	// Pre-allocate the visited map with a reasonable capacity
-	visited := make(map[int]bool, g.rows*g.cols)
+	visited := make([]bool, g.rows*g.cols)
 
 	for len(stack) > 0 {
 		i := stack[len(stack)-1]
