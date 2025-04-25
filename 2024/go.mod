@@ -1,4 +1,4 @@
-module github.com/sspencer/jawbreaker/server
+module github.com/sspencer/jawbreaker/2024
 
 go 1.22
 

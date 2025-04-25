@@ -14,8 +14,8 @@ The Javascript is ancient, using the `prototype.js` library (don't remember that
 
 If I were to rewrite this, I'd remove the reliance on Prototype.js, write a new backend (to keep track
 of scores), and replace the GIFs with Emojis.  For example, the red gif 
-![Jawbreaker 2005 Screenshot](2005/img/p_red.gif "Jawbreaker") could be replaced with the
-red emoji: 🔴. 
+![Jawbreaker 2005 Screenshot](docs/p_red.gif "Jawbreaker") could be replaced with the
+red emoji: 🔴(or stylized CSS).
 
 Steve Spencer  
 August, 2024
@@ -23,11 +23,21 @@ August, 2024
 🟣🔵🟢🔴🟡
 
 
-![Jawbreaker Screenshot](2005/img/jawbreaker.png "Jawbreaker")
+![Jawbreaker Screenshot](docs/jawbreaker-2005.png "Jawbreaker")
 
 ## Jawbreaker 2024
 
 Rewrote Javascript with modern javascript.  No external dependencies required,
-first or third party.  No images used, just CSS.  Single file.  
+first or third party.  No images used, just CSS.  Single file.  The code for
+this edition lives in the [2024/](2024/) directory.  Game looks same as 
+screenshot below.
 
-![Jawbreaker 2024 Screenshot](jawbreaker.png "Jawbreaker")
+## Jawbreaker 2025
+
+Recently (circa April 2025), [Datastar](https://data-star.dev/) has caught my
+attention. Reimplemented this new version (basically same html/css) with the 
+game logic residing in a Go server.  The Javscript interaction comes from
+triggering the Datastar library with `data-*` tags. The code for
+this edition lives in the [2025/](2025/) directory.
+
+![Jawbreaker 2025 Screenshot](docs/jawbreaker.png "Jawbreaker")
