@@ -6,6 +6,8 @@ import (
 	"strconv"
 
 	"net/http"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -15,6 +17,7 @@ const (
 )
 
 func main() {
+	_ = godotenv.Load()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
