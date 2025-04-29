@@ -18,7 +18,7 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
+    background:
         radial-gradient(circle at 20% 30%, rgba(66, 153, 225, 0.15) 0%, transparent 50%),
         radial-gradient(circle at 80% 70%, rgba(237, 100, 166, 0.15) 0%, transparent 50%);
     z-index: -1;
@@ -32,8 +32,6 @@ h1 {
     letter-spacing: 2px;
 }
 
-
-/* --- Game Over Overlay Styles --- */
 .game-over-overlay {
     position: absolute;
     top: 0;
@@ -90,10 +88,12 @@ h1 {
 }
 
 .new-game-btn {
-    background: linear-gradient(135deg, #ee4400, #dd0044);
+    background: #19a;
+    color: white;
     border: none;
     padding: 12px 24px;
-    font-size: 16px;
+    font-size: 20px;
+    font-weight: bold;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3),
                 inset 0 0 0 1px rgba(255, 255, 255, 0.2);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -129,7 +129,6 @@ h1 {
 .new-game-btn:hover::after {
     opacity: 0.6;
 }
-/* --- End Game Over Overlay Styles --- */
 
 .game-container {
     background-color: #1a202c;
@@ -173,7 +172,6 @@ h1 {
     opacity: 0.6;
 }
 
-
 .piece.red {
     background: linear-gradient(135deg, #ff5500, #ff0055);
     box-shadow: inset 0 0 15px rgba(255, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
@@ -205,51 +203,6 @@ h1 {
     max-width: 500px;
     width: calc(12 * 36px + 11 * 5px + 2 * 15px); /* Match updated grid width */
     box-sizing: border-box;
-}
-
-button {
-    background: linear-gradient(135deg, #6b3dff, #c061ff);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    flex-grow: 1;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-}
-
-button:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-}
-
-button:active {
-    transform: translateY(-1px) scale(0.98);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    transition: all 0.1s ease;
-}
-
-button::after {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 60%);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-button:hover::after {
-    opacity: 0.6;
 }
 
 .scores-container {
