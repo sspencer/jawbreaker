@@ -17,25 +17,28 @@
             type="module"
             src="static/datastar-1-0-0-beta-11-94aeb8bd6de30ff3.js"
     ></script>
+    <script>
+        window.gamePieces = "{{pieces}}";
+    </script>
 </head>
 <body>
 
 <h1 class="game-title">Jawbreaker</h1>
 
-<div class="game-container" data-signals="{gameOver:false,currentScore:0,{{signals}}}">
+<div id="game-container" data-signals="{gameOver:false,currentScore:0,lastScore:{{lastScore}},bestScore:{{bestScore}},pieces:'{{pieces}}'}">
     {{game}}
     <div class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
         <div class="game-over-content">
             <h2>Game Over!</h2>
             <p>You scored <span data-text="$currentScore">0</span> points</p>
-            <button class="new-game-btn" data-on-click="@post('new')">
+            <button class="new-game-btn" data-on-click="@post('new');">
                 New Game
             </button>
         </div>
     </div>
 </div>
 
-<div class="game-info">
+<div class="game-info" data-on-signal-change-pieces="window.gamePieces=$pieces;">
     <div class="scores-container">
         <div class="score-column">
             <div class="score-type">Current</div>
@@ -51,5 +54,6 @@
         </div>
     </div>
 </div>
+<script src="static/hover.js"></script>
 </body>
 </html>

@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -37,8 +37,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	signals := fmt.Sprintf("pieces:'%s',lastScore:%d,bestScore:%d", g.String(), scoreData.LastScore, scoreData.BestScore)
-	page := bytes.Replace(indexHTML, []byte("{{signals}}"), []byte(signals), 1)
+	//signals := fmt.Sprintf("pieces:'%s',lastScore:%d,bestScore:%d", g.String(), scoreData.LastScore, scoreData.BestScore)
+	page := bytes.Replace(indexHTML, []byte("{{lastScore}}"), []byte(strconv.Itoa(scoreData.LastScore)), 1)
+	page = bytes.Replace(page, []byte("{{bestScore}}"), []byte(strconv.Itoa(scoreData.BestScore)), 1)
+	page = bytes.Replace(page, []byte("{{pieces}}"), []byte(g.String()), 2)
 	page = bytes.Replace(page, []byte("{{game}}"), []byte(gameToHTML(g)), 1)
 
 	w.Header().Set("Content-Type", "text/html")
