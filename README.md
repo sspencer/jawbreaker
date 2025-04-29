@@ -22,7 +22,7 @@ Play on any browser by following this link: [http://localhost:8000/](http://loca
 
 Rewrote Javascript with modern javascript.  No external dependencies required, first or 
 third party.  No images used, just CSS.  Single file.  The code for this edition lives in 
-the [jawbreaker-2024](https://sspencer.github.com/jawbreaker-2024) repo.
+the [jawbreaker-2024](https://github.com/sspencer/jawbreaker-2024) repo.
 Game looks same as screenshot above.
 
 ## Jawbreaker 2005
