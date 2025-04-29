@@ -1,75 +1,225 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #f5f5f5;
+    background: linear-gradient(135deg, #2c3e50, #4a5568);
     padding: 20px;
+    min-height: 100vh;
+    margin: 0;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(66, 153, 225, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(237, 100, 166, 0.15) 0%, transparent 50%);
+    z-index: -1;
+    animation: backgroundShimmer 2s infinite alternate ease-in-out;
+}
+
+@keyframes backgroundShimmer {
+    0% {
+        background-position: 0% 0%;
+    }
+    100% {
+        background-position: 100% 100%;
+    }
 }
 
 h1 {
-    color: #333;
+    color: #fff;
     margin-bottom: 20px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 2.5rem;
+    letter-spacing: 1px;
 }
 
 /* --- Game Over Overlay Styles --- */
 .game-over-overlay {
-    position: absolute; /* Changed to absolute to overlay within game-container */
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
-    display: none; /* Hidden by default */
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 100;
-    border-radius: 8px; /* Match game-container radius */
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+    transition: opacity 0.5s ease;
+    opacity: 0;
 }
 
 .game-over-overlay.visible {
-    display: flex; /* Shown when 'visible' class is added */
+    display: flex;
+    opacity: 1;
+    animation: overlayFadeIn 0.5s ease forwards;
+}
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .game-over-content {
-    background-color: white;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
     padding: 30px;
     border-radius: 10px;
     text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 0 30px rgba(66, 153, 225, 0.2);
     max-width: 80%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(0);
+    animation: contentFloat 3s infinite alternate ease-in-out;
+}
+
+@keyframes contentFloat {
+    from {
+        transform: translateY(-5px);
+    }
+    to {
+        transform: translateY(5px);
+    }
 }
 
 .game-over-content h2 {
     margin-top: 0;
-    color: #333;
-    font-size: 24px;
+    color: #fff;
+    font-size: 28px;
+    text-shadow: 0 2px 10px rgba(66, 153, 225, 0.5);
+    letter-spacing: 1px;
 }
 
 .game-over-content p {
     font-size: 18px;
-    margin: 15px 0;
+    margin: 20px 0;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.game-over-content p span {
+    font-weight: bold;
+    color: #4fd1c5;
+    text-shadow: 0 0 10px rgba(79, 209, 197, 0.5);
 }
 
 .new-game-btn {
-    background: linear-gradient(135deg, #ff7a00, #ff0091);
-    /* margin-top: 15px; - Removed redundant margin, already spacing from <p> */
+    background: linear-gradient(135deg, #ee4400, #dd0044);
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.new-game-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.new-game-btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.1s ease;
+}
+
+.new-game-btn::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 60%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.new-game-btn:hover::after {
+    opacity: 0.6;
+    animation: btnShine 1.5s infinite alternate;
+}
+
+@keyframes btnShine {
+    from {
+        opacity: 0.4;
+    }
+    to {
+        opacity: 0.7;
+    }
 }
 /* --- End Game Over Overlay Styles --- */
 
 .game-container {
-    background-color: #333;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    position: relative; /* Needed for absolute positioning of overlay */
+    background-color: #1a202c;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    transform: translateZ(0);
+}
+
+.game-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(45deg, rgba(66, 153, 225, 0.08) 0%, transparent 70%),
+        linear-gradient(135deg, rgba(237, 100, 166, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    animation: containerGlow 8s infinite alternate ease-in-out;
+}
+
+@keyframes containerGlow {
+    0% {
+        opacity: 0.7;
+        background-position: 0% 0%;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.7;
+        background-position: 100% 100%;
+    }
 }
 
 .grid {
     display: grid;
     grid-template-columns: repeat(12, 36px);
     grid-template-rows: repeat(12, 36px);
-    gap: 4px;
+    gap: 5px;
+    position: relative;
+    z-index: 1;
 }
 
 .piece {
@@ -77,12 +227,51 @@ h1 {
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
                 box-shadow 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
                 border 0.4s ease,
-                opacity 0.4s ease;
+                opacity 0.4s ease,
+                filter 0.4s ease;
     cursor: pointer;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     position: relative;
     overflow: hidden;
     border: 2px solid rgba(255, 255, 255, 0.3);
+    animation: pieceAppear 0.5s backwards;
+}
+
+@keyframes pieceAppear {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+        filter: brightness(1.5);
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1);
+    }
+}
+
+/* Animation for piece removal */
+.piece.removing {
+    animation: pieceRemove 0.6s forwards;
+    pointer-events: none;
+}
+
+@keyframes pieceRemove {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+        filter: brightness(1.5) saturate(1.5);
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+        filter: brightness(2) saturate(0);
+    }
 }
 
 .piece::after {
@@ -98,7 +287,7 @@ h1 {
 }
 
 .piece:hover {
-    transform: translateY(-6px) scale(1.05);
+    transform: translateY(-3px) scale(1.05);
     box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
     border-color: rgba(255, 255, 255, 0.5);
     opacity: 1;
@@ -154,37 +343,65 @@ h1 {
 }
 
 .game-info {
-    margin-top: 20px;
-    max-width: 500px; /* Constrain width */
-    width: calc(12 * 36px + 11 * 4px + 2 * 10px); /* Match grid width */
-    box-sizing: border-box; /* Include padding in width calculation */
+    margin-top: 25px;
+    max-width: 500px;
+    width: calc(12 * 36px + 11 * 5px + 2 * 15px); /* Match updated grid width */
+    box-sizing: border-box;
 }
 
 button {
     background: linear-gradient(135deg, #6b3dff, #c061ff);
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
+    padding: 12px 24px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
-    /* margin-top: 15px; - Removed, handled by flex gap */
-    transition: all 0.2s ease;
-    flex-grow: 1; /* Make buttons share space */
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+button:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.1s ease;
+}
+
+button::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 60%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+button:hover::after {
+    opacity: 0.6;
+    animation: btnShine 1.5s infinite alternate;
 }
 
 .scores-container {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    /* margin-top: 10px; - Adjusted */
     text-align: center;
-    gap: 10px; /* Add gap between score columns */
+    gap: 15px;
+    margin-bottom: 15px;
 }
 
 .score-column {
@@ -192,26 +409,52 @@ button:hover {
     display: flex;
     flex-direction: column;
     align-items: center;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 10px;
-    /* margin: 0 5px; - Replaced by gap */
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    /* width: 80px; - Removed fixed width, use flex */
-    height: 80px;
+    border-radius: 10px;
+    padding: 15px 10px;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 0 20px rgba(66, 153, 225, 0.1);
+    height: 90px;
     justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.score-column:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+                inset 0 0 25px rgba(66, 153, 225, 0.15);
+}
+
+.score-column::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+    opacity: 0.3;
+    pointer-events: none;
 }
 
 .score-type {
     font-size: 16px;
     font-weight: bold;
-    color: #555;
-    margin-bottom: 5px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px;
 }
 
 .score-value {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
-    color: #333;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
 }
