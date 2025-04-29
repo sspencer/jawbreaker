@@ -37,7 +37,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	signals := fmt.Sprintf("{pieces:'%s',currentScore:0,lastScore:%d,bestScore:%d,gameOver:false}", g.String(), scoreData.LastScore, scoreData.BestScore)
+	signals := fmt.Sprintf("pieces:'%s',lastScore:%d,bestScore:%d", g.String(), scoreData.LastScore, scoreData.BestScore)
 	page := bytes.Replace(indexHTML, []byte("{{signals}}"), []byte(signals), 1)
 	page = bytes.Replace(page, []byte("{{game}}"), []byte(gameToHTML(g)), 1)
 

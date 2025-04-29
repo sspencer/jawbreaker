@@ -37,12 +37,12 @@ func gameToHTML(g *Game) string {
 		sb.WriteString("<div id=\"")
 		sb.WriteString(piecePrefix)
 		sb.WriteString(strconv.Itoa(i))
-		sb.WriteString("\" class=\"")
+		sb.WriteString("\" class=\"piece ")
 		sb.WriteString(PieceFromChar(p).String())
 		sb.WriteString("\"></div>")
 	}
 
-	return fmt.Sprintf("<div id=\"game\" data-on-click=\"@post('move/'+evt.target.id)\">%s</div>", sb.String())
+	return fmt.Sprintf("<div class=\"grid\" id=\"game-grid\" data-on-click=\"@post('move/'+evt.target.id)\">%s</div>", sb.String())
 }
 
 func (s ScoreData) serialize() string {
