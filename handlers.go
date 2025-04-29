@@ -1,8 +1,9 @@
 package main
 
 import (
-	"bytes"
+	"html/template"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -25,7 +26,6 @@ type ScoreData struct {
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	g := NewGame(numRows, numCols)
-
 	// Default scores
 	scoreData := ScoreData{
 		LastScore: 0,
@@ -37,14 +37,35 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	//signals := fmt.Sprintf("pieces:'%s',lastScore:%d,bestScore:%d", g.String(), scoreData.LastScore, scoreData.BestScore)
-	page := bytes.Replace(indexHTML, []byte("{{lastScore}}"), []byte(strconv.Itoa(scoreData.LastScore)), 1)
-	page = bytes.Replace(page, []byte("{{bestScore}}"), []byte(strconv.Itoa(scoreData.BestScore)), 1)
-	page = bytes.Replace(page, []byte("{{pieces}}"), []byte(g.String()), 2)
-	page = bytes.Replace(page, []byte("{{game}}"), []byte(gameToHTML(g)), 1)
+	// Create a template from the embedded HTML
+	tmpl, err := template.New("index").Parse(string(indexHTML))
+	if err != nil {
+		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Define data for the template
+	data := struct {
+		LastScore string
+		BestScore string
+		Pieces    string
+		Game      template.HTML
+		Hover     bool
+	}{
+		LastScore: strconv.Itoa(scoreData.LastScore),
+		BestScore: strconv.Itoa(scoreData.BestScore),
+		Pieces:    g.String(),
+		Game:      template.HTML(gameToHTML(g)), // Using template.HTML to avoid escaping
+		Hover:     os.Getenv("HOVER") == "1",
+	}
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write(page)
+
+	// Execute the template with the data
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func moveHandler(w http.ResponseWriter, r *http.Request) {

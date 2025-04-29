@@ -18,15 +18,15 @@
             src="static/datastar-1-0-0-beta-11-94aeb8bd6de30ff3.js"
     ></script>
     <script>
-        window.gamePieces = "{{pieces}}";
+        window.gamePieces = "{{.Pieces}}";
     </script>
 </head>
 <body>
 
 <h1 class="game-title">Jawbreaker</h1>
 
-<div id="game-container" data-signals="{gameOver:false,currentScore:0,lastScore:{{lastScore}},bestScore:{{bestScore}},pieces:'{{pieces}}'}">
-    {{game}}
+<div id="game-container" data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
+    {{.Game}}
     <div class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
         <div class="game-over-content">
             <h2>Game Over!</h2>
@@ -54,6 +54,6 @@
         </div>
     </div>
 </div>
-<script src="static/hover.js"></script>
+{{if .Hover}}<script src="static/hover.js"></script>{{end}}
 </body>
 </html>
