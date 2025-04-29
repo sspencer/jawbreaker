@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <title>Jawbreaker</title>
@@ -19,35 +19,27 @@
     ></script>
 </head>
 <body>
-<main>
-    <div class="container">
-        <div id="game-container" data-signals="{{signals}}">
-            {{game}}
-            <div class="game-over-overlay" data-class="{'visible': $gameOver}">
-                <div class="game-over-content">
-                    <h2>Game Over!</h2>
-                    <p>You scored <span data-text="$currentScore">0</span> points</p>
-                    <button class="new-game-btn" data-on-click="@post('new')">
-                        New Game
-                    </button>
-                </div>
-            </div>
-        </div>
-        <div class="score-board">
-            <div class="score-table">
-                <div class="table-header">
-                    <div>Current</div>
-                    <div>Last</div>
-                    <div>Best</div>
-                </div>
-                <div class="table-row">
-                    <div id="current-score" data-text="$currentScore">0</div>
-                    <div id="last-score" data-text="$lastScore">0</div>
-                    <div id="best-score" data-text="$bestScore">0</div>
-                </div>
-            </div>
-        </div>
-    </div>
+<main aria-label="Game board" data-signals="{gameOver:false,currentScore:0,{{signals}}}">
+    {{game}}
+    <section class="game-over" role="dialog" aria-label="Game over" data-class="{'visible': $gameOver}">
+        <h2>Game Over!</h2>
+        <p>You scored <span data-text="$currentScore">0</span> points</p>
+        <button data-on-click="@post('new')">New Game</button>
+    </section>
 </main>
+<footer aria-label="Scoreboard">
+    <article class="score" role="region" aria-label="Current score">
+        <h3>Current</h3>
+        <p id="current-score" data-text="$currentScore">0</p>
+    </article>
+    <article class="score" role="region" aria-label="Last score">
+        <h3>Last</h3>
+        <p id="last-score" data-text="$lastScore">0</p>
+    </article>
+    <article class="score" role="region" aria-label="Best score">
+        <h3>Best</h3>
+        <p id="best-score" data-text="$bestScore">0</p>
+    </article>
+</footer>
 </body>
 </html>
