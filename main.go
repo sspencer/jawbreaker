@@ -29,5 +29,5 @@ func main() {
 	}
 
 	log.Printf("Starting server on port %s...\n", port)
-	http.ListenAndServe(":"+port, newRouter())
+	log.Fatal(http.ListenAndServe(":"+port, newRouter()))
 }
