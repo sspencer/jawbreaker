@@ -40,7 +40,7 @@ header {
     transform: translateZ(0);
 }
 
-.game {
+#game {
     display: grid;
     grid-template-columns: repeat(12, 36px);
     grid-template-rows: repeat(12, 36px);

@@ -8,9 +8,6 @@ import (
 
 const (
 	piecePrefix = "piece"
-	enterTarget = " data-on-mouseenter=\"@post('mouse/'+evt.target.id)\""
-	leaveTarget = " data-on-mouseleave=\"@post('mouse/exit')\""
-	clickTarget = " data-on-click=\"@post('click/'+evt.target.id)\""
 )
 
 // extractNumberFromPieceId checks if a string starts with "piece" followed by
@@ -60,19 +57,10 @@ func gameToHTML(g *Game, connections []int) string {
 		if connected {
 			sb.WriteString(" connected")
 		}
-		sb.WriteString("\"")
-
-		// data-on-mouseenter="..."
-		if PieceFromChar(p) != White && !connected {
-			sb.WriteString(enterTarget)
-		}
-
-		// end tag
-		sb.WriteString(">")
-		sb.WriteString("</div>")
+		sb.WriteString("\"></div>")
 	}
 
-	return fmt.Sprintf("<div id=\"game\" class=\"game\" %s %s>%s</div>", clickTarget, leaveTarget, sb.String())
+	return fmt.Sprintf("<div id=\"game\">%s</div>", sb.String())
 }
 
 func (s ScoreData) serialize() string {
