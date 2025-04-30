@@ -10,7 +10,7 @@ import (
 	datastar "github.com/starfederation/datastar/sdk/go"
 )
 
-//go:embed tmpl/index.html
+//go:embed index.html
 var indexHTML []byte
 var noConnections = []int{}
 
