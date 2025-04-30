@@ -150,10 +150,6 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 
 func mouseHandler(w http.ResponseWriter, r *http.Request) {
 	index := extractNumberFromPieceId(chi.URLParam(r, "id"))
-	if index < 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
 
 	signals := &Signals{}
 	if err := datastar.ReadSignals(r, signals); err != nil {

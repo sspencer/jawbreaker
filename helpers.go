@@ -8,7 +8,8 @@ import (
 
 const (
 	piecePrefix = "piece"
-	mouseTarget = " data-on-mouseenter=\"@post('mouse/'+evt.target.id)\""
+	enterTarget = " data-on-mouseenter=\"@post('mouse/'+evt.target.id)\""
+	leaveTarget = " data-on-mouseleave=\"@post('mouse/exit')\""
 	clickTarget = " data-on-click=\"@post('click/'+evt.target.id)\""
 )
 
@@ -63,7 +64,7 @@ func gameToHTML(g *Game, connections []int) string {
 
 		// data-on-mouseenter="..."
 		if PieceFromChar(p) != White && !connected {
-			sb.WriteString(mouseTarget)
+			sb.WriteString(enterTarget)
 		}
 
 		// end tag
@@ -71,7 +72,7 @@ func gameToHTML(g *Game, connections []int) string {
 		sb.WriteString("</div>")
 	}
 
-	return fmt.Sprintf("<div id=\"game\" class=\"game\" %s>%s</div>", clickTarget, sb.String())
+	return fmt.Sprintf("<div id=\"game\" class=\"game\" %s %s>%s</div>", clickTarget, leaveTarget, sb.String())
 }
 
 func (s ScoreData) serialize() string {
