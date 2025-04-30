@@ -71,7 +71,7 @@ func gameToHTML(g *Game, connections []int) string {
 		sb.WriteString("</div>")
 	}
 
-	return fmt.Sprintf("<div class=\"grid\" id=\"game-grid\" %s>%s</div>", clickTarget, sb.String())
+	return fmt.Sprintf("<div id=\"game\" class=\"game\" %s>%s</div>", clickTarget, sb.String())
 }
 
 func (s ScoreData) serialize() string {

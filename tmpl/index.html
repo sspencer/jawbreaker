@@ -14,16 +14,13 @@
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <link rel="stylesheet" href="{{.Style}}"/>
     <script type="module" src="{{.Datastar}}"></script>
-    <script>
-        window.gamePieces = "{{.Pieces}}";
-    </script>
 </head>
 <body>
 
 <h1 class="game-title">Jawbreaker</h1>
 
 <main id="game-container"
-      data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
+      data-signals="{gameOver:true,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
     {{.Game}}
     <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
         <article class="game-over-content">
