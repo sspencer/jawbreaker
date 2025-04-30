@@ -14,6 +14,7 @@ import (
 
 //go:embed tmpl/index.html
 var indexHTML []byte
+var noConnections = []int{}
 
 type Signals struct {
 	Pieces       string `json:"pieces"`
@@ -31,7 +32,6 @@ type IndexData struct {
 	Datastar  string
 	GameJS    string
 	Style     string
-	Extra     bool
 }
 
 type ScoreData struct {
@@ -70,11 +70,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		LastScore: scoreData.LastScore,
 		BestScore: scoreData.BestScore,
 		Pieces:    g.String(),
-		Game:      template.HTML(gameToHTML(g)),
+		Game:      template.HTML(gameToHTML(g, noConnections)),
 		Datastar:  fsys.HashName("static/datastar.js"),
 		GameJS:    fsys.HashName("static/game.js"),
 		Style:     fsys.HashName("static/style.css"),
-		Extra:     envTrue("EXTRA"),
 	}
 
 	if err := tmpl.Execute(w, data); err != nil {
@@ -83,7 +82,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func moveHandler(w http.ResponseWriter, r *http.Request) {
+func clickHandler(w http.ResponseWriter, r *http.Request) {
 	index := extractNumberFromPieceId(chi.URLParam(r, "id"))
 	if index < 0 {
 		w.WriteHeader(http.StatusNoContent)
@@ -142,7 +141,35 @@ func moveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = sse.MergeFragments(gameToHTML(g))
+	err = sse.MergeFragments(gameToHTML(g, g.getConnectedPieces(index)))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func mouseHandler(w http.ResponseWriter, r *http.Request) {
+	index := extractNumberFromPieceId(chi.URLParam(r, "id"))
+	if index < 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	signals := &Signals{}
+	if err := datastar.ReadSignals(r, signals); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	g, err := RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+
+	err = sse.MergeFragments(gameToHTML(g, g.getConnectedPieces(index)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -177,7 +204,7 @@ func newGameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update g fragment
-	err = sse.MergeFragments(gameToHTML(g))
+	err = sse.MergeFragments(gameToHTML(g, noConnections))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

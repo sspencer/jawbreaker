@@ -6,7 +6,11 @@ import (
 	"strings"
 )
 
-const piecePrefix = "piece"
+const (
+	piecePrefix = "piece"
+	mouseTarget = " data-on-mouseenter=\"@post('mouse/'+evt.target.id)\""
+	clickTarget = " data-on-click=\"@post('click/'+evt.target.id)\""
+)
 
 // extractNumberFromPieceId checks if a string starts with "piece" followed by
 // a non-negative integer. If so, it returns the integer. Otherwise, it returns -1.
@@ -29,20 +33,45 @@ func extractNumberFromPieceId(input string) int {
 }
 
 // gameToHTML generates the HTML fragment for the game board with the click handler.
-func gameToHTML(g *Game) string {
+func gameToHTML(g *Game, connections []int) string {
 	var sb strings.Builder
 
+	set := make(map[int]bool)
+	if len(connections) > 1 {
+		for _, c := range connections {
+			set[c] = true
+		}
+	}
+
 	board := g.String()
+
 	for i, p := range board {
+		connected := set[i]
+
+		// id="piece123"
 		sb.WriteString("<div id=\"")
 		sb.WriteString(piecePrefix)
 		sb.WriteString(strconv.Itoa(i))
+
+		// class="piece red connected"
 		sb.WriteString("\" class=\"piece ")
 		sb.WriteString(PieceFromChar(p).String())
-		sb.WriteString("\"></div>")
+		if connected {
+			sb.WriteString(" connected")
+		}
+		sb.WriteString("\"")
+
+		// data-on-mouseenter="..."
+		if PieceFromChar(p) != White && !connected {
+			sb.WriteString(mouseTarget)
+		}
+
+		// end tag
+		sb.WriteString(">")
+		sb.WriteString("</div>")
 	}
 
-	return fmt.Sprintf("<div class=\"grid\" id=\"game-grid\" data-on-click=\"@post('move/'+evt.target.id)\">%s</div>", sb.String())
+	return fmt.Sprintf("<div class=\"grid\" id=\"game-grid\" %s>%s</div>", clickTarget, sb.String())
 }
 
 func (s ScoreData) serialize() string {

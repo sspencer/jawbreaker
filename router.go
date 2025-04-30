@@ -26,7 +26,8 @@ func newRouter() *chi.Mux {
 
 	// Routes
 	r.Get("/", indexHandler)
-	r.Post("/move/{id}", moveHandler)
+	r.Post("/click/{id}", clickHandler)
+	r.Post("/mouse/{id}", mouseHandler)
 	r.Post("/new", newGameHandler)
 
 	log.Println("Serving static files from the filesystem")

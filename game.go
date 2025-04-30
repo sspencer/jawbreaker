@@ -114,7 +114,7 @@ func (g *Game) Score() int {
 // After removing pieces, gravity is applied to make pieces fall down, and empty columns are shifted right.
 // If the game is over after the move, a bonus score is added based on the number of remaining pieces.
 func (g *Game) Move(index int) {
-	n := g.countConnectedPieces(index)
+	n := len(g.getConnectedPieces(index))
 	if n < 2 {
 		return
 	}
@@ -143,7 +143,7 @@ func (g *Game) IsGameOver() bool {
 		if g.pieces[i] == White {
 			continue
 		}
-		if g.countConnectedPieces(i) > 1 {
+		if len(g.getConnectedPieces(i)) > 1 {
 			return false
 		}
 	}
@@ -178,19 +178,19 @@ func calculateRemainingPiecesScore(remainingPieces int) int {
 	return 0
 }
 
-// countConnectedPieces counts how many pieces of the same color are connected to the piece at the given index.
-// This is a non-destructive version of floodFill that doesn't modify the game state.
-func (g *Game) countConnectedPieces(index int) int {
+// getConnectedPieces returns a slice of all indices that are connected to the piece at the given index.
+// It is a non-destructive operation that doesn't modify the game state.
+func (g *Game) getConnectedPieces(index int) []int {
 	if index < 0 || index >= len(g.pieces) {
-		return 0
+		return []int{}
 	}
 
 	target := g.pieces[index]
 	if target == White {
-		return 0
+		return []int{}
 	}
 
-	count := 0
+	connectedIndices := []int{}
 	stack := []int{index}
 	// Pre-allocate the visited map with a reasonable capacity
 	visited := make([]bool, g.rows*g.cols)
@@ -203,7 +203,7 @@ func (g *Game) countConnectedPieces(index int) int {
 			continue
 		}
 		visited[i] = true
-		count++
+		connectedIndices = append(connectedIndices, i)
 
 		row, col := i/g.cols, i%g.cols
 		// Check all four adjacent positions (up, down, left, right)
@@ -220,7 +220,7 @@ func (g *Game) countConnectedPieces(index int) int {
 			stack = append(stack, i+1) // Right
 		}
 	}
-	return count
+	return connectedIndices
 }
 
 func (g *Game) floodFill(index int) int {

@@ -163,102 +163,6 @@ func TestPieceString(t *testing.T) {
 	}
 }
 
-// TestCountConnectedPieces verifies that countConnectedPieces correctly counts
-// connected pieces of the same color in various scenarios.
-func TestCountConnectedPieces(t *testing.T) {
-	// Helper function to create a game with a specific board layout
-	createGame := func(board string, rows, cols int) *Game {
-		game, err := RestoreGame(board, rows, cols, 0)
-		if err != nil {
-			t.Fatalf("Failed to create test game: %v", err)
-		}
-		return game
-	}
-
-	// Test cases
-	testCases := []struct {
-		name     string
-		board    string
-		rows     int
-		cols     int
-		index    int
-		expected int
-	}{
-		{
-			name:     "No connection",
-			board:    "rbgpy", // All different colors
-			rows:     1,
-			cols:     5,
-			index:    0,
-			expected: 1, // Only the piece itself
-		},
-		{
-			name:     "Two connected horizontally",
-			board:    "rrbyp",
-			rows:     1,
-			cols:     5,
-			index:    0,
-			expected: 2, // Two red pieces
-		},
-		{
-			name: "Two connected vertically",
-			board: "r" +
-				"r" +
-				"b" +
-				"y" +
-				"p",
-			rows:     5,
-			cols:     1,
-			index:    0,
-			expected: 2, // Two red pieces
-		},
-		{
-			name: "Complex shape",
-			board: "rrr" +
-				"rbb" +
-				"rbr",
-			rows:     3,
-			cols:     3,
-			index:    0,
-			expected: 5, // Five red pieces in an L shape
-		},
-		{
-			name:     "Edge case - White piece",
-			board:    "rwbgp",
-			rows:     1,
-			cols:     5,
-			index:    1,
-			expected: 0, // White pieces have no connections
-		},
-		{
-			name:     "Edge case - Out of bounds index",
-			board:    "rbgpy",
-			rows:     1,
-			cols:     5,
-			index:    10, // Out of bounds
-			expected: 0,
-		},
-		{
-			name:     "Edge case - Negative index",
-			board:    "rbgpy",
-			rows:     1,
-			cols:     5,
-			index:    -1, // Negative index
-			expected: 0,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			game := createGame(tc.board, tc.rows, tc.cols)
-			count := game.countConnectedPieces(tc.index)
-			if count != tc.expected {
-				t.Errorf("countConnectedPieces(%d) = %d, expected %d", tc.index, count, tc.expected)
-			}
-		})
-	}
-}
-
 // TestFloodFill verifies that floodFill correctly removes connected pieces
 // of the same color and returns the count of removed pieces.
 func TestFloodFill(t *testing.T) {
@@ -669,6 +573,131 @@ func TestCalculateRemainingPiecesScore(t *testing.T) {
 			if score != tc.expectedScore {
 				t.Errorf("calculateRemainingPiecesScore(%d) = %d, expected %d",
 					tc.remainingPieces, score, tc.expectedScore)
+			}
+		})
+	}
+}
+
+// TestGetConnectedPieces verifies that getConnectedPieces correctly returns
+// a slice of all indices that are connected to the piece at the given index.
+func TestGetConnectedPieces(t *testing.T) {
+	// Helper function to create a game with a specific board layout
+	createGame := func(board string, rows, cols int) *Game {
+		game, err := RestoreGame(board, rows, cols, 0)
+		if err != nil {
+			t.Fatalf("Failed to create test game: %v", err)
+		}
+		return game
+	}
+
+	// Helper function to check if two slices contain the same elements (order doesn't matter)
+	containSameElements := func(a, b []int) bool {
+		if len(a) != len(b) {
+			return false
+		}
+
+		// Create maps to count occurrences of each element
+		countA := make(map[int]int)
+		countB := make(map[int]int)
+
+		for _, val := range a {
+			countA[val]++
+		}
+
+		for _, val := range b {
+			countB[val]++
+		}
+
+		// Compare the maps
+		for k, v := range countA {
+			if countB[k] != v {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	// Test cases
+	testCases := []struct {
+		name     string
+		board    string
+		rows     int
+		cols     int
+		index    int
+		expected []int
+	}{
+		{
+			name:     "No connection",
+			board:    "rbgpy", // All different colors
+			rows:     1,
+			cols:     5,
+			index:    0,
+			expected: []int{0}, // Only the piece itself
+		},
+		{
+			name:     "Two connected horizontally",
+			board:    "rrbyp",
+			rows:     1,
+			cols:     5,
+			index:    0,
+			expected: []int{0, 1}, // Two red pieces
+		},
+		{
+			name: "Two connected vertically",
+			board: "r" +
+				"r" +
+				"b" +
+				"y" +
+				"p",
+			rows:     5,
+			cols:     1,
+			index:    0,
+			expected: []int{0, 1}, // Two red pieces
+		},
+		{
+			name: "Complex shape",
+			board: "rrr" +
+				"rbb" +
+				"rbr",
+			rows:     3,
+			cols:     3,
+			index:    0,
+			expected: []int{0, 1, 2, 3, 6}, // Five red pieces in a shape (index 8 is not connected)
+		},
+		{
+			name:     "Edge case - White piece",
+			board:    "rwbgp",
+			rows:     1,
+			cols:     5,
+			index:    1,
+			expected: []int{}, // White pieces have no connections
+		},
+		{
+			name:     "Edge case - Out of bounds index",
+			board:    "rbgpy",
+			rows:     1,
+			cols:     5,
+			index:    10, // Out of bounds
+			expected: []int{},
+		},
+		{
+			name:     "Edge case - Negative index",
+			board:    "rbgpy",
+			rows:     1,
+			cols:     5,
+			index:    -1, // Negative index
+			expected: []int{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			game := createGame(tc.board, tc.rows, tc.cols)
+			indices := game.getConnectedPieces(tc.index)
+
+			if !containSameElements(indices, tc.expected) {
+				t.Errorf("getConnectedPieces(%d) = %v, expected %v", tc.index, indices, tc.expected)
 			}
 		})
 	}
