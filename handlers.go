@@ -4,8 +4,6 @@ import (
 	_ "embed"
 	"html/template"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -37,11 +35,6 @@ type IndexData struct {
 type ScoreData struct {
 	LastScore int `json:"lastScore"`
 	BestScore int `json:"bestScore"`
-}
-
-func envTrue(env string) bool {
-	val := strings.ToLower(os.Getenv(env))
-	return val == "1" || val == "true"
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
