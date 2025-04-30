@@ -187,14 +187,14 @@ h1 {
     opacity: 0.9;
 }
 
-.game-info {
+footer {
     margin-top: 25px;
     max-width: 500px;
     width: calc(12 * 36px + 11 * 5px + 2 * 15px); /* Match updated grid width */
     box-sizing: border-box;
 }
 
-.scores-container {
+footer section {
     display: flex;
     justify-content: space-between;
     width: 100%;
@@ -220,25 +220,6 @@ h1 {
     position: relative;
     overflow: hidden;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.score-column:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-                inset 0 0 25px rgba(66, 153, 225, 0.15);
-}
-
-.score-column::after {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-    opacity: 0.3;
-    pointer-events: none;
 }
 
 .score-type {

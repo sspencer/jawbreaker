@@ -12,11 +12,8 @@
     />
     <meta name="rating" content="Safe For Kids"/>
     <link rel="icon" href="static/favicon.svg" type="image/svg+xml"/>
-    <link rel="stylesheet" href="static/style.css"/>
-    <script
-            type="module"
-            src="static/datastar-1-0-0-beta-11-94aeb8bd6de30ff3.js"
-    ></script>
+    <link rel="stylesheet" href="{{.Style}}"/>
+    <script type="module" src="{{.Datastar}}"></script>
     <script>
         window.gamePieces = "{{.Pieces}}";
     </script>
@@ -25,35 +22,36 @@
 
 <h1 class="game-title">Jawbreaker</h1>
 
-<div id="game-container" data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
+<main id="game-container"
+      data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
     {{.Game}}
-    <div class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
-        <div class="game-over-content">
+    <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
+        <article class="game-over-content">
             <h2>Game Over!</h2>
-            <p>You scored <span data-text="$currentScore">0</span> points</p>
+            <p>You scored <span data-text="$currentScore">0</span> points.</p>
             <button class="new-game-btn" data-on-click="@post('new');">
                 New Game
             </button>
-        </div>
-    </div>
-</div>
+        </article>
+    </section>
+</main>
 
-<div class="game-info" data-on-signal-change-pieces="window.gamePieces=$pieces;">
-    <div class="scores-container">
-        <div class="score-column">
+<footer data-on-signal-change-pieces="window.gamePieces=$pieces;">
+    <section>
+        <article class="score-column">
             <div class="score-type">Current</div>
             <div class="score-value" id="current-score" data-text="$currentScore">0</div>
-        </div>
-        <div class="score-column">
+        </article>
+        <article class="score-column">
             <div class="score-type">Last</div>
             <div class="score-value" id="last-score" data-text="$lastScore">0</div>
-        </div>
-        <div class="score-column">
+        </article>
+        <article class="score-column">
             <div class="score-type">Best</div>
             <div class="score-value" id="best-score" data-text="$bestScore">0</div>
-        </div>
-    </div>
-</div>
-{{if .Hover}}<script src="static/hover.js"></script>{{end}}
+        </article>
+    </section>
+</footer>
+{{if .Extra}}<script src="{{.GameJS}}"></script>{{end}}
 </body>
 </html>

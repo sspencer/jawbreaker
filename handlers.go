@@ -1,15 +1,19 @@
 package main
 
 import (
+	_ "embed"
 	"html/template"
 	"net/http"
 	"os"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	datastar "github.com/starfederation/datastar/sdk/go"
 )
+
+//go:embed tmpl/index.html
+var indexHTML []byte
 
 type Signals struct {
 	Pieces       string `json:"pieces"`
@@ -19,9 +23,25 @@ type Signals struct {
 	GameOver     bool   `json:"gameOver"`
 }
 
+type IndexData struct {
+	LastScore int
+	BestScore int
+	Pieces    string
+	Game      template.HTML
+	Datastar  string
+	GameJS    string
+	Style     string
+	Extra     bool
+}
+
 type ScoreData struct {
 	LastScore int `json:"lastScore"`
 	BestScore int `json:"bestScore"`
+}
+
+func envTrue(env string) bool {
+	val := strings.ToLower(os.Getenv(env))
+	return val == "1" || val == "true"
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,24 +64,19 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Define data for the template
-	data := struct {
-		LastScore string
-		BestScore string
-		Pieces    string
-		Game      template.HTML
-		Hover     bool
-	}{
-		LastScore: strconv.Itoa(scoreData.LastScore),
-		BestScore: strconv.Itoa(scoreData.BestScore),
-		Pieces:    g.String(),
-		Game:      template.HTML(gameToHTML(g)), // Using template.HTML to avoid escaping
-		Hover:     os.Getenv("HOVER") == "1",
-	}
-
 	w.Header().Set("Content-Type", "text/html")
 
-	// Execute the template with the data
+	data := IndexData{
+		LastScore: scoreData.LastScore,
+		BestScore: scoreData.BestScore,
+		Pieces:    g.String(),
+		Game:      template.HTML(gameToHTML(g)),
+		Datastar:  fsys.HashName("static/datastar.js"),
+		GameJS:    fsys.HashName("static/game.js"),
+		Style:     fsys.HashName("static/style.css"),
+		Extra:     envTrue("EXTRA"),
+	}
+
 	if err := tmpl.Execute(w, data); err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
