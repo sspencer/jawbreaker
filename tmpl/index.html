@@ -17,10 +17,10 @@
 </head>
 <body>
 
-<h1 class="game-title">Jawbreaker</h1>
+<header></header>
 
 <main id="game-container"
-      data-signals="{gameOver:true,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
+      data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}">
     {{.Game}}
     <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
         <article class="game-over-content">
@@ -33,19 +33,19 @@
     </section>
 </main>
 
-<footer data-on-signal-change-pieces="window.gamePieces=$pieces;">
+<footer>
     <section>
-        <article class="score-column">
-            <div class="score-type">Current</div>
-            <div class="score-value" id="current-score" data-text="$currentScore">0</div>
+        <article>
+            <div>Current</div>
+            <div id="current-score" data-text="$currentScore">0</div>
         </article>
-        <article class="score-column">
-            <div class="score-type">Last</div>
-            <div class="score-value" id="last-score" data-text="$lastScore">0</div>
+        <article>
+            <div>Last</div>
+            <div id="last-score" data-text="$lastScore">0</div>
         </article>
-        <article class="score-column">
-            <div class="score-type">Best</div>
-            <div class="score-value" id="best-score" data-text="$bestScore">0</div>
+        <article>
+            <div>Best</div>
+            <div id="best-score" data-text="$bestScore">0</div>
         </article>
     </section>
 </footer>
