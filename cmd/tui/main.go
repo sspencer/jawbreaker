@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -18,7 +20,58 @@ const (
 	gridSize    = 12 // Size of the game grid (gridSize x gridSize)
 	blockWidth  = 4  // Width of each cell in characters
 	blockHeight = 2  // Height of each cell in lines
+	scoresFile  = "scores.json" // File to store scores
 )
+
+// ScoresData represents the scores that will be saved to disk
+type ScoresData struct {
+	LastScore int `json:"lastScore"`
+	BestScore int `json:"bestScore"`
+}
+
+// saveScores saves the last and best scores to disk
+func saveScores(lastScore, bestScore int) error {
+	data := ScoresData{
+		LastScore: lastScore,
+		BestScore: bestScore,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("error marshaling scores: %w", err)
+	}
+
+	err = os.WriteFile(scoresFile, jsonData, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing scores file: %w", err)
+	}
+
+	log.Printf("Scores saved: Last=%d, Best=%d", lastScore, bestScore)
+	return nil
+}
+
+// loadScores loads the last and best scores from disk
+func loadScores() (int, int, error) {
+	// Check if the file exists
+	if _, err := os.Stat(scoresFile); os.IsNotExist(err) {
+		log.Printf("Scores file not found, using default values")
+		return 0, 0, nil
+	}
+
+	jsonData, err := os.ReadFile(scoresFile)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error reading scores file: %w", err)
+	}
+
+	var data ScoresData
+	err = json.Unmarshal(jsonData, &data)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error unmarshaling scores: %w", err)
+	}
+
+	log.Printf("Scores loaded: Last=%d, Best=%d", data.LastScore, data.BestScore)
+	return data.LastScore, data.BestScore, nil
+}
 
 // Define key mappings
 type keyMap struct {
@@ -146,18 +199,37 @@ func (m Model) Init() tea.Cmd {
 // NewModel creates a new model
 func NewModel() Model {
 	game := jb.NewGame(gridSize, gridSize) // Create a grid as specified
+
+	// Load scores from disk
+	lastScore, bestScore, err := loadScores()
+	if err != nil {
+		log.Printf("Error loading scores: %v", err)
+		// Continue with default values
+	}
+
 	return Model{
 		jawbreaker:   game,
 		cursorX:      0,
 		cursorY:      0,
 		hover:        make(map[int]bool),
 		currentScore: 0,
-		lastScore:    0,
-		bestScore:    0,
+		lastScore:    lastScore,
+		bestScore:    bestScore,
 		help:         help.New(),
 		keys:         keys,
 		width:        0,
 		height:       0,
+	}
+}
+
+// saveScoresCmd is a command that saves scores and then quits
+func saveScoresCmd(lastScore, bestScore int) tea.Cmd {
+	return func() tea.Msg {
+		err := saveScores(lastScore, bestScore)
+		if err != nil {
+			log.Printf("Error saving scores: %v", err)
+		}
+		return tea.Quit()
 	}
 }
 
@@ -167,7 +239,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Quit):
-			return m, tea.Quit
+			// Save scores before quitting
+			return m, saveScoresCmd(m.lastScore, m.bestScore)
 
 		case key.Matches(msg, m.keys.Up):
 			if m.cursorY > 0 {
@@ -200,6 +273,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.bestScore = m.currentScore
 				}
 				m.lastScore = m.currentScore
+
+				// Save scores when game is over
+				err := saveScores(m.lastScore, m.bestScore)
+				if err != nil {
+					log.Printf("Error saving scores: %v", err)
+				}
+
 				m.resetGame()
 			}
 
@@ -237,6 +317,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.bestScore = m.currentScore
 					}
 					m.lastScore = m.currentScore
+
+					// Save scores when game is over
+					err := saveScores(m.lastScore, m.bestScore)
+					if err != nil {
+						log.Printf("Error saving scores: %v", err)
+					}
+
 					m.resetGame()
 				}
 			}
@@ -341,15 +428,14 @@ func (m Model) View() string {
 }
 
 func main() {
-	//// Set up logging to a file
-	//logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	//if err != nil {
-	//	fmt.Printf("Error opening log file: %v", err)
-	//	os.Exit(1)
-	//}
-	//defer logFile.Close()
-	//log.SetOutput(logFile)
-	//
+	// Set up logging to a file
+	logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Error opening log file: %v", err)
+		os.Exit(1)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
 	p := tea.NewProgram(
 		NewModel(),
 		tea.WithAltScreen(),

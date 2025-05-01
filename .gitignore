@@ -3,3 +3,4 @@
 scores.db*
 .env
 *.log
+scores.json
