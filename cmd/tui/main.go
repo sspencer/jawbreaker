@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -16,7 +15,7 @@ import (
 
 // Game constants
 const (
-	gridSize    = 10 // Size of the game grid (gridSize x gridSize)
+	gridSize    = 12 // Size of the game grid (gridSize x gridSize)
 	blockWidth  = 4  // Width of each cell in characters
 	blockHeight = 2  // Height of each cell in lines
 )
@@ -129,6 +128,7 @@ type Model struct {
 	jawbreaker   *jb.Game
 	cursorX      int
 	cursorY      int
+	hover        map[int]bool
 	currentScore int
 	lastScore    int
 	bestScore    int
@@ -150,6 +150,7 @@ func NewModel() Model {
 		jawbreaker:   game,
 		cursorX:      0,
 		cursorY:      0,
+		hover:        make(map[int]bool),
 		currentScore: 0,
 		lastScore:    0,
 		bestScore:    0,
@@ -162,7 +163,6 @@ func NewModel() Model {
 
 // Update handles user input and updates the model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Println("UI update triggered")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -211,23 +211,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Calculate grid position from mouse coordinates
 		gridX := msg.X / (blockWidth + 2)
 		gridY := (msg.Y - 2) / blockHeight
+		m.hover = make(map[int]bool)
 
 		// Check if position is within grid bounds
 		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
 			// Update cursor position for both movement and clicks
+			index := m.cursorY*gridSize + m.cursorX
+
 			m.cursorX = gridX
 			m.cursorY = gridY
 
 			// Handle mouse clicks
 			if msg.Action == tea.MouseActionPress {
 				// Make a move at the clicked position
-				index := m.cursorY*gridSize + m.cursorX
-				log.Printf("Mouse click at index %d: X=%d, Y=%d (%d, %d)\n", index, gridX, gridY, msg.X, msg.Y)
-
 				status := m.jawbreaker.Move(index)
 
 				// Update scores
 				m.currentScore = status.Score
+				if m.currentScore > m.bestScore {
+					m.bestScore = m.currentScore
+				}
+
 				if status.GameOver {
 					if m.currentScore > m.bestScore {
 						m.bestScore = m.currentScore
@@ -236,6 +240,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.resetGame()
 				}
 			}
+
+			connectedPieces := m.jawbreaker.GetConnectedPieces(index)
+			for _, piece := range connectedPieces {
+				m.hover[piece] = true
+			}
+
 		}
 
 	case tea.WindowSizeMsg:
@@ -251,8 +261,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) resetGame() {
 	m.jawbreaker = jb.NewGame(gridSize, gridSize)
 	m.currentScore = 0
-	m.cursorX = 0
-	m.cursorY = 0
 }
 
 // View renders the UI
@@ -302,8 +310,9 @@ func (m Model) View() string {
 
 				// Add pointer-like highlight if this is the cursor position
 				block := " "
-				if x == m.cursorX && y == m.cursorY {
-					block = "-"
+
+				if m.hover[index] {
+					block = "~"
 					cellStyle = cellStyle.Foreground(lipgloss.Color("#ffffff")).Bold(true)
 				}
 
@@ -344,15 +353,15 @@ func (m Model) View() string {
 }
 
 func main() {
-	// Set up logging to a file
-	logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Printf("Error opening log file: %v", err)
-		os.Exit(1)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
-
+	//// Set up logging to a file
+	//logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	//if err != nil {
+	//	fmt.Printf("Error opening log file: %v", err)
+	//	os.Exit(1)
+	//}
+	//defer logFile.Close()
+	//log.SetOutput(logFile)
+	//
 	p := tea.NewProgram(
 		NewModel(),
 		tea.WithAltScreen(),
