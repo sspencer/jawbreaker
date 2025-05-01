@@ -209,8 +209,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		// Calculate grid position from mouse coordinates
-		gridX := msg.X / blockWidth
-		gridY := (msg.Y - 3) / blockHeight // Adjust for title and spacing, and divide by blockHeight for cell height
+		gridX := msg.X / (blockWidth + 2)
+		gridY := (msg.Y - 2) / blockHeight
 
 		// Check if position is within grid bounds
 		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
@@ -219,12 +219,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursorY = gridY
 
 			// Handle mouse clicks
-			if msg.Type == tea.MouseLeft {
-				// Log the click coordinates
-				log.Printf("Block clicked at coordinates: X=%d, Y=%d", gridX, gridY)
-
+			if msg.Action == tea.MouseActionPress {
 				// Make a move at the clicked position
 				index := m.cursorY*gridSize + m.cursorX
+				log.Printf("Mouse click at index %d: X=%d, Y=%d (%d, %d)\n", index, gridX, gridY, msg.X, msg.Y)
+
 				status := m.jawbreaker.Move(index)
 
 				// Update scores
@@ -279,71 +278,40 @@ func (m Model) View() string {
 
 	board := m.jawbreaker.Board()
 	for y := 0; y < gridSize; y++ {
-		for x := 0; x < gridSize; x++ {
-			index := y*gridSize + x
-			piece := board[index]
+		for i := 0; i < blockHeight; i++ {
+			for x := 0; x < gridSize; x++ {
+				index := y*gridSize + x
+				piece := board[index]
 
-			// Choose style based on piece color
-			var cellStyle lipgloss.Style
-			switch piece {
-			case jb.Purple:
-				cellStyle = purpleStyle
-			case jb.Blue:
-				cellStyle = blueStyle
-			case jb.Green:
-				cellStyle = greenStyle
-			case jb.Red:
-				cellStyle = redStyle
-			case jb.Yellow:
-				cellStyle = yellowStyle
-			default:
-				cellStyle = emptyStyle
+				// Choose style based on piece color
+				var cellStyle lipgloss.Style
+				switch piece {
+				case jb.Purple:
+					cellStyle = purpleStyle
+				case jb.Blue:
+					cellStyle = blueStyle
+				case jb.Green:
+					cellStyle = greenStyle
+				case jb.Red:
+					cellStyle = redStyle
+				case jb.Yellow:
+					cellStyle = yellowStyle
+				default:
+					cellStyle = emptyStyle
+				}
+
+				// Add pointer-like highlight if this is the cursor position
+				block := " "
+				if x == m.cursorX && y == m.cursorY {
+					block = "-"
+					cellStyle = cellStyle.Foreground(lipgloss.Color("#ffffff")).Bold(true)
+				}
+
+				// Render a cell with blockWidth characters
+				s += cellStyle.Render(strings.Repeat(block, blockWidth))
 			}
-
-			// Add pointer-like highlight if this is the cursor position
-			if x == m.cursorX && y == m.cursorY {
-				cellStyle = cellStyle.Copy().
-					Foreground(lipgloss.Color("#ffffff")).
-					Bold(true)
-			}
-
-			// Render a cell with blockWidth characters
-			s += cellStyle.Render(strings.Repeat(" ", blockWidth))
+			s += "\n"
 		}
-		s += "\n"
-		// Add another line with the same cells to make them more square-like
-		for x := 0; x < gridSize; x++ {
-			index := y*gridSize + x
-			piece := board[index]
-
-			// Choose style based on piece color
-			var cellStyle lipgloss.Style
-			switch piece {
-			case jb.Purple:
-				cellStyle = purpleStyle
-			case jb.Blue:
-				cellStyle = blueStyle
-			case jb.Green:
-				cellStyle = greenStyle
-			case jb.Red:
-				cellStyle = redStyle
-			case jb.Yellow:
-				cellStyle = yellowStyle
-			default:
-				cellStyle = emptyStyle
-			}
-
-			// Add pointer-like highlight if this is the cursor position
-			if x == m.cursorX && y == m.cursorY {
-				cellStyle = cellStyle.Copy().
-					Foreground(lipgloss.Color("#ffffff")).
-					Bold(true)
-			}
-
-			// Render a cell with blockWidth characters
-			s += cellStyle.Render(strings.Repeat(" ", blockWidth))
-		}
-		s += "\n"
 	}
 
 	// Render scores
