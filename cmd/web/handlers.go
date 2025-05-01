@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	datastar "github.com/starfederation/datastar/sdk/go"
+
+	"github.com/sspencer/jawbreaker"
 )
 
 //go:embed index.html
@@ -38,7 +40,7 @@ type ScoreData struct {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	g := NewGame(numRows, numCols)
+	g := jawbreaker.NewGame(numRows, numCols)
 	// Default scores
 	scoreData := ScoreData{
 		LastScore: 0,
@@ -62,7 +64,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	data := IndexData{
 		LastScore: scoreData.LastScore,
 		BestScore: scoreData.BestScore,
-		Pieces:    g.String(),
+		Pieces:    g.Board().String(),
 		Game:      template.HTML(gameToHTML(g, noConnections)),
 		Datastar:  fsys.HashName("static/datastar.js"),
 		GameJS:    fsys.HashName("static/game.js"),
@@ -88,20 +90,19 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
+	g, err := jawbreaker.RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	g.Move(index)
-	gameOver := g.IsGameOver()
+	gs := g.Move(index)
 
-	signals.GameOver = gameOver
-	signals.CurrentScore = g.Score()
-	signals.Pieces = g.String()
+	signals.GameOver = gs.GameOver
+	signals.CurrentScore = gs.Score
+	signals.Pieces = string(gs.Board)
 
-	if gameOver {
+	if gs.GameOver {
 		signals.LastScore = signals.CurrentScore
 
 		// Update the best score if current score is higher
@@ -134,7 +135,7 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = sse.MergeFragments(gameToHTML(g, g.getConnectedPieces(index)))
+	err = sse.MergeFragments(gameToHTML(g, g.GetConnectedPieces(index)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -150,7 +151,7 @@ func mouseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
+	g, err := jawbreaker.RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -158,7 +159,7 @@ func mouseHandler(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 
-	err = sse.MergeFragments(gameToHTML(g, g.getConnectedPieces(index)))
+	err = sse.MergeFragments(gameToHTML(g, g.GetConnectedPieces(index)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -173,13 +174,13 @@ func newGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g := NewGame(numRows, numCols)
+	g := jawbreaker.NewGame(numRows, numCols)
 
 	sse := datastar.NewSSE(w, r)
 
 	// Send updated signals
 	signals := map[string]any{
-		"pieces":       g.String(),
+		"pieces":       g.Board().String(),
 		"currentScore": 0,
 		"lastScore":    store.LastScore,
 		"bestScore":    store.BestScore,

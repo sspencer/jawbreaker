@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/sspencer/jawbreaker"
 )
 
 const (
@@ -31,7 +33,7 @@ func extractNumberFromPieceId(input string) int {
 }
 
 // gameToHTML generates the HTML fragment for the game board with the click handler.
-func gameToHTML(g *Game, connections []int) string {
+func gameToHTML(g *jawbreaker.Game, connections []int) string {
 	var sb strings.Builder
 
 	set := make(map[int]bool)
@@ -41,9 +43,7 @@ func gameToHTML(g *Game, connections []int) string {
 		}
 	}
 
-	board := g.String()
-
-	for i, p := range board {
+	for i, p := range g.Board() {
 		connected := set[i]
 
 		// id="piece123"
@@ -53,7 +53,7 @@ func gameToHTML(g *Game, connections []int) string {
 
 		// class="piece red connected"
 		sb.WriteString("\" class=\"piece ")
-		sb.WriteString(PieceFromChar(p).String())
+		sb.WriteString(p.Color())
 		if connected {
 			sb.WriteString(" connected")
 		}
