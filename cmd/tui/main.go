@@ -210,7 +210,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		// Calculate grid position from mouse coordinates
 		gridX := msg.X / (blockWidth + 2)
-		gridY := (msg.Y - 2) / blockHeight
+		gridY := msg.Y / blockHeight
 		m.hover = make(map[int]bool)
 
 		// Check if position is within grid bounds
@@ -271,18 +271,6 @@ func (m Model) View() string {
 
 	// Render the grid
 	var s string
-
-	// Calculate the width of the grid in characters
-	gridWidthInChars := gridSize * blockWidth
-
-	// Center the title over the game board
-	title := titleStyle.Render("Jawbreaker TUI")
-	titlePadding := (gridWidthInChars - lipgloss.Width(title)) / 2
-	if titlePadding < 0 {
-		titlePadding = 0
-	}
-
-	s += strings.Repeat(" ", titlePadding) + title + "\n\n"
 
 	board := m.jawbreaker.Board()
 	for y := 0; y < gridSize; y++ {
