@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -19,20 +18,19 @@ import (
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 
-	"github.com/sspencer/jawbreaker"
+	jb "github.com/sspencer/jawbreaker"
 )
 
 // Game constants
 const (
-	scoreHeight   = 100
-	borderSize    = 6  // Size of the black border between blocks
-	baseBlockSize = 50 // Base block size for calculations
+	scoreHeight = 100
+	blockSize   = 48
+	borderSize  = 2 // Size of the black border between blocks
+	gridSize    = 12
 )
 
 // Game configuration (can be modified by command line args)
 var (
-	//	gridSize     = 12
-	blockSize    int
 	screenWidth  int
 	screenHeight int
 )
@@ -59,29 +57,27 @@ var (
 	colorYellowStart = color.RGBA{R: 255, G: 238, B: 0, A: 255} // #ffee00
 	colorYellowEnd   = color.RGBA{R: 215, G: 106, B: 0, A: 255} // #ff8800
 
-	colorBlack = color.RGBA{R: 45, G: 45, B: 45, A: 255} // Nearly Black
-	colorBg    = color.RGBA{R: 20, G: 20, B: 30, A: 255} // Dark background for contrast
+	colorBlackStart = color.RGBA{R: 44, G: 44, B: 44, A: 255} // Nearly Black
+	colorBlackEnd   = color.RGBA{R: 22, G: 22, B: 22, A: 255} // Dark background for contrast
 )
 
 // Game implements ebiten.Game interface
 type Game struct {
-	jb           *jawbreaker.Game
-	gridWidth    int
-	gridHeight   int
-	images       map[jawbreaker.Piece]*ebiten.Image // Map to store texture images for each color and state
+	jawbreaker   *jb.Game
 	currentScore int
 	lastScore    int
 	bestScore    int
+	hover        map[int]bool
+	images       map[jb.Piece]*ebiten.Image // Map to store texture images for each color and state
 	smallFont    font.Face
 	normalFont   font.Face
 	titleFont    font.Face
 	valueFont    font.Face
-	hover        map[int]bool
 }
 
 // coordsToIndex converts 2D coordinates to 1D index
-func (g *Game) coordsToIndex(x, y int) int {
-	return y*g.gridHeight + x
+func coordsToIndex(x, y int) int {
+	return y*gridSize + x
 }
 
 // loadFonts loads and initializes font faces of different sizes and weights
@@ -134,7 +130,7 @@ func loadFonts() (font.Face, font.Face, font.Face, font.Face, error) {
 }
 
 // NewGame creates a new game
-func NewGame(w, h int) *Game {
+func NewGame() *Game {
 	// Try to load custom fonts
 	smallFont, normalFont, titleFont, valueFont, err := loadFonts()
 	if err != nil {
@@ -147,14 +143,12 @@ func NewGame(w, h int) *Game {
 	}
 
 	game := &Game{
-		jb:         jawbreaker.NewGame(w, h),
-		gridWidth:  w,
-		gridHeight: h,
+		jawbreaker: jb.NewGame(gridSize, gridSize),
 		smallFont:  smallFont,
 		normalFont: normalFont,
 		titleFont:  titleFont,
 		valueFont:  valueFont,
-		images:     make(map[jawbreaker.Piece]*ebiten.Image),
+		images:     make(map[jb.Piece]*ebiten.Image),
 		hover:      make(map[int]bool),
 	}
 
@@ -167,12 +161,12 @@ func NewGame(w, h int) *Game {
 // generateTextures creates all necessary texture images
 func (g *Game) generateTextures() {
 	// Generate stained glass textures
-	g.images[jawbreaker.Purple] = createStainedGlassTexture(colorPurpleStart, colorPurpleEnd, false)
-	g.images[jawbreaker.Blue] = createStainedGlassTexture(colorBlueStart, colorBlueEnd, false)
-	g.images[jawbreaker.Green] = createStainedGlassTexture(colorGreenStart, colorGreenEnd, false)
-	g.images[jawbreaker.Red] = createStainedGlassTexture(colorRedStart, colorRedEnd, false)
-	g.images[jawbreaker.Yellow] = createStainedGlassTexture(colorYellowStart, colorYellowEnd, false)
-	g.images[jawbreaker.White] = createStainedGlassTexture(colorBg, colorBlack, false)
+	g.images[jb.Purple] = createStainedGlassTexture(colorPurpleStart, colorPurpleEnd, false)
+	g.images[jb.Blue] = createStainedGlassTexture(colorBlueStart, colorBlueEnd, false)
+	g.images[jb.Green] = createStainedGlassTexture(colorGreenStart, colorGreenEnd, false)
+	g.images[jb.Red] = createStainedGlassTexture(colorRedStart, colorRedEnd, false)
+	g.images[jb.Yellow] = createStainedGlassTexture(colorYellowStart, colorYellowEnd, false)
+	g.images[jb.White] = createStainedGlassTexture(colorBlackEnd, colorBlackStart, false)
 }
 
 // createStainedGlassTexture creates a modern gradient texture for a block
@@ -245,8 +239,8 @@ func (g *Game) handleInput() error {
 		gridY := adjustedY / blockSize
 
 		// Ensure within bounds
-		if gridX >= 0 && gridX < g.gridWidth && gridY >= 0 && gridY < g.gridHeight {
-			connectedPieces := g.jb.GetConnectedPieces(g.coordsToIndex(gridX, gridY))
+		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
+			connectedPieces := g.jawbreaker.GetConnectedPieces(coordsToIndex(gridX, gridY))
 			for _, piece := range connectedPieces {
 				g.hover[piece] = true
 			}
@@ -284,10 +278,10 @@ func (g *Game) handleMouseClick(x, y int) {
 		gridY := adjustedY / blockSize
 
 		// Ensure within bounds
-		if gridX >= 0 && gridX < g.gridWidth && gridY >= 0 && gridY < g.gridHeight {
+		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
 			// Get the index in the 1D array
-			index := g.coordsToIndex(gridX, gridY)
-			status := g.jb.Move(index)
+			index := coordsToIndex(gridX, gridY)
+			status := g.jawbreaker.Move(index)
 			g.currentScore = status.Score
 			if g.currentScore > g.bestScore {
 				g.bestScore = g.currentScore
@@ -304,7 +298,7 @@ func (g *Game) handleMouseClick(x, y int) {
 func (g *Game) resetGame() {
 	g.lastScore = g.currentScore
 	g.currentScore = 0
-	g.jb = jawbreaker.NewGame(g.gridWidth, g.gridHeight)
+	g.jawbreaker = jb.NewGame(gridSize, gridSize)
 }
 
 // Update updates the game state
@@ -321,7 +315,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		0,
 		float32(screenWidth),
 		float32(screenHeight),
-		colorBg,
+		colorBlackEnd,
 		true,
 	)
 
@@ -335,9 +329,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 // drawGrid draws the game grid
 func (g *Game) drawGrid(screen *ebiten.Image) {
 	// Draw grid with stained glass blocks
-	for i, p := range g.jb.Board() {
-		x := i % g.gridHeight
-		y := i / g.gridHeight
+	for i, p := range g.jawbreaker.Board() {
+		x := i % gridSize
+		y := i / gridSize
 
 		posX := float64(x*blockSize + 2*borderSize)
 		posY := float64(y*blockSize + 2*borderSize)
@@ -349,7 +343,7 @@ func (g *Game) drawGrid(screen *ebiten.Image) {
 }
 
 // drawBlock draws a single block
-func (g *Game) drawBlock(screen *ebiten.Image, piece jawbreaker.Piece, posX, posY float64, isHovered bool) {
+func (g *Game) drawBlock(screen *ebiten.Image, piece jb.Piece, posX, posY float64, isHovered bool) {
 
 	// Draw the block with modern gradient texture
 	op := &ebiten.DrawImageOptions{}
@@ -367,18 +361,18 @@ func (g *Game) drawBlock(screen *ebiten.Image, piece jawbreaker.Piece, posX, pos
 }
 
 // drawHighlightedBorder draws a border of the same color as the piece around highlighted pieces
-func (g *Game) drawHighlightedBorder(screen *ebiten.Image, piece jawbreaker.Piece, posX, posY float64) {
+func (g *Game) drawHighlightedBorder(screen *ebiten.Image, piece jb.Piece, posX, posY float64) {
 	var borderColor color.RGBA
 	switch piece {
-	case jawbreaker.Red:
+	case jb.Red:
 		borderColor = colorRedStart
-	case jawbreaker.Blue:
+	case jb.Blue:
 		borderColor = colorBlueStart
-	case jawbreaker.Yellow:
+	case jb.Yellow:
 		borderColor = colorYellowStart
-	case jawbreaker.Green:
+	case jb.Green:
 		borderColor = colorGreenStart
-	case jawbreaker.Purple:
+	case jb.Purple:
 		borderColor = colorPurpleStart
 	default:
 		return
@@ -522,16 +516,6 @@ func (g *Game) Layout(int, int) (int, int) {
 }
 
 func main() {
-	// Parse command line arguments
-	sizePtr := flag.Int("size", 12, "grid size")
-	flag.Parse()
-
-	// Set grid size from command line arguments
-	gridSize := *sizePtr
-
-	// Calculate block size
-	blockSize = baseBlockSize
-
 	// Calculate screen dimensions with double border size
 	screenWidth = gridSize*blockSize + 4*borderSize                // Double the border size (2*borderSize*2)
 	screenHeight = gridSize*blockSize + 4*borderSize + scoreHeight // Double the border size (2*borderSize*2)
@@ -545,7 +529,7 @@ func main() {
 	//ebiten.SetScreenClearedEveryFrame(false)
 
 	// Create and run the game
-	game := NewGame(gridSize, gridSize)
+	game := NewGame()
 	if err := ebiten.RunGame(game); err != nil {
 		panic(err)
 	}
