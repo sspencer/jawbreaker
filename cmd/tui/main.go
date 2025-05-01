@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -14,7 +16,9 @@ import (
 
 // Game constants
 const (
-	gridSize = 10 // Size of the game grid (gridSize x gridSize)
+	gridSize    = 10 // Size of the game grid (gridSize x gridSize)
+	blockWidth  = 4  // Width of each cell in characters
+	blockHeight = 2  // Height of each cell in lines
 )
 
 // Define key mappings
@@ -158,6 +162,7 @@ func NewModel() Model {
 
 // Update handles user input and updates the model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	log.Println("UI update triggered")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -204,9 +209,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		// Calculate grid position from mouse coordinates
-		// Each cell is 4 characters wide and 2 lines tall
-		gridX := msg.X / 4
-		gridY := (msg.Y - 3) / 2 // Adjust for title and spacing, and divide by 2 for double-height cells
+		gridX := msg.X / blockWidth
+		gridY := (msg.Y - 3) / blockHeight // Adjust for title and spacing, and divide by blockHeight for cell height
 
 		// Check if position is within grid bounds
 		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
@@ -216,6 +220,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle mouse clicks
 			if msg.Type == tea.MouseLeft {
+				// Log the click coordinates
+				log.Printf("Block clicked at coordinates: X=%d, Y=%d", gridX, gridY)
+
 				// Make a move at the clicked position
 				index := m.cursorY*gridSize + m.cursorX
 				status := m.jawbreaker.Move(index)
@@ -257,7 +264,18 @@ func (m Model) View() string {
 
 	// Render the grid
 	var s string
-	s += titleStyle.Render("Jawbreaker TUI") + "\n\n"
+
+	// Calculate the width of the grid in characters
+	gridWidthInChars := gridSize * blockWidth
+
+	// Center the title over the game board
+	title := titleStyle.Render("Jawbreaker TUI")
+	titlePadding := (gridWidthInChars - lipgloss.Width(title)) / 2
+	if titlePadding < 0 {
+		titlePadding = 0
+	}
+
+	s += strings.Repeat(" ", titlePadding) + title + "\n\n"
 
 	board := m.jawbreaker.Board()
 	for y := 0; y < gridSize; y++ {
@@ -289,7 +307,8 @@ func (m Model) View() string {
 					Bold(true)
 			}
 
-			s += cellStyle.Render("  ") + cellStyle.Render("  ")
+			// Render a cell with blockWidth characters
+			s += cellStyle.Render(strings.Repeat(" ", blockWidth))
 		}
 		s += "\n"
 		// Add another line with the same cells to make them more square-like
@@ -321,7 +340,8 @@ func (m Model) View() string {
 					Bold(true)
 			}
 
-			s += cellStyle.Render("  ") + cellStyle.Render("  ")
+			// Render a cell with blockWidth characters
+			s += cellStyle.Render(strings.Repeat(" ", blockWidth))
 		}
 		s += "\n"
 	}
@@ -356,6 +376,15 @@ func (m Model) View() string {
 }
 
 func main() {
+	// Set up logging to a file
+	logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Error opening log file: %v", err)
+		os.Exit(1)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	p := tea.NewProgram(
 		NewModel(),
 		tea.WithAltScreen(),

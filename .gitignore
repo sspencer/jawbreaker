@@ -2,3 +2,4 @@
 .DS_Store
 scores.db*
 .env
+*.log
