@@ -24,8 +24,8 @@ import (
 // Game constants
 const (
 	scoreHeight = 100
-	blockSize   = 48
-	borderSize  = 2 // Size of the black border between blocks
+	blockSize   = 50
+	borderSize  = 3 // Size of the black border between blocks
 	gridSize    = 12
 )
 
