@@ -209,12 +209,12 @@ func calculateRemainingPiecesScore(remainingPieces int) int {
 // It is a non-destructive operation that doesn't modify the game state.
 func (g *Game) GetConnectedPieces(index int) []int {
 	if index < 0 || index >= len(g.board) {
-		return []int{}
+		return nil
 	}
 
 	target := g.board[index]
 	if target == White {
-		return []int{}
+		return nil
 	}
 
 	var connectedIndices []int
@@ -247,6 +247,11 @@ func (g *Game) GetConnectedPieces(index int) []int {
 			stack = append(stack, i+1) // Right
 		}
 	}
+
+	if len(connectedIndices) < 2 {
+		return nil
+	}
+
 	return connectedIndices
 }
 
