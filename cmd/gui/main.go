@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"image/color"
+	"log"
 	"math"
 	"strconv"
 
@@ -19,6 +19,7 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	jb "github.com/sspencer/jawbreaker"
+	"github.com/sspencer/jawbreaker/util"
 )
 
 // Game constants
@@ -142,8 +143,11 @@ func NewGame() *Game {
 		valueFont = basicFace
 	}
 
+	lastScore, bestScore, _ := util.LoadScores()
 	game := &Game{
 		jawbreaker: jb.NewGame(gridSize, gridSize),
+		lastScore:  lastScore,
+		bestScore:  bestScore,
 		smallFont:  smallFont,
 		normalFont: normalFont,
 		titleFont:  titleFont,
@@ -257,8 +261,11 @@ func (g *Game) handleInput() error {
 		g.resetGame()
 	}
 
-	if inpututil.IsKeyJustReleased(ebiten.KeyEscape) {
-		fmt.Println("<ESC> exits the application")
+	if inpututil.IsKeyJustReleased(ebiten.KeyQ) {
+		err := util.SaveScores(g.currentScore, g.bestScore)
+		if err != nil {
+			log.Printf("Error saving scores: %v", err)
+		}
 		return ebiten.Termination
 	}
 
@@ -298,6 +305,10 @@ func (g *Game) handleMouseClick(x, y int) {
 func (g *Game) resetGame() {
 	g.lastScore = g.currentScore
 	g.currentScore = 0
+	err := util.SaveScores(g.lastScore, g.bestScore)
+	if err != nil {
+		log.Printf("Error saving scores: %v", err)
+	}
 	g.jawbreaker = jb.NewGame(gridSize, gridSize)
 }
 

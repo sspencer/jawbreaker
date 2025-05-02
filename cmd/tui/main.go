@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	jb "github.com/sspencer/jawbreaker"
+	"github.com/sspencer/jawbreaker/util"
 )
 
 // Game constants
@@ -20,58 +20,7 @@ const (
 	gridSize    = 12 // Size of the game grid (gridSize x gridSize)
 	blockWidth  = 4  // Width of each cell in characters
 	blockHeight = 2  // Height of each cell in lines
-	scoresFile  = "scores.json" // File to store scores
 )
-
-// ScoresData represents the scores that will be saved to disk
-type ScoresData struct {
-	LastScore int `json:"lastScore"`
-	BestScore int `json:"bestScore"`
-}
-
-// saveScores saves the last and best scores to disk
-func saveScores(lastScore, bestScore int) error {
-	data := ScoresData{
-		LastScore: lastScore,
-		BestScore: bestScore,
-	}
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("error marshaling scores: %w", err)
-	}
-
-	err = os.WriteFile(scoresFile, jsonData, 0644)
-	if err != nil {
-		return fmt.Errorf("error writing scores file: %w", err)
-	}
-
-	log.Printf("Scores saved: Last=%d, Best=%d", lastScore, bestScore)
-	return nil
-}
-
-// loadScores loads the last and best scores from disk
-func loadScores() (int, int, error) {
-	// Check if the file exists
-	if _, err := os.Stat(scoresFile); os.IsNotExist(err) {
-		log.Printf("Scores file not found, using default values")
-		return 0, 0, nil
-	}
-
-	jsonData, err := os.ReadFile(scoresFile)
-	if err != nil {
-		return 0, 0, fmt.Errorf("error reading scores file: %w", err)
-	}
-
-	var data ScoresData
-	err = json.Unmarshal(jsonData, &data)
-	if err != nil {
-		return 0, 0, fmt.Errorf("error unmarshaling scores: %w", err)
-	}
-
-	log.Printf("Scores loaded: Last=%d, Best=%d", data.LastScore, data.BestScore)
-	return data.LastScore, data.BestScore, nil
-}
 
 // Define key mappings
 type keyMap struct {
@@ -201,7 +150,7 @@ func NewModel() Model {
 	game := jb.NewGame(gridSize, gridSize) // Create a grid as specified
 
 	// Load scores from disk
-	lastScore, bestScore, err := loadScores()
+	lastScore, bestScore, err := util.LoadScores()
 	if err != nil {
 		log.Printf("Error loading scores: %v", err)
 		// Continue with default values
@@ -225,10 +174,7 @@ func NewModel() Model {
 // saveScoresCmd is a command that saves scores and then quits
 func saveScoresCmd(lastScore, bestScore int) tea.Cmd {
 	return func() tea.Msg {
-		err := saveScores(lastScore, bestScore)
-		if err != nil {
-			log.Printf("Error saving scores: %v", err)
-		}
+		_ = util.SaveScores(lastScore, bestScore)
 		return tea.Quit()
 	}
 }
@@ -275,7 +221,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lastScore = m.currentScore
 
 				// Save scores when game is over
-				err := saveScores(m.lastScore, m.bestScore)
+				err := util.SaveScores(m.lastScore, m.bestScore)
 				if err != nil {
 					log.Printf("Error saving scores: %v", err)
 				}
@@ -319,11 +265,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.lastScore = m.currentScore
 
 					// Save scores when game is over
-					err := saveScores(m.lastScore, m.bestScore)
-					if err != nil {
-						log.Printf("Error saving scores: %v", err)
-					}
-
+					_ = util.SaveScores(m.lastScore, m.bestScore)
 					m.resetGame()
 				}
 			}
