@@ -537,7 +537,7 @@ func main() {
 
 	// Prevent screen from being cleared to white every frame
 	// This helps prevent the white flash when the game starts
-	//ebiten.SetScreenClearedEveryFrame(false)
+	ebiten.SetScreenClearedEveryFrame(false)
 
 	// Create and run the game
 	game := NewGame()
