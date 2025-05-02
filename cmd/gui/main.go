@@ -3,7 +3,6 @@ package main
 import (
 	"image"
 	"image/color"
-	"log"
 	"math"
 	"strconv"
 
@@ -62,6 +61,11 @@ var (
 	colorBlackEnd   = color.RGBA{R: 22, G: 22, B: 22, A: 255} // Dark background for contrast
 )
 
+type history struct {
+	board jb.Board
+	score int
+}
+
 // Game implements ebiten.Game interface
 type Game struct {
 	jawbreaker   *jb.Game
@@ -74,6 +78,7 @@ type Game struct {
 	normalFont   font.Face
 	titleFont    font.Face
 	valueFont    font.Face
+	undo         util.Stack[history]
 }
 
 // coordsToIndex converts 2D coordinates to 1D index
@@ -261,11 +266,13 @@ func (g *Game) handleInput() error {
 		g.resetGame()
 	}
 
+	// Undo the last move if U key is pressed
+	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
+		g.undoLastMove()
+	}
+
 	if inpututil.IsKeyJustReleased(ebiten.KeyQ) {
-		err := util.SaveScores(g.currentScore, g.bestScore)
-		if err != nil {
-			log.Printf("Error saving scores: %v", err)
-		}
+		_ = util.SaveScores(g.currentScore, g.bestScore)
 		return ebiten.Termination
 	}
 
@@ -288,13 +295,20 @@ func (g *Game) handleMouseClick(x, y int) {
 		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
 			// Get the index in the 1D array
 			index := coordsToIndex(gridX, gridY)
+
+			// Save current state for undo
+			g.undo.Push(history{
+				board: append(jb.Board{}, g.jawbreaker.Board()...),
+				score: g.currentScore,
+			})
+
 			status := g.jawbreaker.Move(index)
 			g.currentScore = status.Score
-			if g.currentScore > g.bestScore {
-				g.bestScore = g.currentScore
-			}
 
 			if status.GameOver {
+				if g.currentScore > g.bestScore {
+					g.bestScore = g.currentScore
+				}
 				g.resetGame()
 			}
 		}
@@ -305,11 +319,27 @@ func (g *Game) handleMouseClick(x, y int) {
 func (g *Game) resetGame() {
 	g.lastScore = g.currentScore
 	g.currentScore = 0
-	err := util.SaveScores(g.lastScore, g.bestScore)
-	if err != nil {
-		log.Printf("Error saving scores: %v", err)
-	}
+	_ = util.SaveScores(g.lastScore, g.bestScore)
 	g.jawbreaker = jb.NewGame(gridSize, gridSize)
+	g.undo.Clear()
+}
+
+// undoLastMove restores the game state to the previous move
+func (g *Game) undoLastMove() {
+	lastState, ok := g.undo.Pop()
+	if !ok {
+		return
+	}
+
+	// Restore the game state
+	var err error
+	g.jawbreaker, err = jb.RestoreGame(string(lastState.board), gridSize, gridSize, lastState.score)
+	if err != nil {
+		return
+	}
+
+	// Restore the score
+	g.currentScore = lastState.score
 }
 
 // Update updates the game state
