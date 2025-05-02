@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -30,19 +29,20 @@ type keyMap struct {
 	Right  key.Binding
 	Select key.Binding
 	Reset  key.Binding
+	Undo   key.Binding
 	Quit   key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view.
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Left, k.Right, k.Select, k.Reset, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Left, k.Right, k.Select, k.Reset, k.Undo, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view.
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Left, k.Right},
-		{k.Select, k.Reset, k.Quit},
+		{k.Select, k.Reset, k.Undo, k.Quit},
 	}
 }
 
@@ -70,6 +70,10 @@ var keys = keyMap{
 	Reset: key.NewBinding(
 		key.WithKeys("r"),
 		key.WithHelp("r", "reset game"),
+	),
+	Undo: key.NewBinding(
+		key.WithKeys("u"),
+		key.WithHelp("u", "undo move"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
@@ -138,6 +142,12 @@ type Model struct {
 	keys         keyMap
 	width        int
 	height       int
+	undo         util.Stack[history]
+}
+
+type history struct {
+	board jb.Board
+	score int
 }
 
 // Init initializes the model
@@ -150,11 +160,7 @@ func NewModel() Model {
 	game := jb.NewGame(gridSize, gridSize) // Create a grid as specified
 
 	// Load scores from disk
-	lastScore, bestScore, err := util.LoadScores()
-	if err != nil {
-		log.Printf("Error loading scores: %v", err)
-		// Continue with default values
-	}
+	lastScore, bestScore, _ := util.LoadScores()
 
 	return Model{
 		jawbreaker:   game,
@@ -210,6 +216,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.Select):
 			index := m.cursorY*gridSize + m.cursorX
+
+			// Save current state for undo
+			m.undo.Push(history{
+				board: append(jb.Board{}, m.jawbreaker.Board()...),
+				score: m.currentScore,
+			})
+
 			status := m.jawbreaker.Move(index)
 
 			// Update scores
@@ -221,13 +234,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lastScore = m.currentScore
 
 				// Save scores when game is over
-				err := util.SaveScores(m.lastScore, m.bestScore)
-				if err != nil {
-					log.Printf("Error saving scores: %v", err)
-				}
-
+				_ = util.SaveScores(m.lastScore, m.bestScore)
 				m.resetGame()
 			}
+
+		case key.Matches(msg, m.keys.Undo):
+			m.undoLastMove()
 
 		case key.Matches(msg, m.keys.Reset):
 			m.resetGame()
@@ -249,15 +261,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle mouse clicks
 			if msg.Action == tea.MouseActionPress {
+				// Save current state for undo
+				// Save current state for undo
+				m.undo.Push(history{
+					board: append(jb.Board{}, m.jawbreaker.Board()...),
+					score: m.currentScore,
+				})
+
 				// Make a move at the clicked position
 				status := m.jawbreaker.Move(index)
 
 				// Update scores
 				m.currentScore = status.Score
-				if m.currentScore > m.bestScore {
-					m.bestScore = m.currentScore
-				}
-
 				if status.GameOver {
 					if m.currentScore > m.bestScore {
 						m.bestScore = m.currentScore
@@ -290,6 +305,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) resetGame() {
 	m.jawbreaker = jb.NewGame(gridSize, gridSize)
 	m.currentScore = 0
+	// Clear history when resetting the game
+	m.undo.Clear()
+}
+
+// undoLastMove restores the game state to the previous move
+func (m *Model) undoLastMove() {
+	// Check if there's any history to undo
+	lastState, ok := m.undo.Pop()
+	if !ok {
+		return
+	}
+
+	// Restore the game state
+	var err error
+	m.jawbreaker, err = jb.RestoreGame(string(lastState.board), gridSize, gridSize, lastState.score)
+	if err != nil {
+		return
+	}
+
+	// Restore the score
+	m.currentScore = lastState.score
+	m.hover = make(map[int]bool)
 }
 
 // View renders the UI
@@ -370,14 +407,6 @@ func (m Model) View() string {
 }
 
 func main() {
-	// Set up logging to a file
-	logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Printf("Error opening log file: %v", err)
-		os.Exit(1)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
 	p := tea.NewProgram(
 		NewModel(),
 		tea.WithAltScreen(),
