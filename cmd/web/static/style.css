@@ -210,6 +210,20 @@ footer section {
     margin-bottom: 15px;
 }
 
+/* Mobile layout for score boxes */
+@media (max-width: 768px) {
+    footer section {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    footer article {
+        width: 100%;
+        max-width: 250px;
+        margin-bottom: 10px;
+    }
+}
+
 footer article {
     flex: 1;
     display: flex;
