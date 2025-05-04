@@ -14,7 +14,9 @@ import (
 
 //go:embed index.html
 var indexHTML []byte
-var noConnections = []int{}
+
+//go:embed breaker.html
+var breakerHTML []byte
 
 type Signals struct {
 	Pieces       string `json:"pieces"`
@@ -30,13 +32,34 @@ type IndexData struct {
 	Pieces    string
 	Game      template.HTML
 	Datastar  string
-	GameJS    string
 	Style     string
 }
 
 type ScoreData struct {
 	LastScore int `json:"lastScore"`
 	BestScore int `json:"bestScore"`
+}
+
+func breakerHandler(w http.ResponseWriter, r *http.Request) {
+	// Create a template from the embedded HTML
+	tmpl, err := template.New("index").Parse(string(breakerHTML))
+	if err != nil {
+		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	g := jawbreaker.NewGame(numRows, numCols)
+	data := IndexData{
+		Style:  fsys.HashName("static/style.css"),
+		Pieces: g.Board().String(),
+		Game:   template.HTML(gameToHTML(g, nil)),
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -65,9 +88,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		LastScore: scoreData.LastScore,
 		BestScore: scoreData.BestScore,
 		Pieces:    g.Board().String(),
-		Game:      template.HTML(gameToHTML(g, noConnections)),
+		Game:      template.HTML(gameToHTML(g, nil)),
 		Datastar:  fsys.HashName("static/datastar.js"),
-		GameJS:    fsys.HashName("static/game.js"),
 		Style:     fsys.HashName("static/style.css"),
 	}
 
@@ -194,7 +216,7 @@ func newGameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update g fragment
-	err = sse.MergeFragments(gameToHTML(g, noConnections))
+	err = sse.MergeFragments(gameToHTML(g, nil))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

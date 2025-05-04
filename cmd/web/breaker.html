@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Jawbreaker - Javascript Game</title>
+    <meta charset="UTF-8"/>
+    <meta http-equiv=Content-Type content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Javascript Jawbreaker Game, also called Same Game">
+    <meta name="keywords" content="javascript game, javascript, online games, free games">
+    <meta name="rating" content="Safe For Kids">
+    <link rel="stylesheet" href="{{.Style}}"/>
+</head>
+<body>
+<header></header>
+
+<main id="game-container">
+    {{.Game}}
+    <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
+        <article class="game-over-content">
+            <h2>Game Over!</h2>
+            <p>You scored <span data-text="$currentScore">0</span> points.</p>
+            <button class="new-game-btn" data-on-click="@post('new');">
+                New Game
+            </button>
+        </article>
+    </section>
+</main>
+
+<footer>
+    <section>
+        <article>
+            <div>Current</div>
+            <div id="current-score" data-text="$currentScore">0</div>
+        </article>
+        <article>
+            <div>Last</div>
+            <div id="last-score" data-text="$lastScore">0</div>
+        </article>
+        <article>
+            <div>Best</div>
+            <div id="best-score" data-text="$bestScore">0</div>
+        </article>
+    </section>
+</footer>
+<script>
+    class Breaker {
+        // Piece constants
+        static WHITE = 'w';
+        static PURPLE = 'p';
+        static BLUE = 'b';
+        static GREEN = 'g';
+        static RED = 'r';
+        static YELLOW = 'y';
+
+        // Color pieces array for random generation
+        static COLOR_PIECES = [
+            Breaker.PURPLE,
+            Breaker.BLUE,
+            Breaker.GREEN,
+            Breaker.RED,
+            Breaker.YELLOW
+        ];
+
+        // Color map for HTML class names
+        static COLOR_MAP = new Map([
+            [Breaker.PURPLE, "purple"],
+            [Breaker.BLUE, "blue"],
+            [Breaker.GREEN, "green"],
+            [Breaker.RED, "red"],
+            [Breaker.YELLOW, "yellow"]
+        ]);
+
+        /**
+         * Create a new Jawbreaker game
+         * @param {number} rows - Number of rows in the game board
+         * @param {number} cols - Number of columns in the game board
+         */
+        constructor(rows, cols) {
+            this.rows = rows;
+            this.cols = cols;
+            this.score = 0;
+            this.board = "{{.Pieces}}";
+            this.hoverList = new Set();
+            this.registerEvents();
+        }
+
+        registerEvents() {
+            const game = document.getElementById("game-container");
+            game.addEventListener('click', (e) => {
+                this.moveEvent(e);
+            }, true);
+            game.addEventListener('mouseover', (e) => {
+                this.mouseOverEvent(e);
+            }, true);
+            game.addEventListener('mouseleave', (e) => {
+                this.mouseLeaveEvent(e);
+            }, true);
+        }
+
+        /**
+         * Create a random board with the given dimensions
+         * @param {number} rows - Number of rows
+         * @param {number} cols - Number of columns
+         * @returns {string} - Board as a string
+         */
+        createRandomBoard(rows, cols) {
+            let board = '';
+            for (let i = 0; i < rows * cols; i++) {
+                const rnd = Math.floor(Math.random() * Breaker.COLOR_PIECES.length);
+                board += Breaker.COLOR_PIECES[rnd];
+            }
+            return board;
+        }
+
+        renderBoard() {
+            let htmlString = '';
+
+            for (let i = 0; i < this.board.length; i++) {
+                let color = Breaker.COLOR_MAP.get(this.board[i]);
+                let hover = this.hoverList.has(i) ? 'connected' : '';
+                htmlString += `<div id="piece${i}" class="piece ${color} ${hover}"></div>`;
+            }
+
+            requestAnimationFrame(() => {
+                document.getElementById('game').innerHTML = htmlString;
+            });
+        }
+
+        moveEvent(e) {
+            if (e.target.classList.contains('piece')) {
+                const index = this.getIndexOfPiece(e.target.id);
+                const status = this.move(index);
+                document.getElementById('current-score').innerText = status.score;
+                this.hoverList.clear();
+                const pieces = this.getConnectedPieces(index);
+                for (const i of pieces) {
+                    this.hoverList.add(i);
+                }
+
+                this.renderBoard();
+            }
+        }
+
+        mouseOverEvent(e) {
+            if (e.target.classList.contains('piece')) {
+                const index = this.getIndexOfPiece(e.target.id);
+                if (this.hoverList.has(index)) {
+                    return;
+                }
+
+                this.hoverList.clear();
+                const pieces = this.getConnectedPieces(index);
+                for (const i of pieces) {
+                    this.hoverList.add(i);
+                }
+
+                this.renderBoard();
+            }
+        }
+
+        mouseLeaveEvent(e) {
+            this.renderBoard();
+        }
+
+        getIndexOfPiece(piece) {
+            return parseInt(piece.substring(5), 10);
+        }
+
+        /**
+         * Make a move by removing connected pieces
+         * @param {number} index - Index of the clicked piece
+         * @returns {Object} - Status object with board, score, and gameOver
+         */
+        move(index) {
+            const n = this.floodFill(index);
+            if (n < 2) {
+                return {
+                    board: this.board,
+                    score: this.score,
+                    gameOver: this.isGameOver()
+                };
+            }
+
+            this.applyGravityAndShiftRight();
+            this.score += this.calculateMoveScore(n);
+            const gameOver = this.isGameOver();
+
+            if (gameOver) {
+                let remainingPieces = 0;
+                for (let i = 0; i < this.board.length; i++) {
+                    if (this.board[i] !== Breaker.WHITE) {
+                        remainingPieces++;
+                    }
+                }
+                this.score += this.calculateRemainingPiecesScore(remainingPieces);
+            }
+
+            return {
+                board: this.board,
+                score: this.score,
+                gameOver: gameOver
+            };
+        }
+
+        /**
+         * Check if the game is over
+         * @returns {boolean} - True if game is over, false otherwise
+         */
+        isGameOver() {
+            for (let i = 0; i < this.board.length; i++) {
+                if (this.board[i] === Breaker.WHITE) {
+                    continue;
+                }
+                if (this.getConnectedPieces(i).length > 1) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Calculate score for removing pieces
+         * @param {number} piecesRemoved - Number of pieces removed
+         * @returns {number} - Score for this move
+         */
+        calculateMoveScore(piecesRemoved) {
+            if (piecesRemoved < 2) {
+                return 0;
+            }
+            return piecesRemoved * (piecesRemoved - 1);
+        }
+
+        /**
+         * Calculate bonus score for remaining pieces at game end
+         * @param {number} remainingPieces - Number of pieces remaining
+         * @returns {number} - Bonus score
+         */
+        calculateRemainingPiecesScore(remainingPieces) {
+            const threshold = 20;
+            if (remainingPieces <= threshold) {
+                const p = threshold - remainingPieces;
+                return p * p;
+            }
+            return 0;
+        }
+
+
+        /**
+         * Get connected pieces of the same color
+         * @param {number} index - Starting index
+         * @returns {number[]} - Array of connected piece indices
+         */
+        getConnectedPieces(index) {
+            if (index < 0 || index >= this.board.length) {
+                return [];
+            }
+
+            const target = this.board[index];
+            if (target === Breaker.WHITE) {
+                return [];
+            }
+
+            const connectedIndices = [];
+            const stack = [index];
+            const visited = new Array(this.rows * this.cols).fill(false);
+
+            while (stack.length > 0) {
+                const i = stack.pop();
+
+                if (i < 0 || i >= this.board.length || this.board[i] !== target || visited[i]) {
+                    continue;
+                }
+
+                visited[i] = true;
+                connectedIndices.push(i);
+
+                const row = Math.floor(i / this.cols);
+                const col = i % this.cols;
+
+                // Check all four adjacent positions (up, down, left, right)
+                if (row > 0) {
+                    stack.push(i - this.cols); // Up
+                }
+                if (row < this.rows - 1) {
+                    stack.push(i + this.cols); // Down
+                }
+                if (col > 0) {
+                    stack.push(i - 1); // Left
+                }
+                if (col < this.cols - 1) {
+                    stack.push(i + 1); // Right
+                }
+            }
+
+            if (connectedIndices.length < 2) {
+                return [];
+            }
+
+            return connectedIndices;
+        }
+
+        /**
+         * Perform flood fill to remove connected pieces
+         * @param {number} index - Starting index
+         * @returns {number} - Number of pieces removed
+         */
+        floodFill(index) {
+            const connectedPieces = this.getConnectedPieces(index);
+            if (connectedPieces.length < 2) {
+                return 0;
+            }
+
+            // Convert board to array for easier manipulation
+            const boardArray = this.board.split('');
+
+            for (const i of connectedPieces) {
+                boardArray[i] = Breaker.WHITE;
+            }
+
+            this.board = boardArray.join('');
+            return connectedPieces.length;
+        }
+
+        /**
+         * Apply gravity and shift columns right
+         */
+        applyGravityAndShiftRight() {
+            // Convert board to 2D array for easier manipulation
+            let boardArray = [];
+            for (let row = 0; row < this.rows; row++) {
+                const rowArray = [];
+                for (let col = 0; col < this.cols; col++) {
+                    rowArray.push(this.board[row * this.cols + col]);
+                }
+                boardArray.push(rowArray);
+            }
+
+            // Gravity Phase: shift non-'w' characters down in each column
+            for (let col = 0; col < this.cols; col++) {
+                let writeRow = this.rows - 1;
+                for (let row = this.rows - 1; row >= 0; row--) {
+                    if (boardArray[row][col] !== Breaker.WHITE) {
+                        boardArray[writeRow][col] = boardArray[row][col];
+                        if (writeRow !== row) {
+                            boardArray[row][col] = Breaker.WHITE;
+                        }
+                        writeRow--;
+                    }
+                }
+            }
+
+            // Right Shift Phase: move non-empty columns to the right
+            let writeCol = this.cols - 1;
+            for (let col = this.cols - 1; col >= 0; col--) {
+                let isEmpty = true;
+                for (let row = 0; row < this.rows; row++) {
+                    if (boardArray[row][col] !== Breaker.WHITE) {
+                        isEmpty = false;
+                        break;
+                    }
+                }
+
+                if (!isEmpty) {
+                    if (writeCol !== col) {
+                        // Copy column to new position
+                        for (let row = 0; row < this.rows; row++) {
+                            boardArray[row][writeCol] = boardArray[row][col];
+                            boardArray[row][col] = Breaker.WHITE;
+                        }
+                    }
+                    writeCol--;
+                }
+            }
+
+            // Convert 2D array back to string
+            let newBoard = '';
+            for (let row = 0; row < this.rows; row++) {
+                for (let col = 0; col < this.cols; col++) {
+                    newBoard += boardArray[row][col];
+                }
+            }
+            this.board = newBoard;
+        }
+
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        new Breaker(12, 12);
+    });
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ func newRouter() *chi.Mux {
 
 	// Routes
 	r.Get("/", indexHandler)
+	r.Get("/breaker", breakerHandler)
 	r.Post("/click/{id}", clickHandler)
 	r.Post("/mouse/{id}", mouseHandler)
 	r.Post("/new", newGameHandler)
