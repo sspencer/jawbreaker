@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -187,6 +188,8 @@ func saveScoresCmd(lastScore, bestScore int) tea.Cmd {
 
 // Update handles user input and updates the model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var dirX, dirY int
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -195,26 +198,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, saveScoresCmd(m.lastScore, m.bestScore)
 
 		case key.Matches(msg, m.keys.Up):
+			dirY = -1
 			if m.cursorY > 0 {
 				m.cursorY--
 			}
 
 		case key.Matches(msg, m.keys.Down):
+			dirY = 1
 			if m.cursorY < gridSize-1 {
 				m.cursorY++
 			}
 
 		case key.Matches(msg, m.keys.Left):
+			dirX = -1
 			if m.cursorX > 0 {
 				m.cursorX--
 			}
 
 		case key.Matches(msg, m.keys.Right):
+			dirX = 1
 			if m.cursorX < gridSize-1 {
 				m.cursorX++
 			}
 
 		case key.Matches(msg, m.keys.Select):
+			m.hover = make(map[int]bool)
 			index := m.cursorY*gridSize + m.cursorX
 
 			// Save current state for undo
@@ -239,10 +247,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Undo):
+			m.hover = make(map[int]bool)
 			m.undoLastMove()
 
 		case key.Matches(msg, m.keys.Reset):
+			m.hover = make(map[int]bool)
 			m.resetGame()
+		default:
+			m.hover = make(map[int]bool)
+
 		}
 
 	case tea.MouseMsg:
@@ -298,6 +311,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = msg.Width
 	}
 
+	if dirX != 0 || dirY != 0 {
+		log.Printf("Cursor: (%d, %d), Dir: (%d, %d)\n", m.cursorX, m.cursorY, dirX, dirY)
+		m.hover = make(map[int]bool)
+		index := m.cursorY*gridSize + m.cursorX
+		connectedPieces := m.jawbreaker.GetConnectedPieces(index)
+		for _, piece := range connectedPieces {
+			m.hover[piece] = true
+		}
+	}
 	return m, nil
 }
 
@@ -407,6 +429,15 @@ func (m Model) View() string {
 }
 
 func main() {
+	// Set up logging to a file
+	logFile, err := os.OpenFile("jawbreaker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Error opening log file: %v", err)
+		os.Exit(1)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	p := tea.NewProgram(
 		NewModel(),
 		tea.WithAltScreen(),
