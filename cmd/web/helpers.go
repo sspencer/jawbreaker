@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -85,4 +87,40 @@ func deserializeScoreData(s *ScoreData, data string) {
 
 	s.LastScore = lastScore
 	s.BestScore = bestScore
+}
+
+func getBlockSize(r *http.Request) int {
+	if isMobile(r) {
+		return mobileBlockSize
+	}
+
+	return blockSize
+}
+
+// isMobile checks if the request is coming from a mobile device
+// by examining the User-Agent header
+func isMobile(r *http.Request) bool {
+	userAgent := r.Header.Get("User-Agent")
+
+	// Common patterns for mobile devices
+	mobilePatterns := []string{
+		"Android",
+		"iPhone",
+		"iPad",
+		"iPod",
+		"BlackBerry",
+		"Windows Phone",
+		"Mobile",
+		"webOS",
+		"Opera Mini",
+	}
+
+	for _, pattern := range mobilePatterns {
+		matched, _ := regexp.MatchString(pattern, userAgent)
+		if matched {
+			return true
+		}
+	}
+
+	return false
 }

@@ -59,7 +59,7 @@ func breakerHandler(w http.ResponseWriter, r *http.Request) {
 		Game:      template.HTML(gameToHTML(g, nil)),
 		Rows:      numRows,
 		Cols:      numCols,
-		BlockSize: blockSize,
+		BlockSize: getBlockSize(r),
 		GapSize:   gapSize,
 	}
 
@@ -101,7 +101,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		BestScore: scoreData.BestScore,
 		Rows:      numRows,
 		Cols:      numCols,
-		BlockSize: blockSize,
+		BlockSize: getBlockSize(r),
 		GapSize:   gapSize,
 	}
 
