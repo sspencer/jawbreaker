@@ -12,10 +12,10 @@ import (
 	"github.com/sspencer/jawbreaker"
 )
 
-//go:embed index.html
+//go:embed tmpl/index.gohtml
 var indexHTML []byte
 
-//go:embed breaker.html
+//go:embed tmpl/breaker.gohtml
 var breakerHTML []byte
 
 type Signals struct {
@@ -33,6 +33,10 @@ type IndexData struct {
 	Game      template.HTML
 	Datastar  string
 	Style     string
+	Rows      int
+	Cols      int
+	BlockSize int
+	GapSize   int
 }
 
 type ScoreData struct {
@@ -42,7 +46,7 @@ type ScoreData struct {
 
 func breakerHandler(w http.ResponseWriter, r *http.Request) {
 	// Create a template from the embedded HTML
-	tmpl, err := template.New("index").Parse(string(breakerHTML))
+	tmpl, err := template.New("breaker").Parse(string(breakerHTML))
 	if err != nil {
 		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -50,9 +54,13 @@ func breakerHandler(w http.ResponseWriter, r *http.Request) {
 
 	g := jawbreaker.NewGame(numRows, numCols)
 	data := IndexData{
-		Style:  fsys.HashName("static/style.css"),
-		Pieces: g.Board().String(),
-		Game:   template.HTML(gameToHTML(g, nil)),
+		Style:     fsys.HashName("static/style.css"),
+		Pieces:    g.Board().String(),
+		Game:      template.HTML(gameToHTML(g, nil)),
+		Rows:      numRows,
+		Cols:      numCols,
+		BlockSize: blockSize,
+		GapSize:   gapSize,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -85,12 +93,16 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := IndexData{
-		LastScore: scoreData.LastScore,
-		BestScore: scoreData.BestScore,
-		Pieces:    g.Board().String(),
-		Game:      template.HTML(gameToHTML(g, nil)),
 		Datastar:  fsys.HashName("static/datastar.js"),
 		Style:     fsys.HashName("static/style.css"),
+		Game:      template.HTML(gameToHTML(g, nil)),
+		Pieces:    g.Board().String(),
+		LastScore: scoreData.LastScore,
+		BestScore: scoreData.BestScore,
+		Rows:      numRows,
+		Cols:      numCols,
+		BlockSize: blockSize,
+		GapSize:   gapSize,
 	}
 
 	if err := tmpl.Execute(w, data); err != nil {

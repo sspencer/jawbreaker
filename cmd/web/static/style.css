@@ -42,9 +42,6 @@ header {
 
 #game {
     display: grid;
-    grid-template-columns: repeat(12, 36px);
-    grid-template-rows: repeat(12, 36px);
-    gap: 2px;
     position: relative;
     z-index: 1;
 }

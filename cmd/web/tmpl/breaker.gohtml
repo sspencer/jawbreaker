@@ -9,17 +9,24 @@
     <meta name="keywords" content="javascript game, javascript, online games, free games">
     <meta name="rating" content="Safe For Kids">
     <link rel="stylesheet" href="{{.Style}}"/>
+    <style>
+        #game {
+            grid-template-columns: repeat({{.Cols}}, {{.BlockSize}}px);
+            grid-template-rows: repeat({{.Rows}}, {{.BlockSize}}px);
+            gap: {{.GapSize}}px;
+        }
+    </style>
 </head>
 <body>
 <header></header>
 
 <main id="game-container">
     {{.Game}}
-    <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
+    <section class="game-over-overlay" id="game-over-overlay">
         <article class="game-over-content">
             <h2>Game Over!</h2>
-            <p>You scored <span data-text="$currentScore">0</span> points.</p>
-            <button class="new-game-btn" data-on-click="@post('new');">
+            <p>You scored <span id="game-over-score">0</span> points.</p>
+            <button class="new-game-btn">
                 New Game
             </button>
         </article>
@@ -30,21 +37,43 @@
     <section>
         <article>
             <div>Current</div>
-            <div id="current-score" data-text="$currentScore">0</div>
+            <div id="current-score">0</div>
         </article>
         <article>
             <div>Last</div>
-            <div id="last-score" data-text="$lastScore">0</div>
+            <div id="last-score">0</div>
         </article>
         <article>
             <div>Best</div>
-            <div id="best-score" data-text="$bestScore">0</div>
+            <div id="best-score">0</div>
         </article>
     </section>
 </footer>
 <script>
+    // Cookie functions
+    function getCookie(name) {
+        const cookies = document.cookie.split(';');
+
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                return cookie.substring(name.length + 1);
+            }
+        }
+        return '';
+    }
+
+    function setCookie(name, value, days = 365) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + date.toUTCString();
+        document.cookie = name + "=" + value + ";" + expires + ";path=breaker";
+    }
+
     class Breaker {
         // Piece constants
+        static ROWS = {{.Rows}};
+        static COLS = {{.Cols}};
         static WHITE = 'w';
         static PURPLE = 'p';
         static BLUE = 'b';
@@ -72,15 +101,26 @@
 
         /**
          * Create a new Jawbreaker game
-         * @param {number} rows - Number of rows in the game board
-         * @param {number} cols - Number of columns in the game board
          */
-        constructor(rows, cols) {
-            this.rows = rows;
-            this.cols = cols;
+        constructor() {
             this.score = 0;
+            this.lastScore = 0;
+            this.bestScore = 0;
             this.board = "{{.Pieces}}";
             this.hoverList = new Set();
+
+            // Read scores cookie
+            const scoresCookie = getCookie('scores');
+            if (scoresCookie) {
+                const [lastScore, bestScore] = scoresCookie.split('|');
+                this.lastScore = parseInt(lastScore, 10) || 0;
+                this.bestScore = parseInt(bestScore, 10) || 0;
+
+                // Update UI
+                document.getElementById('last-score').innerText = this.lastScore;
+                document.getElementById('best-score').innerText = this.bestScore;
+            }
+
             this.registerEvents();
         }
 
@@ -95,17 +135,36 @@
             game.addEventListener('mouseleave', (e) => {
                 this.mouseLeaveEvent(e);
             }, true);
+
+            // Add an event listener for the "New Game" button
+            const newGameBtn = document.querySelector('.new-game-btn');
+            if (newGameBtn) {
+                newGameBtn.addEventListener('click', (e) => {
+                    this.resetGame();
+                    document.getElementById('game-over-overlay').classList.remove('visible');
+                    e.preventDefault();
+                });
+            }
+        }
+
+        /**
+         * Reset the game when the "New Game" button is clicked
+         */
+        resetGame() {
+            this.board = this.newBoard();
+            this.hoverList.clear();
+            this.score = 0;
+            document.getElementById('current-score').innerText = this.score;
+            this.renderBoard();
         }
 
         /**
          * Create a random board with the given dimensions
-         * @param {number} rows - Number of rows
-         * @param {number} cols - Number of columns
          * @returns {string} - Board as a string
          */
-        createRandomBoard(rows, cols) {
+        newBoard() {
             let board = '';
-            for (let i = 0; i < rows * cols; i++) {
+            for (let i = 0; i < Breaker.ROWS * Breaker.COLS; i++) {
                 const rnd = Math.floor(Math.random() * Breaker.COLOR_PIECES.length);
                 board += Breaker.COLOR_PIECES[rnd];
             }
@@ -131,6 +190,25 @@
                 const index = this.getIndexOfPiece(e.target.id);
                 const status = this.move(index);
                 document.getElementById('current-score').innerText = status.score;
+                if (status.gameOver) {
+                    // Update lastScore and bestScore
+                    this.lastScore = this.score;
+                    if (this.score > this.bestScore) {
+                        this.bestScore = this.score;
+                    }
+
+                    // Update UI
+                    document.getElementById('game-over-score').innerText = this.score;
+                    document.getElementById('last-score').innerText = this.lastScore;
+                    document.getElementById('best-score').innerText = this.bestScore;
+
+                    // Save scores to cookie
+                    setCookie('scores', `${this.lastScore}|${this.bestScore}`);
+
+                    // show game over overlay
+                    document.getElementById('game-over-overlay').classList.add('visible');
+                    return;
+                }
                 this.hoverList.clear();
                 const pieces = this.getConnectedPieces(index);
                 for (const i of pieces) {
@@ -158,7 +236,7 @@
             }
         }
 
-        mouseLeaveEvent(e) {
+        mouseLeaveEvent() {
             this.renderBoard();
         }
 
@@ -262,7 +340,7 @@
 
             const connectedIndices = [];
             const stack = [index];
-            const visited = new Array(this.rows * this.cols).fill(false);
+            const visited = new Array(Breaker.ROWS * Breaker.COLS).fill(false);
 
             while (stack.length > 0) {
                 const i = stack.pop();
@@ -274,20 +352,20 @@
                 visited[i] = true;
                 connectedIndices.push(i);
 
-                const row = Math.floor(i / this.cols);
-                const col = i % this.cols;
+                const row = Math.floor(i / Breaker.COLS);
+                const col = i % Breaker.COLS;
 
                 // Check all four adjacent positions (up, down, left, right)
                 if (row > 0) {
-                    stack.push(i - this.cols); // Up
+                    stack.push(i - Breaker.COLS); // Up
                 }
-                if (row < this.rows - 1) {
-                    stack.push(i + this.cols); // Down
+                if (row < Breaker.ROWS - 1) {
+                    stack.push(i + Breaker.COLS); // Down
                 }
                 if (col > 0) {
                     stack.push(i - 1); // Left
                 }
-                if (col < this.cols - 1) {
+                if (col < Breaker.COLS - 1) {
                     stack.push(i + 1); // Right
                 }
             }
@@ -327,18 +405,18 @@
         applyGravityAndShiftRight() {
             // Convert board to 2D array for easier manipulation
             let boardArray = [];
-            for (let row = 0; row < this.rows; row++) {
+            for (let row = 0; row < Breaker.ROWS; row++) {
                 const rowArray = [];
-                for (let col = 0; col < this.cols; col++) {
-                    rowArray.push(this.board[row * this.cols + col]);
+                for (let col = 0; col < Breaker.COLS; col++) {
+                    rowArray.push(this.board[row * Breaker.COLS + col]);
                 }
                 boardArray.push(rowArray);
             }
 
             // Gravity Phase: shift non-'w' characters down in each column
-            for (let col = 0; col < this.cols; col++) {
-                let writeRow = this.rows - 1;
-                for (let row = this.rows - 1; row >= 0; row--) {
+            for (let col = 0; col < Breaker.COLS; col++) {
+                let writeRow = Breaker.ROWS - 1;
+                for (let row = Breaker.ROWS - 1; row >= 0; row--) {
                     if (boardArray[row][col] !== Breaker.WHITE) {
                         boardArray[writeRow][col] = boardArray[row][col];
                         if (writeRow !== row) {
@@ -350,10 +428,10 @@
             }
 
             // Right Shift Phase: move non-empty columns to the right
-            let writeCol = this.cols - 1;
-            for (let col = this.cols - 1; col >= 0; col--) {
+            let writeCol = Breaker.COLS - 1;
+            for (let col = Breaker.COLS - 1; col >= 0; col--) {
                 let isEmpty = true;
-                for (let row = 0; row < this.rows; row++) {
+                for (let row = 0; row < Breaker.ROWS; row++) {
                     if (boardArray[row][col] !== Breaker.WHITE) {
                         isEmpty = false;
                         break;
@@ -363,7 +441,7 @@
                 if (!isEmpty) {
                     if (writeCol !== col) {
                         // Copy column to new position
-                        for (let row = 0; row < this.rows; row++) {
+                        for (let row = 0; row < Breaker.ROWS; row++) {
                             boardArray[row][writeCol] = boardArray[row][col];
                             boardArray[row][col] = Breaker.WHITE;
                         }
@@ -374,8 +452,8 @@
 
             // Convert 2D array back to string
             let newBoard = '';
-            for (let row = 0; row < this.rows; row++) {
-                for (let col = 0; col < this.cols; col++) {
+            for (let row = 0; row < Breaker.ROWS; row++) {
+                for (let col = 0; col < Breaker.COLS; col++) {
                     newBoard += boardArray[row][col];
                 }
             }
@@ -385,7 +463,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        new Breaker(12, 12);
+        new Breaker();
     });
 </script>
 </body>

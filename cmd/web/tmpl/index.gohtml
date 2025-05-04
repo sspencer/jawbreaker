@@ -13,6 +13,13 @@
     <meta name="rating" content="Safe For Kids"/>
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <link rel="stylesheet" href="{{.Style}}"/>
+    <style>
+        #game {
+            grid-template-columns: repeat({{.Cols}}, {{.BlockSize}}px);
+            grid-template-rows: repeat({{.Rows}}, {{.BlockSize}}px);
+            gap: {{.GapSize}}px;
+        }
+    </style>
     <script type="module" src="{{.Datastar}}"></script>
 </head>
 <body>

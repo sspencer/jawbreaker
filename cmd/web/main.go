@@ -14,6 +14,8 @@ const (
 	defaultPort = "8000"
 	numRows     = 12
 	numCols     = 12
+	blockSize   = 40
+	gapSize     = 2
 )
 
 func main() {
