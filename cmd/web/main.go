@@ -17,6 +17,7 @@ const (
 	blockSize       = 40
 	mobileBlockSize = 30
 	gapSize         = 2
+	cookieName      = "scores"
 )
 
 func main() {

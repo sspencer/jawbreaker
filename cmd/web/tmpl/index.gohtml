@@ -23,41 +23,62 @@
     <script type="module" src="{{.Datastar}}"></script>
 </head>
 <body>
+<div class="container"
+     data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
+>
+    <div class="sidebar">
+        <div class="title">Jawbreaker</div>
+        <div class="score-container">
+            <div class="score-box">
+                <div class="score-label">Current</div>
+                <div id="current-score" class="score-value" data-text="$currentScore">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Last</div>
+                <div id="last-score" class="score-value" data-text="$lastScore">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Best</div>
+                <div id="best-score" class="score-value" data-text="$bestScore">0</div>
+            </div>
+        </div>
+        <button id="help-btn" class="help-btn">Help</button>
+    </div>
 
-<header></header>
-
-<main id="game-container"
-      data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
-      data-on-click="@post('click/'+evt.target.id)"
-      data-on-mouseover="@post('mouse/'+evt.target.id)"
-      data-on-mouseleave="@post('mouse/exit')">
-    {{.Game}}
-    <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
-        <article class="game-over-content">
-            <h2>Game Over!</h2>
-            <p>You scored <span data-text="$currentScore">0</span> points.</p>
-            <button class="new-game-btn" data-on-click="@post('new');">
-                New Game
-            </button>
-        </article>
-    </section>
-</main>
-
-<footer>
-    <section>
-        <article>
-            <div>Current</div>
-            <div id="current-score" data-text="$currentScore">0</div>
-        </article>
-        <article>
-            <div>Last</div>
-            <div id="last-score" data-text="$lastScore">0</div>
-        </article>
-        <article>
-            <div>Best</div>
-            <div id="best-score" data-text="$bestScore">0</div>
-        </article>
-    </section>
-</footer>
+    <main id="game-container"
+          data-on-click="@post('click/'+evt.target.id)"
+          data-on-mouseover="@post('mouse/'+evt.target.id)"
+          data-on-mouseleave="@post('mouse/exit')">
+        {{.Game}}
+        <section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
+            <article class="game-over-content">
+                <h2>Game Over!</h2>
+                <p>You scored <span data-text="$currentScore">0</span> points.</p>
+                <button class="new-game-btn" data-on-click="@post('new');">
+                    New Game
+                </button>
+            </article>
+        </section>
+    </main>
+</div>
+<div id="help-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>How to Play Jawbreaker</h2>
+        <p>Jawbreaker is a puzzle game where you remove groups of connected balls of the same color.</p>
+        <p><strong>Rules:</strong></p>
+        <ul>
+            <li>Click on a group of two or more connected balls of the same color to remove them.</li>
+            <li>After removing balls, the remaining balls will fall down to fill empty spaces.</li>
+            <li>If a column becomes empty, columns to the right will shift left to fill the gap.</li>
+            <li>The more balls you remove at once, the higher your score.</li>
+            <li>The game ends when there are no more valid moves.</li>
+            <li>If you clear most of the board, you'll get bonus points!</li>
+        </ul>
+        <p><strong>Scoring:</strong></p>
+        <p>Score = n × (n-1) where n is the number of balls removed.</p>
+        <p>Bonus points are awarded if you finish with fewer than 20 balls remaining.</p>
+    </div>
+</div>
 </body>
 </html>

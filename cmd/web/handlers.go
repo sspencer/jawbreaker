@@ -15,8 +15,11 @@ import (
 //go:embed tmpl/index.gohtml
 var indexHTML []byte
 
-//go:embed tmpl/breaker.gohtml
-var breakerHTML []byte
+//go:embed tmpl/js.gohtml
+var jsHTML []byte
+
+//go:embed tmpl/canvas.gohtml
+var canvasHTML []byte
 
 type Signals struct {
 	Pieces       string `json:"pieces"`
@@ -27,16 +30,17 @@ type Signals struct {
 }
 
 type IndexData struct {
-	LastScore int
-	BestScore int
-	Pieces    string
-	Game      template.HTML
-	Datastar  string
-	Style     string
-	Rows      int
-	Cols      int
-	BlockSize int
-	GapSize   int
+	LastScore  int
+	BestScore  int
+	Pieces     string
+	Game       template.HTML
+	Datastar   string
+	Style      string
+	Rows       int
+	Cols       int
+	BlockSize  int
+	GapSize    int
+	CookieName string
 }
 
 type ScoreData struct {
@@ -44,9 +48,9 @@ type ScoreData struct {
 	BestScore int `json:"bestScore"`
 }
 
-func breakerHandler(w http.ResponseWriter, r *http.Request) {
+func jsHandler(w http.ResponseWriter, r *http.Request) {
 	// Create a template from the embedded HTML
-	tmpl, err := template.New("breaker").Parse(string(breakerHTML))
+	tmpl, err := template.New("js").Parse(string(jsHTML))
 	if err != nil {
 		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -54,13 +58,35 @@ func breakerHandler(w http.ResponseWriter, r *http.Request) {
 
 	g := jawbreaker.NewGame(numRows, numCols)
 	data := IndexData{
-		Style:     fsys.HashName("static/style.css"),
-		Pieces:    g.Board().String(),
-		Game:      template.HTML(gameToHTML(g, nil)),
+		Style:      fsys.HashName("static/style.css"),
+		Pieces:     g.Board().String(),
+		Game:       template.HTML(gameToHTML(g, nil)),
+		Rows:       numRows,
+		Cols:       numCols,
+		BlockSize:  getBlockSize(r),
+		GapSize:    gapSize,
+		CookieName: cookieName,
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func canvasHandler(w http.ResponseWriter, r *http.Request) {
+	// Create a template from the embedded HTML
+	tmpl, err := template.New("canvas").Parse(string(canvasHTML))
+	if err != nil {
+		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := IndexData{
 		Rows:      numRows,
 		Cols:      numCols,
 		BlockSize: getBlockSize(r),
-		GapSize:   gapSize,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -71,6 +97,12 @@ func breakerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	js := r.URL.Query().Has("js")
+	if js {
+		jsHandler(w, r)
+		return
+	}
+
 	g := jawbreaker.NewGame(numRows, numCols)
 	// Default scores
 	scoreData := ScoreData{
@@ -79,7 +111,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Try to read scores from the combined cookie
-	if cookie, err := r.Cookie("scores"); err == nil {
+	if cookie, err := r.Cookie(cookieName); err == nil {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
@@ -139,7 +171,7 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 	if gs.GameOver {
 		signals.LastScore = signals.CurrentScore
 
-		// Update the best score if current score is higher
+		// Update the best score if the current score is higher
 		if signals.CurrentScore > signals.BestScore {
 			signals.BestScore = signals.CurrentScore
 		}
@@ -151,12 +183,10 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		scoresCookie := &http.Cookie{
-			Name:     "scores",
+			Name:     cookieName,
 			Value:    scoreData.serialize(),
 			Path:     "/",
 			Expires:  time.Now().Add(365 * 24 * time.Hour), // 1 year
-			HttpOnly: true,
-			Secure:   true,
 			SameSite: http.SameSiteStrictMode,
 		}
 		http.SetCookie(w, scoresCookie)
@@ -201,7 +231,7 @@ func mouseHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func newGameHandler(w http.ResponseWriter, r *http.Request) {
-	// Read current store to preserve best score
+	// Read the current store to preserve the best score
 	store := &Signals{}
 	if err := datastar.ReadSignals(r, store); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

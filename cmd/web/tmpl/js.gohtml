@@ -18,37 +18,59 @@
     </style>
 </head>
 <body>
-<header></header>
+<div class="container">
+    <div class="sidebar">
+        <div class="title">Jawbreaker</div>
+        <div class="score-container">
+            <div class="score-box">
+                <div class="score-label">Current</div>
+                <div id="current-score" class="score-value" data-text="$currentScore">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Last</div>
+                <div id="last-score" class="score-value" data-text="$lastScore">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Best</div>
+                <div id="best-score" class="score-value" data-text="$bestScore">0</div>
+            </div>
+        </div>
+        <button id="help-btn" class="help-btn">Help</button>
+    </div>
 
-<main id="game-container">
-    {{.Game}}
-    <section class="game-over-overlay" id="game-over-overlay">
-        <article class="game-over-content">
-            <h2>Game Over!</h2>
-            <p>You scored <span id="game-over-score">0</span> points.</p>
-            <button class="new-game-btn">
-                New Game
-            </button>
-        </article>
-    </section>
-</main>
+    <main id="game-container">
+        {{.Game}}
+        <section class="game-over-overlay" id="game-over-overlay">
+            <article class="game-over-content">
+                <h2>Game Over!</h2>
+                <p>You scored <span id="game-over-score">0</span> points.</p>
+                <button class="new-game-btn">
+                    New Game
+                </button>
+            </article>
+        </section>
+    </main>
+</div>
+<div id="help-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>How to Play Jawbreaker</h2>
+        <p>Jawbreaker is a puzzle game where you remove groups of connected balls of the same color.</p>
+        <p><strong>Rules:</strong></p>
+        <ul>
+            <li>Click on a group of two or more connected balls of the same color to remove them.</li>
+            <li>After removing balls, the remaining balls will fall down to fill empty spaces.</li>
+            <li>If a column becomes empty, columns to the right will shift left to fill the gap.</li>
+            <li>The more balls you remove at once, the higher your score.</li>
+            <li>The game ends when there are no more valid moves.</li>
+            <li>If you clear most of the board, you'll get bonus points!</li>
+        </ul>
+        <p><strong>Scoring:</strong></p>
+        <p>Score = n × (n-1) where n is the number of balls removed.</p>
+        <p>Bonus points are awarded if you finish with fewer than 20 balls remaining.</p>
+    </div>
+</div>
 
-<footer>
-    <section>
-        <article>
-            <div>Current</div>
-            <div id="current-score">0</div>
-        </article>
-        <article>
-            <div>Last</div>
-            <div id="last-score">0</div>
-        </article>
-        <article>
-            <div>Best</div>
-            <div id="best-score">0</div>
-        </article>
-    </section>
-</footer>
 <script>
     // Cookie functions
     function getCookie(name) {
@@ -67,11 +89,12 @@
         const date = new Date();
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         const expires = "expires=" + date.toUTCString();
-        document.cookie = name + "=" + value + ";" + expires + ";path=breaker";
+        document.cookie = name + "=" + value + ";" + expires + ";path=/";
     }
 
-    class Breaker {
+    class JB {
         // Piece constants
+        static COOKIE = '{{.CookieName}}';
         static ROWS = {{.Rows}};
         static COLS = {{.Cols}};
         static WHITE = 'w';
@@ -83,20 +106,20 @@
 
         // Color pieces array for random generation
         static COLOR_PIECES = [
-            Breaker.PURPLE,
-            Breaker.BLUE,
-            Breaker.GREEN,
-            Breaker.RED,
-            Breaker.YELLOW
+            JB.PURPLE,
+            JB.BLUE,
+            JB.GREEN,
+            JB.RED,
+            JB.YELLOW
         ];
 
         // Color map for HTML class names
         static COLOR_MAP = new Map([
-            [Breaker.PURPLE, "purple"],
-            [Breaker.BLUE, "blue"],
-            [Breaker.GREEN, "green"],
-            [Breaker.RED, "red"],
-            [Breaker.YELLOW, "yellow"]
+            [JB.PURPLE, "purple"],
+            [JB.BLUE, "blue"],
+            [JB.GREEN, "green"],
+            [JB.RED, "red"],
+            [JB.YELLOW, "yellow"]
         ]);
 
         /**
@@ -110,7 +133,7 @@
             this.hoverList = new Set();
 
             // Read scores cookie
-            const scoresCookie = getCookie('scores');
+            const scoresCookie = getCookie(JB.COOKIE);
             if (scoresCookie) {
                 const [lastScore, bestScore] = scoresCookie.split('|');
                 this.lastScore = parseInt(lastScore, 10) || 0;
@@ -145,6 +168,26 @@
                     e.preventDefault();
                 });
             }
+
+            // Help button and modal
+            const helpBtn = document.getElementById("help-btn");
+            const helpModal = document.getElementById("help-modal");
+            const closeBtn = document.querySelector(".close");
+
+            helpBtn.addEventListener("click", () => {
+                helpModal.style.display = "block";
+            });
+
+            closeBtn.addEventListener("click", () => {
+                helpModal.style.display = "none";
+            });
+
+            window.addEventListener("click", (e) => {
+                if (e.target === helpModal) {
+                    helpModal.style.display = "none";
+                }
+            });
+
         }
 
         /**
@@ -164,9 +207,9 @@
          */
         newBoard() {
             let board = '';
-            for (let i = 0; i < Breaker.ROWS * Breaker.COLS; i++) {
-                const rnd = Math.floor(Math.random() * Breaker.COLOR_PIECES.length);
-                board += Breaker.COLOR_PIECES[rnd];
+            for (let i = 0; i < JB.ROWS * JB.COLS; i++) {
+                const rnd = Math.floor(Math.random() * JB.COLOR_PIECES.length);
+                board += JB.COLOR_PIECES[rnd];
             }
             return board;
         }
@@ -175,7 +218,7 @@
             let htmlString = '';
 
             for (let i = 0; i < this.board.length; i++) {
-                let color = Breaker.COLOR_MAP.get(this.board[i]);
+                let color = JB.COLOR_MAP.get(this.board[i]);
                 let hover = this.hoverList.has(i) ? 'connected' : '';
                 htmlString += `<div id="piece${i}" class="piece ${color} ${hover}"></div>`;
             }
@@ -191,6 +234,7 @@
                 const status = this.move(index);
                 document.getElementById('current-score').innerText = status.score;
                 if (status.gameOver) {
+
                     // Update lastScore and bestScore
                     this.lastScore = this.score;
                     if (this.score > this.bestScore) {
@@ -203,7 +247,7 @@
                     document.getElementById('best-score').innerText = this.bestScore;
 
                     // Save scores to cookie
-                    setCookie('scores', `${this.lastScore}|${this.bestScore}`);
+                    setCookie(JB.COOKIE, `${this.lastScore}|${this.bestScore}`);
 
                     // show game over overlay
                     document.getElementById('game-over-overlay').classList.add('visible');
@@ -266,7 +310,7 @@
             if (gameOver) {
                 let remainingPieces = 0;
                 for (let i = 0; i < this.board.length; i++) {
-                    if (this.board[i] !== Breaker.WHITE) {
+                    if (this.board[i] !== JB.WHITE) {
                         remainingPieces++;
                     }
                 }
@@ -286,7 +330,7 @@
          */
         isGameOver() {
             for (let i = 0; i < this.board.length; i++) {
-                if (this.board[i] === Breaker.WHITE) {
+                if (this.board[i] === JB.WHITE) {
                     continue;
                 }
                 if (this.getConnectedPieces(i).length > 1) {
@@ -334,13 +378,13 @@
             }
 
             const target = this.board[index];
-            if (target === Breaker.WHITE) {
+            if (target === JB.WHITE) {
                 return [];
             }
 
             const connectedIndices = [];
             const stack = [index];
-            const visited = new Array(Breaker.ROWS * Breaker.COLS).fill(false);
+            const visited = new Array(JB.ROWS * JB.COLS).fill(false);
 
             while (stack.length > 0) {
                 const i = stack.pop();
@@ -352,20 +396,20 @@
                 visited[i] = true;
                 connectedIndices.push(i);
 
-                const row = Math.floor(i / Breaker.COLS);
-                const col = i % Breaker.COLS;
+                const row = Math.floor(i / JB.COLS);
+                const col = i % JB.COLS;
 
                 // Check all four adjacent positions (up, down, left, right)
                 if (row > 0) {
-                    stack.push(i - Breaker.COLS); // Up
+                    stack.push(i - JB.COLS); // Up
                 }
-                if (row < Breaker.ROWS - 1) {
-                    stack.push(i + Breaker.COLS); // Down
+                if (row < JB.ROWS - 1) {
+                    stack.push(i + JB.COLS); // Down
                 }
                 if (col > 0) {
                     stack.push(i - 1); // Left
                 }
-                if (col < Breaker.COLS - 1) {
+                if (col < JB.COLS - 1) {
                     stack.push(i + 1); // Right
                 }
             }
@@ -392,7 +436,7 @@
             const boardArray = this.board.split('');
 
             for (const i of connectedPieces) {
-                boardArray[i] = Breaker.WHITE;
+                boardArray[i] = JB.WHITE;
             }
 
             this.board = boardArray.join('');
@@ -405,22 +449,22 @@
         applyGravityAndShiftRight() {
             // Convert board to 2D array for easier manipulation
             let boardArray = [];
-            for (let row = 0; row < Breaker.ROWS; row++) {
+            for (let row = 0; row < JB.ROWS; row++) {
                 const rowArray = [];
-                for (let col = 0; col < Breaker.COLS; col++) {
-                    rowArray.push(this.board[row * Breaker.COLS + col]);
+                for (let col = 0; col < JB.COLS; col++) {
+                    rowArray.push(this.board[row * JB.COLS + col]);
                 }
                 boardArray.push(rowArray);
             }
 
             // Gravity Phase: shift non-'w' characters down in each column
-            for (let col = 0; col < Breaker.COLS; col++) {
-                let writeRow = Breaker.ROWS - 1;
-                for (let row = Breaker.ROWS - 1; row >= 0; row--) {
-                    if (boardArray[row][col] !== Breaker.WHITE) {
+            for (let col = 0; col < JB.COLS; col++) {
+                let writeRow = JB.ROWS - 1;
+                for (let row = JB.ROWS - 1; row >= 0; row--) {
+                    if (boardArray[row][col] !== JB.WHITE) {
                         boardArray[writeRow][col] = boardArray[row][col];
                         if (writeRow !== row) {
-                            boardArray[row][col] = Breaker.WHITE;
+                            boardArray[row][col] = JB.WHITE;
                         }
                         writeRow--;
                     }
@@ -428,11 +472,11 @@
             }
 
             // Right Shift Phase: move non-empty columns to the right
-            let writeCol = Breaker.COLS - 1;
-            for (let col = Breaker.COLS - 1; col >= 0; col--) {
+            let writeCol = JB.COLS - 1;
+            for (let col = JB.COLS - 1; col >= 0; col--) {
                 let isEmpty = true;
-                for (let row = 0; row < Breaker.ROWS; row++) {
-                    if (boardArray[row][col] !== Breaker.WHITE) {
+                for (let row = 0; row < JB.ROWS; row++) {
+                    if (boardArray[row][col] !== JB.WHITE) {
                         isEmpty = false;
                         break;
                     }
@@ -441,9 +485,9 @@
                 if (!isEmpty) {
                     if (writeCol !== col) {
                         // Copy column to new position
-                        for (let row = 0; row < Breaker.ROWS; row++) {
+                        for (let row = 0; row < JB.ROWS; row++) {
                             boardArray[row][writeCol] = boardArray[row][col];
-                            boardArray[row][col] = Breaker.WHITE;
+                            boardArray[row][col] = JB.WHITE;
                         }
                     }
                     writeCol--;
@@ -452,8 +496,8 @@
 
             // Convert 2D array back to string
             let newBoard = '';
-            for (let row = 0; row < Breaker.ROWS; row++) {
-                for (let col = 0; col < Breaker.COLS; col++) {
+            for (let row = 0; row < JB.ROWS; row++) {
+                for (let col = 0; col < JB.COLS; col++) {
                     newBoard += boardArray[row][col];
                 }
             }
@@ -463,7 +507,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        new Breaker();
+        new JB();
     });
 </script>
 </body>
