@@ -12,6 +12,10 @@ import (
 
 const (
 	piecePrefix = "piece"
+	gameSize    = `#game {
+    grid-template-columns: repeat(%d, %dpx);
+    grid-template-rows: repeat(%d, %dpx);
+    gap: %dpx;}`
 )
 
 // extractNumberFromPieceId checks if a string starts with "piece" followed by
@@ -95,6 +99,10 @@ func getBlockSize(r *http.Request) int {
 	}
 
 	return blockSize
+}
+
+func getGameSize(rows, cols, blockSize, gapSize int) string {
+	return fmt.Sprintf(gameSize, cols, blockSize, rows, blockSize, gapSize)
 }
 
 // isMobile checks if the request is coming from a mobile device

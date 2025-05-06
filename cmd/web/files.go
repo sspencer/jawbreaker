@@ -1,23 +1,23 @@
 package main
 
-import _ "embed"
-
-var (
-	//go:embed tmpl/index.gohtml
-	indexHTML []byte
-
-	//go:embed tmpl/js.gohtml
-	jsHTML []byte
-
-	//go:embed tmpl/canvas.gohtml
-	canvasHTML []byte
-
-	//go:embed tmpl/gameover.html
-	gameoverHTML []byte
-
-	//go:embed tmpl/help.html
-	helpHTML []byte
-
-	//go:embed tmpl/sidebar.html
-	sidebarHTML []byte
+import (
+	"embed"
+	"html/template"
 )
+
+//go:embed tmpl/*.html
+var templateFS embed.FS
+
+var tmpl *template.Template
+
+func init() {
+	// Parse all embedded templates once at startup
+	tmpl = template.Must(template.ParseFS(templateFS,
+		"tmpl/canvas.html",
+		"tmpl/gameover.html",
+		"tmpl/help.html",
+		"tmpl/index.html",
+		"tmpl/js.html",
+		"tmpl/sidebar.html",
+	))
+}

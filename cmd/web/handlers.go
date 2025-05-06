@@ -20,21 +20,21 @@ type Signals struct {
 }
 
 type IndexData struct {
-	LastScore  int
-	BestScore  int
-	Pieces     string
-	Game       template.HTML
-	Datastar   string
-	Style      string
-	Rows       int
-	Cols       int
-	BlockSize  int
-	GapSize    int
-	CookieName string
-	TitleTime  int
-	GameOver   template.HTML
-	Help       template.HTML
-	Sidebar    template.HTML
+	LastScore    int
+	BestScore    int
+	Pieces       string
+	Game         template.HTML
+	GameSize     template.CSS
+	DS           bool
+	DatastarJS   string
+	JawbreakerJS string
+	StyleCSS     string
+	Rows         int
+	Cols         int
+	BlockSize    int
+	GapSize      int
+	CookieName   string
+	TitleTime    int
 }
 
 type ScoreData struct {
@@ -43,106 +43,70 @@ type ScoreData struct {
 }
 
 func jsHandler(w http.ResponseWriter, r *http.Request) {
-	// Create a template from the embedded HTML
-	tmpl, err := template.New("js").Parse(string(jsHTML))
-	if err != nil {
-		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	g := jawbreaker.NewGame(numRows, numCols)
+
+	gameSize := getGameSize(numRows, numCols, getBlockSize(r), gapSize)
 	data := IndexData{
-		Style:      fsys.HashName("static/style.css"),
-		Pieces:     g.Board().String(),
-		Game:       template.HTML(gameToHTML(g, nil)),
-		Rows:       numRows,
-		Cols:       numCols,
-		BlockSize:  getBlockSize(r),
-		GapSize:    gapSize,
-		CookieName: cookieName,
-		TitleTime:  titleTime,
-		GameOver:   template.HTML(gameoverHTML),
-		Help:       template.HTML(helpHTML),
-		Sidebar:    template.HTML(sidebarHTML),
+		JawbreakerJS: fsys.HashName("static/jawbreaker.js"),
+		StyleCSS:     fsys.HashName("static/style.css"),
+		Pieces:       g.Board().String(),
+		Game:         template.HTML(gameToHTML(g, nil)),
+		Rows:         numRows,
+		Cols:         numCols,
+		GameSize:     template.CSS(gameSize),
+		CookieName:   cookieName,
+		TitleTime:    titleTime,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	if err := tmpl.Execute(w, data); err != nil {
+	err := tmpl.ExecuteTemplate(w, "js", data)
+	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func canvasHandler(w http.ResponseWriter, r *http.Request) {
-	// Create a template from the embedded HTML
-	tmpl, err := template.New("canvas").Parse(string(canvasHTML))
-	if err != nil {
-		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	data := IndexData{
 		Rows:      numRows,
 		Cols:      numCols,
 		BlockSize: getBlockSize(r),
-		GameOver:  template.HTML(gameoverHTML),
-		Help:      template.HTML(helpHTML),
-		Sidebar:   template.HTML(sidebarHTML),
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	if err := tmpl.Execute(w, data); err != nil {
+	err := tmpl.ExecuteTemplate(w, "canvas", data)
+	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	js := r.URL.Query().Has("js")
-	if js {
-		jsHandler(w, r)
-		return
-	}
-
 	g := jawbreaker.NewGame(numRows, numCols)
-	// Default scores
-	scoreData := ScoreData{
-		LastScore: 0,
-		BestScore: 0,
-	}
-
-	// Try to read scores from the combined cookie
+	var scoreData ScoreData
 	if cookie, err := r.Cookie(cookieName); err == nil {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	// Create a template from the embedded HTML
-	tmpl, err := template.New("index").Parse(string(indexHTML))
-	if err != nil {
-		http.Error(w, "Error parsing template: "+err.Error(), http.StatusInternalServerError)
-		return
+	gameSize := getGameSize(numRows, numCols, getBlockSize(r), gapSize)
+
+	data := IndexData{
+		DS:         true,
+		DatastarJS: fsys.HashName("static/datastar.js"),
+		StyleCSS:   fsys.HashName("static/style.css"),
+		GameSize:   template.CSS(gameSize),
+		Game:       template.HTML(gameToHTML(g, nil)),
+		Pieces:     g.Board().String(),
+		LastScore:  scoreData.LastScore,
+		BestScore:  scoreData.BestScore,
+		Rows:       numRows,
+		Cols:       numCols,
+		TitleTime:  titleTime,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-
-	data := IndexData{
-		Datastar:  fsys.HashName("static/datastar.js"),
-		Style:     fsys.HashName("static/style.css"),
-		Game:      template.HTML(gameToHTML(g, nil)),
-		Pieces:    g.Board().String(),
-		LastScore: scoreData.LastScore,
-		BestScore: scoreData.BestScore,
-		Rows:      numRows,
-		Cols:      numCols,
-		BlockSize: getBlockSize(r),
-		GapSize:   gapSize,
-		TitleTime: titleTime,
-		GameOver:  template.HTML(gameoverHTML),
-		Help:      template.HTML(helpHTML),
-		Sidebar:   template.HTML(sidebarHTML),
-	}
-
-	if err := tmpl.Execute(w, data); err != nil {
+	err := tmpl.ExecuteTemplate(w, "index", data)
+	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -1,4 +1,5 @@
-<!doctype html>
+{{ define "canvas" }}
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <title>Jawbreaker</title>
@@ -255,20 +256,15 @@
   </head>
   <body>
     <div class="container">
-      {{.Sidebar}}
+      {{ template "sidebar" . }}
 
       <div id="game-container">
         <canvas id="game-canvas"></canvas>
-        {{.GameOver}}
+        {{ template "gameover" . }}
       </div>
     </div>
 
-    <div id="help-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        {{.Help}}
-      </div>
-    </div>
+    {{ template "help" . }}
 
     <script>
       function getCookie(name) {
@@ -812,3 +808,4 @@
     </script>
   </body>
 </html>
+{{ end }}

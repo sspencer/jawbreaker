@@ -1,3 +1,4 @@
+{{ define "index" }}
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,15 +10,11 @@
     <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
     <meta name="rating" content="Safe For Kids"/>
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
-    <link rel="stylesheet" href="{{.Style}}"/>
+    <link rel="stylesheet" href="{{.StyleCSS}}"/>
     <style>
-        #game {
-            grid-template-columns: repeat({{.Cols}}, {{.BlockSize}}px);
-            grid-template-rows: repeat({{.Rows}}, {{.BlockSize}}px);
-            gap: {{.GapSize}}px;
-        }
+        {{.GameSize}}
     </style>
-    <script type="module" src="{{.Datastar}}"></script>
+    <script type="module" src="{{.DatastarJS}}"></script>
 </head>
 <body>
 <header id="page-header" class="page-header"
@@ -27,32 +24,18 @@
 <div class="container"
      data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
 >
-    {{.Sidebar}}
+    {{ template "sidebar" . }}
     <main id="game-container"
           data-on-click="@post('click/'+evt.target.id)"
           data-on-mouseover="@post('mouse/'+evt.target.id)"
           data-on-mouseleave="@post('mouse/exit')">
         {{.Game}}
-        {{.GameOver}}
+        {{ template "gameover" . }}
     </main>
 </div>
 
-<div id="help-modal" class="modal" data-show="$help" data-on-click="$help=false" style="display: none;">
-    <div class="modal-content">
-        <span class="close" data-on-click="$help=false">&times;</span>
-        {{.Help}}
-    </div>
-</div>
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        // Title fade out after 20 seconds
-        setTimeout(() => {
-            const header = document.getElementById('page-header');
-            if (header) {
-                header.classList.add('fade-out');
-            }
-        }, {{.TitleTime}});
-    });
-</script>
+{{ template "help" . }}
+
 </body>
 </html>
+{{ end }}
