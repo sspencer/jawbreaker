@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "embed"
 	"html/template"
 	"net/http"
 	"time"
@@ -11,15 +10,6 @@ import (
 
 	"github.com/sspencer/jawbreaker"
 )
-
-//go:embed tmpl/index.gohtml
-var indexHTML []byte
-
-//go:embed tmpl/js.gohtml
-var jsHTML []byte
-
-//go:embed tmpl/canvas.gohtml
-var canvasHTML []byte
 
 type Signals struct {
 	Pieces       string `json:"pieces"`
@@ -42,6 +32,9 @@ type IndexData struct {
 	GapSize    int
 	CookieName string
 	TitleTime  int
+	GameOver   template.HTML
+	Help       template.HTML
+	Sidebar    template.HTML
 }
 
 type ScoreData struct {
@@ -68,6 +61,9 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 		GapSize:    gapSize,
 		CookieName: cookieName,
 		TitleTime:  titleTime,
+		GameOver:   template.HTML(gameoverHTML),
+		Help:       template.HTML(helpHTML),
+		Sidebar:    template.HTML(sidebarHTML),
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -89,6 +85,9 @@ func canvasHandler(w http.ResponseWriter, r *http.Request) {
 		Rows:      numRows,
 		Cols:      numCols,
 		BlockSize: getBlockSize(r),
+		GameOver:  template.HTML(gameoverHTML),
+		Help:      template.HTML(helpHTML),
+		Sidebar:   template.HTML(sidebarHTML),
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -138,6 +137,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		BlockSize: getBlockSize(r),
 		GapSize:   gapSize,
 		TitleTime: titleTime,
+		GameOver:  template.HTML(gameoverHTML),
+		Help:      template.HTML(helpHTML),
+		Sidebar:   template.HTML(sidebarHTML),
 	}
 
 	if err := tmpl.Execute(w, data); err != nil {

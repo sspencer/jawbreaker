@@ -1,10 +1,14 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>Jawbreaker - Canvas Game</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Canvas Jawbreaker Game, also called Same Game" />
+    <title>Jawbreaker</title>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Jawbreaker Game, also called Same Game"/>
+    <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
+    <meta name="rating" content="Safe For Kids"/>
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <style>
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -251,54 +255,18 @@
   </head>
   <body>
     <div class="container">
-      <div class="sidebar">
-        <div class="title">Jawbreaker</div>
-        <div class="score-container">
-          <div class="score-box">
-            <div class="score-label">Current</div>
-            <div id="current-score" class="score-value">0</div>
-          </div>
-          <div class="score-box">
-            <div class="score-label">Last</div>
-            <div id="last-score" class="score-value">0</div>
-          </div>
-          <div class="score-box">
-            <div class="score-label">Best</div>
-            <div id="best-score" class="score-value">0</div>
-          </div>
-        </div>
-        <button id="help-btn" class="help-btn">Help</button>
-      </div>
+      {{.Sidebar}}
 
       <div id="game-container">
         <canvas id="game-canvas"></canvas>
-        <div class="game-over-overlay" id="game-over-overlay">
-          <div class="game-over-content">
-            <h2>Game Over!</h2>
-            <p>You scored <span id="game-over-score">0</span> points.</p>
-            <button class="new-game-btn">New Game</button>
-          </div>
-        </div>
+        {{.GameOver}}
       </div>
     </div>
 
     <div id="help-modal" class="modal">
       <div class="modal-content">
         <span class="close">&times;</span>
-        <h2>How to Play Jawbreaker</h2>
-        <p>Jawbreaker is a puzzle game where you remove groups of connected balls of the same color.</p>
-        <p><strong>Rules:</strong></p>
-        <ul>
-          <li>Click on a group of two or more connected balls of the same color to remove them.</li>
-          <li>After removing balls, the remaining balls will fall down to fill empty spaces.</li>
-          <li>If a column becomes empty, columns to the right will shift left to fill the gap.</li>
-          <li>The more balls you remove at once, the higher your score.</li>
-          <li>The game ends when there are no more valid moves.</li>
-          <li>If you clear most of the board, you'll get bonus points!</li>
-        </ul>
-        <p><strong>Scoring:</strong></p>
-        <p>Score = n × (n-1) where n is the number of balls removed.</p>
-        <p>Bonus points are awarded if you finish with fewer than 20 balls remaining.</p>
+        {{.Help}}
       </div>
     </div>
 

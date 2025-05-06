@@ -1,0 +1,9 @@
+<section class="game-over-overlay" id="game-over-overlay" data-class="{'visible': $gameOver}">
+    <article class="game-over-content">
+        <h2>Game Over!</h2>
+        <p>You scored <span data-text="$currentScore">0</span> points.</p>
+        <button class="new-game-btn" data-on-click="@post('new');">
+            New Game
+        </button>
+    </article>
+</section>
