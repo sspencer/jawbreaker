@@ -6,10 +6,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content="Jawbreaker Game, also called Same Game"/>
-    <meta
-            name="keywords"
-            content="jawbreaker, same game, online games, free games"
-    />
+    <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
     <meta name="rating" content="Safe For Kids"/>
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <link rel="stylesheet" href="{{.Style}}"/>
@@ -24,11 +21,11 @@
 </head>
 <body>
 <header id="page-header" class="page-header"
-    data-on-load__delay.{{.TitleTime}}ms="document.getElementById('page-header').classList.add('fade-out')">
+        data-on-load__delay.{{.TitleTime}}ms="document.getElementById('page-header').classList.add('fade-out')">
     <h1>Jawbreaker</h1>
 </header>
 <div class="container"
-     data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
+     data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
 >
     <div class="sidebar">
         <div class="score-container">
@@ -45,7 +42,7 @@
                 <div id="best-score" class="score-value" data-text="$bestScore">0</div>
             </div>
         </div>
-        <button id="help-btn" class="help-btn">Help</button>
+        <button id="help-btn" class="help-btn" data-on-click="$help=true">Help</button>
     </div>
 
     <main id="game-container"
@@ -64,9 +61,10 @@
         </section>
     </main>
 </div>
-<div id="help-modal" class="modal">
+
+<div id="help-modal" class="modal" data-show="$help" data-on-click="$help=false" style="display: none;">
     <div class="modal-content">
-        <span class="close">&times;</span>
+        <span class="close" data-on-click="$help=false">&times;</span>
         <h2>How to Play Jawbreaker</h2>
         <p>Jawbreaker is a puzzle game where you remove groups of connected balls of the same color.</p>
         <p><strong>Rules:</strong></p>
