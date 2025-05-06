@@ -2,13 +2,17 @@ package main
 
 import (
 	"compress/gzip" // Import the gzip package
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andybalholm/brotli"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // encodingSpec represents an Accept-Encoding header value with its quality factor.
@@ -200,4 +204,40 @@ func (w *compressResponseWriter) Header() http.Header {
 // WriteHeader sends an HTTP response header with the provided status code.
 func (w *compressResponseWriter) WriteHeader(statusCode int) {
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+// slogMiddleware creates a Chi middleware that logs HTTP requests using slog.
+func slogMiddleware(logger *slog.Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Start time for measuring request duration
+			start := time.Now()
+
+			// Use Chi's middleware.RequestID to get or set a request ID
+			reqID := middleware.GetReqID(r.Context())
+			if reqID == "" {
+				reqID = fmt.Sprintf("%d", time.Now().UnixNano())
+			}
+
+			// Wrap the response writer to capture status code and response size
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+			// Call the next handler
+			next.ServeHTTP(ww, r)
+
+			// Calculate duration
+			duration := time.Since(start)
+
+			// Log the request details in structured format
+			logger.Info("HTTP request",
+				slog.String("method", r.Method),
+				slog.String("url", r.URL.String()),
+				slog.String("remote_addr", r.RemoteAddr),
+				slog.String("request_id", reqID),
+				slog.Int("status", ww.Status()),
+				slog.Int("bytes", ww.BytesWritten()),
+				slog.Duration("duration", duration),
+			)
+		})
+	}
 }

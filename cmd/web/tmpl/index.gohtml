@@ -23,11 +23,14 @@
     <script type="module" src="{{.Datastar}}"></script>
 </head>
 <body>
+<header id="page-header" class="page-header"
+    data-on-load__delay.{{.TitleTime}}ms="document.getElementById('page-header').classList.add('fade-out')">
+    <h1>Jawbreaker</h1>
+</header>
 <div class="container"
      data-signals="{gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
 >
     <div class="sidebar">
-        <div class="title">Jawbreaker</div>
         <div class="score-container">
             <div class="score-box">
                 <div class="score-label">Current</div>
@@ -80,5 +83,16 @@
         <p>Bonus points are awarded if you finish with fewer than 20 balls remaining.</p>
     </div>
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Title fade out after 20 seconds
+        setTimeout(() => {
+            const header = document.getElementById('page-header');
+            if (header) {
+                header.classList.add('fade-out');
+            }
+        }, {{.TitleTime}});
+    });
+</script>
 </body>
 </html>

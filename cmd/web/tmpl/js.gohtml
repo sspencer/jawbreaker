@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Jawbreaker - Javascript Game</title>
+    <title>Jawbreaker</title>
     <meta charset="UTF-8"/>
     <meta http-equiv=Content-Type content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -18,9 +18,11 @@
     </style>
 </head>
 <body>
+<header id="page-header" class="page-header">
+    <h1>Jawbreaker</h1>
+</header>
 <div class="container">
     <div class="sidebar">
-        <div class="title">Jawbreaker</div>
         <div class="score-container">
             <div class="score-box">
                 <div class="score-label">Current</div>
@@ -508,6 +510,14 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         new JB();
+
+        // Title fade out after 20 seconds
+        setTimeout(() => {
+            const header = document.getElementById('page-header');
+            if (header) {
+                header.classList.add('fade-out');
+            }
+        }, {{.TitleTime}});
     });
 </script>
 </body>

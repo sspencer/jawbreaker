@@ -41,6 +41,7 @@ type IndexData struct {
 	BlockSize  int
 	GapSize    int
 	CookieName string
+	TitleTime  int
 }
 
 type ScoreData struct {
@@ -66,6 +67,7 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 		BlockSize:  getBlockSize(r),
 		GapSize:    gapSize,
 		CookieName: cookieName,
+		TitleTime:  titleTime,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -135,6 +137,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		Cols:      numCols,
 		BlockSize: getBlockSize(r),
 		GapSize:   gapSize,
+		TitleTime: titleTime,
 	}
 
 	if err := tmpl.Execute(w, data); err != nil {

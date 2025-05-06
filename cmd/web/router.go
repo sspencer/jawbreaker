@@ -2,7 +2,7 @@ package main
 
 import (
 	"embed"
-	"log"
+	"log/slog"
 
 	"github.com/benbjohnson/hashfs"
 	"github.com/go-chi/chi/v5"
@@ -18,7 +18,7 @@ func newRouter() *chi.Mux {
 
 	// Built-in middleware
 	r.Use(middleware.RequestID)
-	r.Use(middleware.Logger)
+	r.Use(slogMiddleware(slog.Default()))
 	r.Use(middleware.Recoverer)
 
 	// Brotli compression middleware
@@ -32,7 +32,7 @@ func newRouter() *chi.Mux {
 	r.Post("/mouse/{id}", mouseHandler)
 	r.Post("/new", newGameHandler)
 
-	log.Println("Serving static files from the filesystem")
+	slog.Info("Serving static files", "source", "filesystem")
 	r.Handle("/static/*", hashfs.FileServer(fsys))
 
 	return r
