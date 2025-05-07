@@ -11,56 +11,77 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	port        = 8000
-	numRows     = 12
-	numCols     = 12
-	block       = 40
-	border      = 6
-	mobileBlock = 30
-	gap         = 1
-	cookieName  = "jawbreaker"
+const (
+	defPort        = 8000
+	defNumRows     = 12
+	defNumCols     = 12
+	defBlock       = 40
+	defBorder      = 6
+	defMobileBlock = 30
+	defGap         = 1
+	defCookieName  = "jawbreaker"
 )
+
+type config struct {
+	port        int
+	numRows     int
+	numCols     int
+	block       int
+	mobileBlock int
+	border      int
+	gap         int
+	cookieName  string
+}
+type application struct {
+	cfg config
+}
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	loadEnv()
-	slog.Info("Starting server", "port", port)
+	cfg := config{}
+	loadEnv(&cfg)
 
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), newRouter())
+	app := application{
+		cfg: cfg,
+	}
+
+	slog.Info("Starting server", "port", cfg.port)
+
+	err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.port), app.routes())
 	if err != nil {
 		logger.Error("Server failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func loadEnv() {
+func loadEnv(cfg *config) {
 	err := godotenv.Load()
 
 	if err == nil {
 		slog.Info("Environment configuration loaded", "source", ".env file")
 	}
-	port = envInt("PORT", port)
-	numRows = envInt("JB_ROWS", numRows)
-	numCols = envInt("JB_COLS", numCols)
-	block = envInt("JB_BLOCK", block)
-	border = envInt("JB_BORDER", border)
-	mobileBlock = envInt("JB_MOBILE_BLOCK", mobileBlock)
-	gap = envInt("JB_GAP", gap)
-	cookieName = envString("JB_COOKIE_NAME", cookieName)
+
+	cfg.port = envInt("PORT", defPort)
+	cfg.numRows = envInt("JB_ROWS", defNumRows)
+	cfg.numCols = envInt("JB_COLS", defNumCols)
+	cfg.block = envInt("JB_BLOCK", defBlock)
+	cfg.border = envInt("JB_BORDER", defBorder)
+	cfg.mobileBlock = envInt("JB_MOBILE_BLOCK", defMobileBlock)
+	cfg.gap = envInt("JB_GAP", defGap)
+	cfg.cookieName = envString("JB_COOKIE_NAME", defCookieName)
 
 	// Log all configuration values as structured data
 	slog.Info("Configuration values",
-		"port", port,
-		"rows", numRows,
-		"cols", numCols,
-		"block", block,
-		"mobile", mobileBlock,
-		"border", border,
-		"gap", gap,
-		"cookie", cookieName)
+		"port", cfg.port,
+		"rows", cfg.numRows,
+		"cols", cfg.numCols,
+		"block", cfg.block,
+		"mobile", cfg.mobileBlock,
+		"border", cfg.border,
+		"gap", cfg.gap,
+		"cookie", cfg.cookieName)
 }
 
 func envString(key, defValue string) string {

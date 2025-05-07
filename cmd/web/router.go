@@ -13,7 +13,7 @@ import (
 var staticFiles embed.FS
 var fsys = hashfs.NewFS(staticFiles)
 
-func newRouter() *chi.Mux {
+func (app *application) routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	// Built-in middleware
@@ -25,11 +25,11 @@ func newRouter() *chi.Mux {
 	r.Use(CompressionMiddleware)
 
 	// Routes
-	r.Get("/", indexHandler)
-	r.Get("/js", jsHandler)
-	r.Post("/click/{id}", clickHandler)
-	r.Post("/mouse/{id}", mouseHandler)
-	r.Post("/new", newGameHandler)
+	r.Get("/", app.indexHandler)
+	r.Get("/js", app.jsHandler)
+	r.Post("/click/{id}", app.clickHandler)
+	r.Post("/mouse/{id}", app.mouseHandler)
+	r.Post("/new", app.newGameHandler)
 
 	slog.Info("Serving static files", "source", "filesystem")
 	r.Handle("/static/*", hashfs.FileServer(fsys))

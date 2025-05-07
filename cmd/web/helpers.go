@@ -93,14 +93,6 @@ func deserializeScoreData(s *ScoreData, data string) {
 	s.BestScore = bestScore
 }
 
-func getBlockSize(r *http.Request) int {
-	if isMobile(r) {
-		return mobileBlock
-	}
-
-	return block
-}
-
 func getGameSize(rows, cols, blockSize, gapSize int) string {
 	return fmt.Sprintf(gameSize, cols, blockSize, rows, blockSize, gapSize)
 }

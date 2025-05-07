@@ -145,7 +145,7 @@ class JB {
     }
 
     getBoardIndexFromCoordinates(x, y) {
-        // Adjust coordinates to account for border
+        // Adjust coordinates to account for a border
         const adjustedX = x - this.border;
         const adjustedY = y - this.border;
 
@@ -308,7 +308,7 @@ class JB {
                         const hoverX = x - 1;
                         const hoverY = y - 1;
 
-                        // Draw rounded rectangle path for hover effect
+                        // Draw a rounded rectangle path for the hover effect
                         this.ctx.moveTo(hoverX + cornerRadius, hoverY);
                         this.ctx.lineTo(hoverX + hoverSize - cornerRadius, hoverY);
                         this.ctx.arcTo(hoverX + hoverSize, hoverY, hoverX + hoverSize, hoverY + cornerRadius, cornerRadius);
@@ -335,12 +335,7 @@ class JB {
         const G = (num >> 8 & 0x00FF) + amt;
         const B = (num & 0x0000FF) + amt;
 
-        return "#" + (
-            0x1000000 +
-            (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-            (B < 255 ? B < 1 ? 0 : B : 255)
-        ).toString(16).slice(1);
+        return this.rgbString(R, G, B);
     }
 
     darkenColor(color, percent) {
@@ -350,6 +345,10 @@ class JB {
         const G = (num >> 8 & 0x00FF) - amt;
         const B = (num & 0x0000FF) - amt;
 
+        return this.rgbString(R, G, B);
+    }
+
+    rgbString(R, G, B) {
         return "#" + (
             0x1000000 +
             (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +

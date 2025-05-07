@@ -42,16 +42,20 @@ type ScoreData struct {
 	BestScore int `json:"bestScore"`
 }
 
-func jsHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) jsHandler(w http.ResponseWriter, r *http.Request) {
+	block := app.cfg.block
+	if isMobile(r) {
+		block = app.cfg.mobileBlock
+	}
 	data := IndexData{
 		JawbreakerJS: fsys.HashName("static/jawbreaker.js"),
 		StyleCSS:     fsys.HashName("static/style.css"),
-		Rows:         numRows,
-		Cols:         numCols,
-		Block:        getBlockSize(r),
-		Gap:          gap,
-		Border:       border,
-		CookieName:   cookieName,
+		Rows:         app.cfg.numRows,
+		Cols:         app.cfg.numCols,
+		Block:        block,
+		Gap:          app.cfg.gap,
+		Border:       app.cfg.border,
+		CookieName:   app.cfg.cookieName,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -62,14 +66,19 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	g := jawbreaker.NewGame(numRows, numCols)
+func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
+	g := jawbreaker.NewGame(app.cfg.numRows, app.cfg.numCols)
 	var scoreData ScoreData
-	if cookie, err := r.Cookie(cookieName); err == nil {
+	if cookie, err := r.Cookie(app.cfg.cookieName); err == nil {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	gameSize := getGameSize(numRows, numCols, getBlockSize(r), gap*2)
+	block := app.cfg.block
+	if isMobile(r) {
+		block = app.cfg.mobileBlock
+	}
+
+	gameSize := getGameSize(app.cfg.numRows, app.cfg.numCols, block, app.cfg.gap*2)
 
 	data := IndexData{
 		DS:         true,
@@ -80,8 +89,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		Pieces:     g.Board().String(),
 		LastScore:  scoreData.LastScore,
 		BestScore:  scoreData.BestScore,
-		Rows:       numRows,
-		Cols:       numCols,
+		Rows:       app.cfg.numRows,
+		Cols:       app.cfg.numCols,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -92,7 +101,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func clickHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) clickHandler(w http.ResponseWriter, r *http.Request) {
 	index := extractNumberFromPieceId(chi.URLParam(r, "id"))
 	if index < 0 {
 		w.WriteHeader(http.StatusNoContent)
@@ -105,7 +114,7 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := jawbreaker.RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
+	g, err := jawbreaker.RestoreGame(signals.Pieces, app.cfg.numRows, app.cfg.numCols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -132,7 +141,7 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		scoresCookie := &http.Cookie{
-			Name:     cookieName,
+			Name:     app.cfg.cookieName,
 			Value:    scoreData.serialize(),
 			Path:     "/",
 			Expires:  time.Now().Add(365 * 24 * time.Hour), // 1 year
@@ -155,7 +164,7 @@ func clickHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func mouseHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) mouseHandler(w http.ResponseWriter, r *http.Request) {
 	index := extractNumberFromPieceId(chi.URLParam(r, "id"))
 
 	signals := &Signals{}
@@ -164,7 +173,7 @@ func mouseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := jawbreaker.RestoreGame(signals.Pieces, numRows, numCols, signals.CurrentScore)
+	g, err := jawbreaker.RestoreGame(signals.Pieces, app.cfg.numRows, app.cfg.numCols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -179,7 +188,7 @@ func mouseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newGameHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the current store to preserve the best score
 	store := &Signals{}
 	if err := datastar.ReadSignals(r, store); err != nil {
@@ -187,7 +196,7 @@ func newGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g := jawbreaker.NewGame(numRows, numCols)
+	g := jawbreaker.NewGame(app.cfg.numRows, app.cfg.numCols)
 
 	sse := datastar.NewSSE(w, r)
 
