@@ -95,10 +95,10 @@ func deserializeScoreData(s *ScoreData, data string) {
 
 func getBlockSize(r *http.Request) int {
 	if isMobile(r) {
-		return mobileBlockSize
+		return mobileBlock
 	}
 
-	return blockSize
+	return block
 }
 
 func getGameSize(rows, cols, blockSize, gapSize int) string {

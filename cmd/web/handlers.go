@@ -31,10 +31,10 @@ type IndexData struct {
 	StyleCSS     string
 	Rows         int
 	Cols         int
-	BlockSize    int
-	GapSize      int
+	Block        int
+	Border       int
+	Gap          int
 	CookieName   string
-	TitleTime    int
 }
 
 type ScoreData struct {
@@ -43,38 +43,19 @@ type ScoreData struct {
 }
 
 func jsHandler(w http.ResponseWriter, r *http.Request) {
-	g := jawbreaker.NewGame(numRows, numCols)
-
-	gameSize := getGameSize(numRows, numCols, getBlockSize(r), gapSize)
 	data := IndexData{
 		JawbreakerJS: fsys.HashName("static/jawbreaker.js"),
 		StyleCSS:     fsys.HashName("static/style.css"),
-		Pieces:       g.Board().String(),
-		Game:         template.HTML(gameToHTML(g, nil)),
 		Rows:         numRows,
 		Cols:         numCols,
-		GameSize:     template.CSS(gameSize),
+		Block:        getBlockSize(r),
+		Gap:          gap,
+		Border:       border,
 		CookieName:   cookieName,
-		TitleTime:    titleTime,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
 	err := tmpl.ExecuteTemplate(w, "js", data)
-	if err != nil {
-		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func canvasHandler(w http.ResponseWriter, r *http.Request) {
-	data := IndexData{
-		Rows:      numRows,
-		Cols:      numCols,
-		BlockSize: getBlockSize(r),
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	err := tmpl.ExecuteTemplate(w, "canvas", data)
 	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -88,7 +69,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	gameSize := getGameSize(numRows, numCols, getBlockSize(r), gapSize)
+	gameSize := getGameSize(numRows, numCols, getBlockSize(r), gap*2)
 
 	data := IndexData{
 		DS:         true,
@@ -101,7 +82,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		BestScore:  scoreData.BestScore,
 		Rows:       numRows,
 		Cols:       numCols,
-		TitleTime:  titleTime,
 	}
 
 	w.Header().Set("Content-Type", "text/html")

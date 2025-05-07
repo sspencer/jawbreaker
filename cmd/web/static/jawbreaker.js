@@ -18,25 +18,40 @@ class JB {
 
     // Color map for HTML class names
     static COLOR_MAP = new Map([
-        [JB.PURPLE, "purple"],
-        [JB.BLUE, "blue"],
-        [JB.GREEN, "green"],
-        [JB.RED, "red"],
-        [JB.YELLOW, "yellow"]
+        [JB.PURPLE, "#8a2be2"],
+        [JB.BLUE, "#00a0ff"],
+        [JB.GREEN, "#00cc66"],
+        [JB.RED, "#ff3333"],
+        [JB.YELLOW, "#ffcc00"],
+        [JB.WHITE, "#ffffff"], // was transparent
     ]);
 
     /**
      * Create a new Jawbreaker game
      */
     constructor(opts) {
-        this.rows = opts.rows;
-        this.cols = opts.cols;
-        this.cookieName = opts.cookieName;
+        this.rows = opts.rows || 12;
+        this.cols = opts.cols || 12;
+        this.gap = opts.gap || 1;
+        this.border = opts.border || 6;
+        this.blockSize = opts.blockSize || 36;
+        this.cookieName = opts.cookieName || "jawbreaker";
         this.score = 0;
         this.lastScore = 0;
         this.bestScore = 0;
-        this.board = opts.pieces;
+        this.board = this.newBoard();
         this.hoverList = new Set();
+
+        this.canvas = document.getElementById("game-canvas");
+        this.ctx = this.canvas.getContext("2d");
+
+        const canvasWidth = this.rows * this.blockSize +
+            (this.cols - 1) * this.gap + 2 * this.border;
+        const canvasHeight = this.rows * this.blockSize +
+            (this.rows - 1) * this.gap + 2 * this.border;
+
+        this.canvas.width = canvasWidth;
+        this.canvas.height = canvasHeight;
 
         // Read scores cookie
         const scoresCookie = this.getCookie(this.cookieName);
@@ -51,26 +66,31 @@ class JB {
         }
 
         this.registerEvents();
+        this.renderBoard();
     }
 
     registerEvents() {
-        const game = document.getElementById("game-container");
-        game.addEventListener('click', (e) => {
-            this.moveEvent(e);
-        }, true);
-        game.addEventListener('mouseover', (e) => {
-            this.mouseOverEvent(e);
-        }, true);
-        game.addEventListener('mouseleave', (e) => {
-            this.mouseLeaveEvent(e);
-        }, true);
+        this.canvas.addEventListener("click", (e) => {
+            this.handleClick(e);
+        });
 
-        // Add an event listener for the "New Game" button
-        const newGameBtn = document.querySelector('.new-game-btn');
+        this.canvas.addEventListener("mousemove", (e) => {
+            this.handleMouseMove(e);
+        });
+
+        this.canvas.addEventListener("mouseleave", () => {
+            this.hoverList.clear();
+            this.hoverIndex = -1;
+            this.renderBoard();
+        });
+
+        const newGameBtn = document.querySelector(".new-game-btn");
         if (newGameBtn) {
-            newGameBtn.addEventListener('click', (e) => {
+            newGameBtn.addEventListener("click", (e) => {
                 this.resetGame();
-                document.getElementById('game-over-overlay').classList.remove('visible');
+                document
+                .getElementById("game-over-overlay")
+                .classList.remove("visible");
                 e.preventDefault();
             });
         }
@@ -93,17 +113,14 @@ class JB {
                 helpModal.style.display = "none";
             }
         });
-
     }
 
-    /**
-     * Reset the game when the "New Game" button is clicked
-     */
     resetGame() {
         this.board = this.newBoard();
         this.hoverList.clear();
+        this.hoverIndex = -1;
         this.score = 0;
-        document.getElementById('current-score').innerText = this.score;
+        document.getElementById("current-score").innerText = this.score;
         this.renderBoard();
     }
 
@@ -120,164 +137,227 @@ class JB {
         return board;
     }
 
-    renderBoard() {
-        let htmlString = '';
-
-        for (let i = 0; i < this.board.length; i++) {
-            let color = JB.COLOR_MAP.get(this.board[i]);
-            let hover = this.hoverList.has(i) ? 'connected' : '';
-            htmlString += `<div id="piece${i}" class="piece ${color} ${hover}"></div>`;
-        }
-
-        requestAnimationFrame(() => {
-            document.getElementById('game').innerHTML = htmlString;
-        });
+    getCanvasCoordinates(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        return {x, y};
     }
 
-    moveEvent(e) {
-        if (e.target.classList.contains('piece')) {
-            const index = this.getIndexOfPiece(e.target.id);
-            const status = this.move(index);
-            document.getElementById('current-score').innerText = status.score;
-            if (status.gameOver) {
+    getBoardIndexFromCoordinates(x, y) {
+        // Adjust coordinates to account for border
+        const adjustedX = x - this.border;
+        const adjustedY = y - this.border;
 
-                // Update lastScore and bestScore
+        // Calculate column and row
+        const col = Math.floor(adjustedX / (this.blockSize + this.gap));
+        const row = Math.floor(adjustedY / (this.blockSize + this.gap));
+
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return -1;
+        }
+
+        return row * this.cols + col;
+    }
+
+    handleClick(e) {
+        const {x, y} = this.getCanvasCoordinates(e);
+        const index = this.getBoardIndexFromCoordinates(x, y);
+
+        if (index >= 0 && index < this.board.length) {
+            const status = this.move(index);
+            document.getElementById("current-score").innerText = status.score;
+
+            if (status.gameOver) {
                 this.lastScore = this.score;
                 if (this.score > this.bestScore) {
                     this.bestScore = this.score;
                 }
 
-                // Update UI
-                document.getElementById('game-over-score').innerText = this.score;
-                document.getElementById('last-score').innerText = this.lastScore;
-                document.getElementById('best-score').innerText = this.bestScore;
+                document.getElementById("game-over-score").innerText = this.score;
+                document.getElementById("last-score").innerText = this.lastScore;
+                document.getElementById("best-score").innerText = this.bestScore;
 
-                // Save scores to cookie
                 this.setCookie(this.cookieName, `${this.lastScore}|${this.bestScore}`);
 
-                // show game over overlay
-                document.getElementById('game-over-overlay').classList.add('visible');
-                return;
-            }
-            this.hoverList.clear();
-            const pieces = this.getConnectedPieces(index);
-            for (const i of pieces) {
-                this.hoverList.add(i);
-            }
-
-            this.renderBoard();
-        }
-    }
-
-    mouseOverEvent(e) {
-        if (e.target.classList.contains('piece')) {
-            const index = this.getIndexOfPiece(e.target.id);
-            if (this.hoverList.has(index)) {
+                document
+                .getElementById("game-over-overlay")
+                .classList.add("visible");
                 return;
             }
 
             this.hoverList.clear();
+            this.hoverIndex = -1;
             const pieces = this.getConnectedPieces(index);
-            for (const i of pieces) {
-                this.hoverList.add(i);
-            }
-
-            this.renderBoard();
-        }
-    }
-
-    mouseLeaveEvent() {
-        this.renderBoard();
-    }
-
-    getIndexOfPiece(piece) {
-        return parseInt(piece.substring(5), 10);
-    }
-
-    /**
-     * Make a move by removing connected pieces
-     * @param {number} index - Index of the clicked piece
-     * @returns {Object} - Status object with board, score, and gameOver
-     */
-    move(index) {
-        const n = this.floodFill(index);
-        if (n < 2) {
-            return {
-                board: this.board,
-                score: this.score,
-                gameOver: this.isGameOver()
-            };
-        }
-
-        this.applyGravityAndShiftRight();
-        this.score += this.calculateMoveScore(n);
-        const gameOver = this.isGameOver();
-
-        if (gameOver) {
-            let remainingPieces = 0;
-            for (let i = 0; i < this.board.length; i++) {
-                if (this.board[i] !== JB.WHITE) {
-                    remainingPieces++;
+            if (pieces.length > 1) {
+                this.hoverIndex = index;
+                for (const i of pieces) {
+                    this.hoverList.add(i);
                 }
             }
-            this.score += this.calculateRemainingPiecesScore(remainingPieces);
-        }
 
-        return {
-            board: this.board,
-            score: this.score,
-            gameOver: gameOver
-        };
+            this.renderBoard();
+        }
     }
 
-    /**
-     * Check if the game is over
-     * @returns {boolean} - True if game is over, false otherwise
-     */
-    isGameOver() {
-        for (let i = 0; i < this.board.length; i++) {
-            if (this.board[i] === JB.WHITE) {
-                continue;
+    handleMouseMove(e) {
+        const {x, y} = this.getCanvasCoordinates(e);
+        const index = this.getBoardIndexFromCoordinates(x, y);
+
+        if (index >= 0 && index < this.board.length && index !== this.hoverIndex) {
+            this.hoverList.clear();
+            this.hoverIndex = index;
+            const pieces = this.getConnectedPieces(index);
+            if (pieces.length > 1) {
+                for (const i of pieces) {
+                    this.hoverList.add(i);
+                }
+                this.renderBoard();
+            } else if (this.hoverList.size > 0) {
+                this.hoverList.clear();
+                this.hoverIndex = -1;
+                this.renderBoard();
             }
-            if (this.getConnectedPieces(i).length > 1) {
-                return false;
+        }
+    }
+
+    renderBoard() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const cornerRadius = 2;
+        const pieceSize = this.blockSize - this.gap;
+        const outlineGap = 2;
+        const outlineSize = pieceSize-(2*outlineGap);
+
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const index = row * this.cols + col;
+                const color = this.board[index];
+                const x = this.border + col * (this.blockSize + this.gap);
+                const y = this.border + row * (this.blockSize + this.gap);
+
+                if (color === JB.WHITE) {
+                    this.ctx.save();
+                    this.ctx.strokeStyle = this.darkenColor(JB.COLOR_MAP.get(JB.WHITE), 70);
+                    this.ctx.lineWidth = 1;
+                    this.ctx.beginPath();
+                    this.ctx.rect(x+outlineGap, y+outlineGap, outlineSize, outlineSize);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                } else {
+                    this.ctx.save();
+
+                    const gradient = this.ctx.createLinearGradient(
+                        x + this.blockSize * 0.8,
+                        y + this.blockSize * 0.8,
+                        x + this.blockSize * 0.1,
+                        y + this.blockSize * 0.1,
+                    );
+
+                    const baseColor = JB.COLOR_MAP.get(color);
+                    gradient.addColorStop(0, this.lightenColor(baseColor, 12));
+                    gradient.addColorStop(1, this.darkenColor(baseColor, 6));
+                    this.ctx.fillStyle = gradient;
+
+                    this.ctx.beginPath();
+                    const glow = 1;
+                    const pieceX = x;
+                    const pieceY = y;
+
+                    this.ctx.roundRect(pieceX, pieceY, pieceSize, pieceSize, cornerRadius);
+                    this.ctx.fill();
+
+                    this.ctx.beginPath();
+                    this.ctx.rect(pieceX + cornerRadius, pieceY, pieceSize - (2*cornerRadius), glow);
+                    this.ctx.rect(pieceX, pieceY + cornerRadius, glow, pieceSize - (2*cornerRadius));
+                    this.ctx.fillStyle = this.lightenColor(baseColor, 20);
+                    this.ctx.fill();
+                    this.ctx.beginPath();
+                    this.ctx.rect(pieceX + pieceSize - glow, pieceY + cornerRadius, glow, pieceSize - (2*cornerRadius));
+                    this.ctx.rect(pieceX + cornerRadius, pieceY + pieceSize - glow , pieceSize - (2*cornerRadius), glow);
+                    this.ctx.fillStyle = this.darkenColor(baseColor, 20);
+                    this.ctx.fill();
+
+                    this.ctx.restore();
+                }
             }
         }
-        return true;
-    }
 
-    /**
-     * Calculate score for removing pieces
-     * @param {number} piecesRemoved - Number of pieces removed
-     * @returns {number} - Score for this move
-     */
-    calculateMoveScore(piecesRemoved) {
-        if (piecesRemoved < 2) {
-            return 0;
+
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const index = row * this.cols + col;
+                const color = this.board[index];
+                const x = this.border + col * (this.blockSize + this.gap);
+                const y = this.border + row * (this.blockSize + this.gap);
+
+                if (color !== JB.WHITE) {
+                    this.ctx.save();
+
+                    const baseColor = JB.COLOR_MAP.get(color);
+
+                    // highlight
+                    if (this.hoverList.has(index)) {
+                        this.ctx.shadowColor = baseColor;
+                        this.ctx.shadowBlur = 15;
+                        this.ctx.strokeStyle = this.lightenColor(baseColor, 40);
+                        this.ctx.lineWidth = 6;
+
+                        // Draw rounded rectangle for hover effect
+                        this.ctx.beginPath();
+                        const hoverSize = pieceSize + 2; // Slightly larger than the piece
+                        const hoverX = x - 1;
+                        const hoverY = y - 1;
+
+                        // Draw rounded rectangle path for hover effect
+                        this.ctx.moveTo(hoverX + cornerRadius, hoverY);
+                        this.ctx.lineTo(hoverX + hoverSize - cornerRadius, hoverY);
+                        this.ctx.arcTo(hoverX + hoverSize, hoverY, hoverX + hoverSize, hoverY + cornerRadius, cornerRadius);
+                        this.ctx.lineTo(hoverX + hoverSize, hoverY + hoverSize - cornerRadius);
+                        this.ctx.arcTo(hoverX + hoverSize, hoverY + hoverSize, hoverX + hoverSize - cornerRadius, hoverY + hoverSize, cornerRadius);
+                        this.ctx.lineTo(hoverX + cornerRadius, hoverY + hoverSize);
+                        this.ctx.arcTo(hoverX, hoverY + hoverSize, hoverX, hoverY + hoverSize - cornerRadius, cornerRadius);
+                        this.ctx.lineTo(hoverX, hoverY + cornerRadius);
+                        this.ctx.arcTo(hoverX, hoverY, hoverX + cornerRadius, hoverY, cornerRadius);
+
+                        this.ctx.stroke();
+                    }
+
+                    this.ctx.restore();
+                }
+            }
         }
-        return piecesRemoved * (piecesRemoved - 1);
     }
 
-    /**
-     * Calculate bonus score for remaining pieces at game end
-     * @param {number} remainingPieces - Number of pieces remaining
-     * @returns {number} - Bonus score
-     */
-    calculateRemainingPiecesScore(remainingPieces) {
-        const threshold = 20;
-        if (remainingPieces <= threshold) {
-            const p = threshold - remainingPieces;
-            return p * p;
-        }
-        return 0;
+    lightenColor(color, percent) {
+        const num = parseInt(color.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+
+        return "#" + (
+            0x1000000 +
+            (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)
+        ).toString(16).slice(1);
     }
 
+    darkenColor(color, percent) {
+        const num = parseInt(color.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) - amt;
+        const G = (num >> 8 & 0x00FF) - amt;
+        const B = (num & 0x0000FF) - amt;
 
-    /**
-     * Get connected pieces of the same color
-     * @param {number} index - Starting index
-     * @returns {number[]} - Array of connected piece indices
-     */
+        return "#" + (
+            0x1000000 +
+            (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)
+        ).toString(16).slice(1);
+    }
+
     getConnectedPieces(index) {
         if (index < 0 || index >= this.board.length) {
             return [];
@@ -305,19 +385,10 @@ class JB {
             const row = Math.floor(i / this.cols);
             const col = i % this.cols;
 
-            // Check all four adjacent positions (up, down, left, right)
-            if (row > 0) {
-                stack.push(i - this.cols); // Up
-            }
-            if (row < this.rows - 1) {
-                stack.push(i + this.cols); // Down
-            }
-            if (col > 0) {
-                stack.push(i - 1); // Left
-            }
-            if (col < this.cols - 1) {
-                stack.push(i + 1); // Right
-            }
+            if (row > 0) stack.push(i - this.cols);
+            if (row < this.rows - 1) stack.push(i + this.cols);
+            if (col > 0) stack.push(i - 1);
+            if (col < this.cols - 1) stack.push(i + 1);
         }
 
         if (connectedIndices.length < 2) {
@@ -327,33 +398,23 @@ class JB {
         return connectedIndices;
     }
 
-    /**
-     * Perform flood fill to remove connected pieces
-     * @param {number} index - Starting index
-     * @returns {number} - Number of pieces removed
-     */
     floodFill(index) {
         const connectedPieces = this.getConnectedPieces(index);
         if (connectedPieces.length < 2) {
             return 0;
         }
 
-        // Convert board to array for easier manipulation
-        const boardArray = this.board.split('');
+        const boardArray = this.board.split("");
 
         for (const i of connectedPieces) {
             boardArray[i] = JB.WHITE;
         }
 
-        this.board = boardArray.join('');
+        this.board = boardArray.join("");
         return connectedPieces.length;
     }
 
-    /**
-     * Apply gravity and shift columns right
-     */
     applyGravityAndShiftRight() {
-        // Convert board to 2D array for easier manipulation
         let boardArray = [];
         for (let row = 0; row < this.rows; row++) {
             const rowArray = [];
@@ -363,7 +424,7 @@ class JB {
             boardArray.push(rowArray);
         }
 
-        // Gravity Phase: shift non-'w' characters down in each column
+
         for (let col = 0; col < this.cols; col++) {
             let writeRow = this.rows - 1;
             for (let row = this.rows - 1; row >= 0; row--) {
@@ -377,7 +438,7 @@ class JB {
             }
         }
 
-        // Right Shift Phase: move non-empty columns to the right
+
         let writeCol = this.cols - 1;
         for (let col = this.cols - 1; col >= 0; col--) {
             let isEmpty = true;
@@ -390,7 +451,6 @@ class JB {
 
             if (!isEmpty) {
                 if (writeCol !== col) {
-                    // Copy column to new position
                     for (let row = 0; row < this.rows; row++) {
                         boardArray[row][writeCol] = boardArray[row][col];
                         boardArray[row][col] = JB.WHITE;
@@ -400,8 +460,7 @@ class JB {
             }
         }
 
-        // Convert 2D array back to string
-        let newBoard = '';
+        let newBoard = "";
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 newBoard += boardArray[row][col];
@@ -410,7 +469,65 @@ class JB {
         this.board = newBoard;
     }
 
-    // Cookie functions
+    move(index) {
+        const n = this.floodFill(index);
+        if (n < 2) {
+            return {
+                board: this.board,
+                score: this.score,
+                gameOver: this.isGameOver(),
+            };
+        }
+
+        this.applyGravityAndShiftRight();
+        this.score += this.calculateMoveScore(n);
+        const gameOver = this.isGameOver();
+
+        if (gameOver) {
+            let remainingPieces = 0;
+            for (let i = 0; i < this.board.length; i++) {
+                if (this.board[i] !== JB.WHITE) {
+                    remainingPieces++;
+                }
+            }
+            this.score += this.calculateRemainingPiecesScore(remainingPieces);
+        }
+
+        return {
+            board: this.board,
+            score: this.score,
+            gameOver: gameOver,
+        };
+    }
+
+    isGameOver() {
+        for (let i = 0; i < this.board.length; i++) {
+            if (this.board[i] === JB.WHITE) {
+                continue;
+            }
+            if (this.getConnectedPieces(i).length > 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    calculateMoveScore(piecesRemoved) {
+        if (piecesRemoved < 2) {
+            return 0;
+        }
+        return piecesRemoved * (piecesRemoved - 1);
+    }
+
+    calculateRemainingPiecesScore(remainingPieces) {
+        const threshold = 20;
+        if (remainingPieces <= threshold) {
+            const p = threshold - remainingPieces;
+            return p * p;
+        }
+        return 0;
+    }
+
     getCookie(name) {
         const cookies = document.cookie.split(';');
 

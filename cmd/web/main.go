@@ -12,14 +12,14 @@ import (
 )
 
 var (
-	port            = 8000
-	numRows         = 12
-	numCols         = 12
-	blockSize       = 40
-	mobileBlockSize = 30
-	gapSize         = 2
-	cookieName      = "scores"
-	titleTime       = 2_000 // 2 seconds
+	port        = 8000
+	numRows     = 12
+	numCols     = 12
+	block       = 40
+	border      = 6
+	mobileBlock = 30
+	gap         = 1
+	cookieName  = "jawbreaker"
 )
 
 func main() {
@@ -45,22 +45,22 @@ func loadEnv() {
 	port = envInt("PORT", port)
 	numRows = envInt("JB_ROWS", numRows)
 	numCols = envInt("JB_COLS", numCols)
-	blockSize = envInt("JB_BLOCK_SIZE", blockSize)
-	mobileBlockSize = envInt("JB_MOBILE_BLOCK_SIZE", mobileBlockSize)
-	gapSize = envInt("JB_GAP_SIZE", gapSize)
+	block = envInt("JB_BLOCK", block)
+	border = envInt("JB_BORDER", border)
+	mobileBlock = envInt("JB_MOBILE_BLOCK", mobileBlock)
+	gap = envInt("JB_GAP", gap)
 	cookieName = envString("JB_COOKIE_NAME", cookieName)
-	titleTime = envInt("JB_TITLE_TIME", titleTime)
 
 	// Log all configuration values as structured data
 	slog.Info("Configuration values",
 		"port", port,
 		"rows", numRows,
 		"cols", numCols,
-		"block", blockSize,
-		"mobile", mobileBlockSize,
-		"gap", gapSize,
-		"cookie", cookieName,
-		"timer", titleTime)
+		"block", block,
+		"mobile", mobileBlock,
+		"border", border,
+		"gap", gap,
+		"cookie", cookieName)
 }
 
 func envString(key, defValue string) string {

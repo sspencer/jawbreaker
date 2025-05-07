@@ -13,7 +13,6 @@ var tmpl *template.Template
 func init() {
 	// Parse all embedded templates once at startup
 	tmpl = template.Must(template.ParseFS(templateFS,
-		"tmpl/canvas.html",
 		"tmpl/gameover.html",
 		"tmpl/help.html",
 		"tmpl/index.html",
