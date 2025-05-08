@@ -1,107 +1,129 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
-	"strconv"
+	"path/filepath"
+	"sync"
+	"time"
 
 	"net/http"
 
-	"github.com/joho/godotenv"
+	"github.com/fsnotify/fsnotify"
 )
 
 const (
-	defPort        = 8000
-	defNumRows     = 12
-	defNumCols     = 12
-	defBlock       = 40
-	defBorder      = 6
-	defMobileBlock = 30
-	defGap         = 1
-	defCookieName  = "jawbreaker"
+	defPort   = 8000
+	defRows   = 12
+	defCols   = 12
+	defBlock  = 40
+	defMBlock = 30
+	defBorder = 6
+	defGap    = 1
+	defCookie = "jawbreaker"
 )
 
 type config struct {
-	port        int
-	numRows     int
-	numCols     int
-	block       int
-	mobileBlock int
-	border      int
-	gap         int
-	cookieName  string
+	port   int
+	rows   int
+	cols   int
+	block  int
+	mblock int
+	border int
+	gap    int
+	cookie string
 }
 type application struct {
-	cfg config
+	envFile string
+	cfg     config
+	cfgLock sync.RWMutex
 }
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	cfg := config{}
-	loadEnv(&cfg)
+	var watchFiles bool
+	flag.BoolVar(&watchFiles, "w", false, "Watch .env file for changes")
+	flag.Parse()
 
+	fn, _ := filepath.Abs(".env")
 	app := application{
-		cfg: cfg,
+		envFile: fn,
+		cfg:     config{},
 	}
 
-	slog.Info("Starting server", "port", cfg.port)
+	app.loadConfig()
 
-	err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.port), app.routes())
+	if watchFiles {
+		app.watcher()
+	}
+
+	port := app.cfg.port
+	slog.Info("Starting server", "port", port)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), app.routes())
 	if err != nil {
 		logger.Error("Server failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func loadEnv(cfg *config) {
-	err := godotenv.Load()
-
-	if err == nil {
-		slog.Info("Environment configuration loaded", "source", ".env file")
-	}
-
-	cfg.port = envInt("PORT", defPort)
-	cfg.numRows = envInt("JB_ROWS", defNumRows)
-	cfg.numCols = envInt("JB_COLS", defNumCols)
-	cfg.block = envInt("JB_BLOCK", defBlock)
-	cfg.border = envInt("JB_BORDER", defBorder)
-	cfg.mobileBlock = envInt("JB_MOBILE_BLOCK", defMobileBlock)
-	cfg.gap = envInt("JB_GAP", defGap)
-	cfg.cookieName = envString("JB_COOKIE_NAME", defCookieName)
-
-	// Log all configuration values as structured data
-	slog.Info("Configuration values",
-		"port", cfg.port,
-		"rows", cfg.numRows,
-		"cols", cfg.numCols,
-		"block", cfg.block,
-		"mobile", cfg.mobileBlock,
-		"border", cfg.border,
-		"gap", cfg.gap,
-		"cookie", cfg.cookieName)
-}
-
-func envString(key, defValue string) string {
-	v := os.Getenv(key)
-	if v == "" {
-		return defValue
-	}
-	return v
-}
-
-func envInt(key string, defValue int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return defValue
-	}
-
-	n, err := strconv.Atoi(v)
+// watcher monitors the .env file for changes and updates the application config
+func (app *application) watcher() {
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return defValue
+		slog.Error("Failed to create file watcher", "error", err)
+		return
 	}
 
-	return n
+	defer watcher.Close()
+
+	slog.Info("Started watching .env file for changes", "path", app.envFile)
+
+	// Create a debounce timer to prevent multiple reloads for a single change
+	var debounceTimer *time.Timer
+	var debounceTimerMutex sync.Mutex
+
+	// Start listening for events.
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) {
+					debounceTimerMutex.Lock()
+					if debounceTimer != nil {
+						debounceTimer.Stop()
+					}
+					debounceTimer = time.AfterFunc(100*time.Millisecond, func() {
+						slog.Info("Detected change in .env file, reloading configuration")
+						app.reloadConfig()
+					})
+					debounceTimerMutex.Unlock()
+				}
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				slog.Error("Error watching .env file", "error", err)
+			}
+		}
+	}()
+
+	// Watch the directory, not the file itself as editors
+	// save files in different ways.
+	err = watcher.Add(filepath.Dir(app.envFile))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Block main goroutine forever.
+	<-make(chan struct{})
 }

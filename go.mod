@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
 	github.com/joho/godotenv v1.5.1

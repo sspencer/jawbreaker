@@ -43,19 +43,20 @@ type ScoreData struct {
 }
 
 func (app *application) jsHandler(w http.ResponseWriter, r *http.Request) {
-	block := app.cfg.block
+	cfg := app.getConfig()
+	block := cfg.block
 	if isMobile(r) {
-		block = app.cfg.mobileBlock
+		block = cfg.mblock
 	}
 	data := IndexData{
 		JawbreakerJS: fsys.HashName("static/jawbreaker.js"),
 		StyleCSS:     fsys.HashName("static/style.css"),
-		Rows:         app.cfg.numRows,
-		Cols:         app.cfg.numCols,
+		Rows:         cfg.rows,
+		Cols:         cfg.cols,
 		Block:        block,
-		Gap:          app.cfg.gap,
-		Border:       app.cfg.border,
-		CookieName:   app.cfg.cookieName,
+		Gap:          cfg.gap,
+		Border:       cfg.border,
+		CookieName:   cfg.cookie,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -67,18 +68,20 @@ func (app *application) jsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
-	g := jawbreaker.NewGame(app.cfg.numRows, app.cfg.numCols)
+	cfg := app.getConfig()
+
+	g := jawbreaker.NewGame(cfg.rows, cfg.cols)
 	var scoreData ScoreData
-	if cookie, err := r.Cookie(app.cfg.cookieName); err == nil {
+	if cookie, err := r.Cookie(cfg.cookie); err == nil {
 		deserializeScoreData(&scoreData, cookie.Value)
 	}
 
-	block := app.cfg.block
+	block := cfg.block
 	if isMobile(r) {
-		block = app.cfg.mobileBlock
+		block = cfg.mblock
 	}
 
-	gameSize := getGameSize(app.cfg.numRows, app.cfg.numCols, block, app.cfg.gap*2)
+	gameSize := getGameSize(cfg.rows, cfg.cols, block, cfg.gap*2)
 
 	data := IndexData{
 		DS:         true,
@@ -89,8 +92,8 @@ func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
 		Pieces:     g.Board().String(),
 		LastScore:  scoreData.LastScore,
 		BestScore:  scoreData.BestScore,
-		Rows:       app.cfg.numRows,
-		Cols:       app.cfg.numCols,
+		Rows:       cfg.rows,
+		Cols:       cfg.cols,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -114,7 +117,8 @@ func (app *application) clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := jawbreaker.RestoreGame(signals.Pieces, app.cfg.numRows, app.cfg.numCols, signals.CurrentScore)
+	cfg := app.getConfig()
+	g, err := jawbreaker.RestoreGame(signals.Pieces, cfg.rows, cfg.cols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -141,7 +145,7 @@ func (app *application) clickHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		scoresCookie := &http.Cookie{
-			Name:     app.cfg.cookieName,
+			Name:     cfg.cookie,
 			Value:    scoreData.serialize(),
 			Path:     "/",
 			Expires:  time.Now().Add(365 * 24 * time.Hour), // 1 year
@@ -173,7 +177,8 @@ func (app *application) mouseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := jawbreaker.RestoreGame(signals.Pieces, app.cfg.numRows, app.cfg.numCols, signals.CurrentScore)
+	cfg := app.getConfig()
+	g, err := jawbreaker.RestoreGame(signals.Pieces, cfg.rows, cfg.cols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -196,7 +201,8 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g := jawbreaker.NewGame(app.cfg.numRows, app.cfg.numCols)
+	cfg := app.getConfig()
+	g := jawbreaker.NewGame(cfg.rows, cfg.cols)
 
 	sse := datastar.NewSSE(w, r)
 
