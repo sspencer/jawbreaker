@@ -42,25 +42,71 @@ type ScoreData struct {
 	BestScore int `json:"bestScore"`
 }
 
+type pageData struct {
+	DS         bool
+	DatastarJS string
+	GameCode   template.JS
+	GameSrc    string
+	StyleCSS   string
+	Rows       int
+	Cols       int
+	Block      int
+	Gap        int
+	Border     int
+	CookieName string
+	GameSize   template.CSS
+	Game       template.HTML
+	Pieces     string
+	LastScore  int
+	BestScore  int
+}
+
 func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := app.cfg
 	block := cfg.block
 	if isMobile(r) {
 		block = cfg.mblock
 	}
-	data := IndexData{
-		JawbreakerJS: fsys.HashName("static/jawbreaker.js"),
-		StyleCSS:     fsys.HashName("static/style.css"),
-		Rows:         cfg.rows,
-		Cols:         cfg.cols,
-		Block:        block,
-		Gap:          cfg.gap,
-		Border:       cfg.border,
-		CookieName:   cfg.cookie,
+
+	data := pageData{
+		GameSrc:    fsys.HashName("static/jawbreaker.js"),
+		StyleCSS:   fsys.HashName("static/style.css"),
+		Rows:       cfg.rows,
+		Cols:       cfg.cols,
+		Block:      block,
+		Gap:        cfg.gap,
+		Border:     cfg.border,
+		CookieName: cfg.cookie,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
 	err := tmpl.ExecuteTemplate(w, "index", data)
+	if err != nil {
+		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (app *application) oneHandler(w http.ResponseWriter, r *http.Request) {
+	cfg := app.cfg
+	block := cfg.block
+	if isMobile(r) {
+		block = cfg.mblock
+	}
+
+	data := pageData{
+		GameCode:   template.JS(gameCode),
+		StyleCSS:   fsys.HashName("static/style.css"),
+		Rows:       cfg.rows,
+		Cols:       cfg.cols,
+		Block:      block,
+		Gap:        cfg.gap,
+		Border:     cfg.border,
+		CookieName: cfg.cookie,
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	err := tmpl.ExecuteTemplate(w, "one", data)
 	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -83,17 +129,17 @@ func (app *application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 
 	gameSize := getGameSize(cfg.rows, cfg.cols, block, cfg.gap*2)
 
-	data := IndexData{
+	data := pageData{
 		DS:         true,
 		DatastarJS: fsys.HashName("static/datastar.js"),
 		StyleCSS:   fsys.HashName("static/style.css"),
 		GameSize:   template.CSS(gameSize),
 		Game:       template.HTML(gameToHTML(g, nil)),
 		Pieces:     g.Board().String(),
-		LastScore:  scoreData.LastScore,
-		BestScore:  scoreData.BestScore,
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
+		LastScore:  scoreData.LastScore,
+		BestScore:  scoreData.BestScore,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
