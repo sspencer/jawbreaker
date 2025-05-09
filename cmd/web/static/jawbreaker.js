@@ -1,12 +1,12 @@
 class JB {
     // Piece constants
-    static WHITE = 'w';
-    static PURPLE = 'p';
-    static BLUE = 'b';
-    static GREEN = 'g';
-    static RED = 'r';
-    static YELLOW = 'y';
-    static POWER = 'G';
+    static WHITE = 0;
+    static PURPLE = 1;
+    static BLUE = 2;
+    static GREEN = 3;
+    static RED = 4;
+    static YELLOW = 5;
+    static POWER = 6;
 
     // Color pieces array for random generation
     static COLOR_PIECES = [
@@ -133,13 +133,13 @@ class JB {
 
     /**
      * Create a random board with the given dimensions
-     * @returns {string} - Board as a string
+     * @returns {Array} - Board as an array of integers
      */
     newBoard() {
-        let board = '';
+        let board = [];
         for (let i = 0; i < this.rows * this.cols; i++) {
             const rnd = Math.floor(Math.random() * JB.COLOR_PIECES.length);
-            board += JB.COLOR_PIECES[rnd];
+            board.push(JB.COLOR_PIECES[rnd]);
         }
         return board;
     }
@@ -474,13 +474,10 @@ class JB {
             return 0;
         }
 
-        const boardArray = this.board.split("");
-
         for (const i of connectedPieces) {
-            boardArray[i] = JB.WHITE;
+            this.board[i] = JB.WHITE;
         }
 
-        this.board = boardArray.join("");
         return connectedPieces.length;
     }
 
@@ -530,10 +527,10 @@ class JB {
             }
         }
 
-        let newBoard = "";
+        let newBoard = [];
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
-                newBoard += boardArray[row][col];
+                newBoard.push(boardArray[row][col]);
             }
         }
         this.board = newBoard;
