@@ -1,5 +1,5 @@
 {{ define "index" }}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <title>Jawbreaker</title>
@@ -11,31 +11,45 @@
     <meta name="rating" content="Safe For Kids"/>
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <link rel="stylesheet" href="{{.StyleCSS}}"/>
-    <style>
-        {{.GameSize}}
-    </style>
-    <script type="module" src="{{.DatastarJS}}"></script>
 </head>
 <body>
-<header id="page-header" class="page-header"
-        data-on-load__delay.2s="document.getElementById('page-header').classList.add('fade-out')">
+
+<header id="page-header" class="page-header">
     <h1>Jawbreaker</h1>
 </header>
-<div class="container"
-     data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
->
+
+<div class="container">
     {{ template "sidebar" . }}
-    <main id="game-container"
-          data-on-click="@post('click/'+evt.target.id)"
-          data-on-mouseover="@post('mouse/'+evt.target.id)"
-          data-on-mouseleave="@post('mouse/exit')">
-        {{.Game}}
+
+    <main id="game-container">
+        <canvas id="game-canvas"></canvas>
         {{ template "gameover" . }}
     </main>
 </div>
 
 {{ template "help" . }}
 
+<script src="{{.JawbreakerJS}}" defer></script>
+<script defer>
+    window.addEventListener('DOMContentLoaded', () => {
+        new JB({
+            rows: parseInt('{{ .Rows }}'),
+            cols: parseInt('{{ .Cols }}'),
+            gap: parseInt('{{ .Gap }}'),
+            blockSize: parseInt('{{ .Block }}'),
+            border: parseInt('{{ .Border }}'),
+            cookieName: '{{ .CookieName }}',
+        });
+
+        // Title fade out after 20 seconds
+        setTimeout(() => {
+            const header = document.getElementById('page-header');
+            if (header) {
+                header.classList.add('fade-out');
+            }
+        }, 2000);
+    })
+</script>
 </body>
 </html>
 {{ end }}

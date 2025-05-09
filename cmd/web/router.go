@@ -2,7 +2,7 @@ package main
 
 import (
 	"embed"
-	"log/slog"
+	"time"
 
 	"github.com/benbjohnson/hashfs"
 	"github.com/go-chi/chi/v5"
@@ -14,25 +14,22 @@ var staticFiles embed.FS
 var fsys = hashfs.NewFS(staticFiles)
 
 func (app *application) routes() *chi.Mux {
-	r := chi.NewRouter()
+	mux := chi.NewRouter()
 
-	// Built-in middleware
-	r.Use(middleware.RequestID)
-	r.Use(slogMiddleware(slog.Default()))
-	r.Use(middleware.Recoverer)
+	mux.Use(middleware.RequestID)
+	mux.Use(middleware.RealIP)
+	mux.Use(middleware.Timeout(30 * time.Second))
+	mux.Use(slogMiddleware)
+	mux.Use(recoverMiddleware)
+	compressionMiddleware(mux)
 
-	// Brotli compression middleware
-	r.Use(CompressionMiddleware)
+	mux.Get("/", app.indexHandler)
+	mux.Get("/star", app.datastarHandler)
+	mux.Post("/click/{id}", app.clickHandler)
+	mux.Post("/mouse/{id}", app.mouseHandler)
+	mux.Post("/new", app.newGameHandler)
 
-	// Routes
-	r.Get("/", app.indexHandler)
-	r.Get("/js", app.jsHandler)
-	r.Post("/click/{id}", app.clickHandler)
-	r.Post("/mouse/{id}", app.mouseHandler)
-	r.Post("/new", app.newGameHandler)
+	mux.Handle("/static/*", hashfs.FileServer(fsys))
 
-	slog.Info("Serving static files", "source", "filesystem")
-	r.Handle("/static/*", hashfs.FileServer(fsys))
-
-	return r
+	return mux
 }

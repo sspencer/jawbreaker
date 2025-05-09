@@ -30,20 +30,6 @@ func envInt(key string, defValue int) int {
 	return n
 }
 
-// reloadConfig reloads the configuration from the .env file
-func (app *application) reloadConfig() {
-	app.cfgLock.Lock()
-	defer app.cfgLock.Unlock()
-
-	app.loadConfig()
-}
-
-func (app *application) getConfig() config {
-	app.cfgLock.RLock()
-	defer app.cfgLock.RUnlock()
-	return app.cfg
-}
-
 func (app *application) loadConfig() {
 	err := godotenv.Load(app.envFile)
 

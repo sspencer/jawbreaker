@@ -42,8 +42,8 @@ type ScoreData struct {
 	BestScore int `json:"bestScore"`
 }
 
-func (app *application) jsHandler(w http.ResponseWriter, r *http.Request) {
-	cfg := app.getConfig()
+func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
+	cfg := app.cfg
 	block := cfg.block
 	if isMobile(r) {
 		block = cfg.mblock
@@ -60,15 +60,15 @@ func (app *application) jsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	err := tmpl.ExecuteTemplate(w, "js", data)
+	err := tmpl.ExecuteTemplate(w, "index", data)
 	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
-	cfg := app.getConfig()
+func (app *application) datastarHandler(w http.ResponseWriter, r *http.Request) {
+	cfg := app.cfg
 
 	g := jawbreaker.NewGame(cfg.rows, cfg.cols)
 	var scoreData ScoreData
@@ -97,7 +97,7 @@ func (app *application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	err := tmpl.ExecuteTemplate(w, "index", data)
+	err := tmpl.ExecuteTemplate(w, "datastar", data)
 	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -117,7 +117,7 @@ func (app *application) clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := app.getConfig()
+	cfg := app.cfg
 	g, err := jawbreaker.RestoreGame(signals.Pieces, cfg.rows, cfg.cols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -177,7 +177,7 @@ func (app *application) mouseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := app.getConfig()
+	cfg := app.cfg
 	g, err := jawbreaker.RestoreGame(signals.Pieces, cfg.rows, cfg.cols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -201,7 +201,7 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := app.getConfig()
+	cfg := app.cfg
 	g := jawbreaker.NewGame(cfg.rows, cfg.cols)
 
 	sse := datastar.NewSSE(w, r)
