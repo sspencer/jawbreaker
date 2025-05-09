@@ -2,7 +2,9 @@ package main
 
 import (
 	"html/template"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -94,8 +96,14 @@ func (app *application) oneHandler(w http.ResponseWriter, r *http.Request) {
 		block = cfg.mblock
 	}
 
+	gameBytes, err := os.ReadFile("cmd/web/static/jawbreaker.js")
+	if err != nil {
+		slog.Error("jawbreaker.js not found", "error", err)
+		gameBytes = gameCode
+	}
+
 	data := pageData{
-		GameCode:   template.JS(gameCode),
+		GameCode:   template.JS(gameBytes),
 		StyleCSS:   fsys.HashName("static/style.css"),
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
@@ -106,7 +114,7 @@ func (app *application) oneHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	err := tmpl.ExecuteTemplate(w, "one", data)
+	err = tmpl.ExecuteTemplate(w, "one", data)
 	if err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
