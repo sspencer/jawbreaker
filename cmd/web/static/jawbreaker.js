@@ -32,11 +32,13 @@ class JB {
     static POWER_CROSS = 1;
     static POWER_PLUS = 2;
     static POWER_CIRCLE = 3;
+    static POWER_RECT = 4;
 
     static POWER_PIECES = [
         JB.POWER_CROSS,
         JB.POWER_PLUS,
-        JB.POWER_CIRCLE
+        JB.POWER_CIRCLE,
+        JB.POWER_RECT
     ];
 
     static shapeStrokeColor = "white";
@@ -377,8 +379,6 @@ class JB {
     }
 
     drawPowerUp(x, y, size, powerUp) {
-        const randomValue = Math.random();
-
         switch (powerUp) {
             case JB.POWER_CROSS:
                 this.drawCross(x, y, size);
@@ -386,48 +386,68 @@ class JB {
             case JB.POWER_PLUS:
                 this.drawPlus(x, y, size);
                 break;
+            case JB.POWER_RECT:
+                this.drawRect(x, y, size);
+                break;
             default:
                 this.drawCircle(x, y, size);
                 break;
         }
     }
 
-    drawCross(x, y, size) {
+    /**
+     * Common method to prepare context for shape drawing
+     */
+    prepareShapeContext() {
         const ctx = this.ctx;
         ctx.save();
-
         ctx.beginPath();
+        return ctx;
+    }
+
+    drawCross(x, y, size) {
+        const ctx = this.prepareShapeContext();
         const padding = size * 0.15;
+
         ctx.moveTo(x + padding, y + padding);
         ctx.lineTo(x + size - padding, y + size - padding);
         ctx.moveTo(x + size - padding, y + padding);
         ctx.lineTo(x + padding, y + size - padding);
 
-        this.drawShape(ctx)
+        this.drawShape(ctx);
         ctx.restore();
     }
 
     drawPlus(x, y, size) {
-        const ctx = this.ctx;
-        ctx.beginPath();
-
+        const ctx = this.prepareShapeContext();
         const padding = size * 0.15;
+
         ctx.moveTo(x + size / 2, y + padding);
         ctx.lineTo(x + size / 2, y + size - padding);
         ctx.moveTo(x + padding, y + size / 2);
         ctx.lineTo(x + size - padding, y + size / 2);
 
-        this.drawShape(ctx)
-
-        ctx.restore()
+        this.drawShape(ctx);
+        ctx.restore();
     }
 
     drawCircle(x, y, size) {
-        const ctx = this.ctx;
-        ctx.save();
-        ctx.beginPath();
+        const ctx = this.prepareShapeContext();
         const radius = size * 0.3;
+
         ctx.arc(x + size / 2, y + size / 2, radius, 0, Math.PI * 2);
+
+        this.drawShape(ctx);
+        ctx.restore();
+    }
+
+    drawRect(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const padding = size * 0.15;
+        const rectSize = size * 0.7;
+
+        ctx.rect(x + padding, y + padding, rectSize, rectSize);
+
         this.drawShape(ctx);
         ctx.restore();
     }
