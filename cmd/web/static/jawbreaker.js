@@ -1,12 +1,13 @@
 class JB {
     // Piece constants
+    static tokenSpace = 1000;
     static WHITE = 0;
-    static PURPLE = 1;
-    static BLUE = 2;
-    static GREEN = 3;
-    static RED = 4;
-    static YELLOW = 5;
-    static POWER = 6;
+    static PURPLE = 1000;
+    static BLUE = 2000;
+    static GREEN = 3000;
+    static RED = 4000;
+    static YELLOW = 5000;
+    static GRAY = 6000;
 
     // Color pieces array for random generation
     static COLOR_PIECES = [
@@ -24,8 +25,19 @@ class JB {
         [JB.GREEN, "#00cc66"],
         [JB.RED, "#ff3333"],
         [JB.YELLOW, "#ffcc00"],
+        [JB.GRAY, "#999999"],
         [JB.WHITE, "#ffffff"], // was transparent
     ]);
+
+    static POWER_CROSS = 1;
+    static POWER_PLUS = 2;
+    static POWER_CIRCLE = 3;
+
+    static POWER_PIECES = [
+        JB.POWER_CROSS,
+        JB.POWER_PLUS,
+        JB.POWER_CIRCLE
+    ];
 
     static shapeStrokeColor = "white";
     static shapeBorderColor = "black";
@@ -138,8 +150,19 @@ class JB {
     newBoard() {
         let board = [];
         for (let i = 0; i < this.rows * this.cols; i++) {
-            const rnd = Math.floor(Math.random() * JB.COLOR_PIECES.length);
-            board.push(JB.COLOR_PIECES[rnd]);
+            let powerUp = 0;
+            let color = JB.COLOR_PIECES[Math.floor(Math.random() * JB.COLOR_PIECES.length)];
+
+            const rnd = Math.random();
+            if (rnd < 0.01) {
+                powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
+                color = JB.GRAY;
+            } else if (rnd < 0.03) {
+                powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
+            }
+
+            console.log(color, powerUp);
+            board.push(color+powerUp);
         }
         return board;
     }
@@ -228,6 +251,18 @@ class JB {
         }
     }
 
+    colorMap(piece) {
+        return JB.COLOR_MAP.get(this.getPiece(piece));
+    }
+
+    getPiece(piece) {
+        return Math.floor(piece/JB.tokenSpace) * JB.tokenSpace;
+    }
+
+    getPowerUp(piece) {
+        return piece % JB.tokenSpace;
+    }
+
     renderBoard() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const cornerRadius = 2;
@@ -260,7 +295,8 @@ class JB {
                         y + this.blockSize * 0.1,
                     );
 
-                    const baseColor = JB.COLOR_MAP.get(color);
+                    const baseColor = this.colorMap(color);
+
                     gradient.addColorStop(0, this.lightenColor(baseColor, 12));
                     gradient.addColorStop(1, this.darkenColor(baseColor, 6));
                     this.ctx.fillStyle = gradient;
@@ -299,10 +335,13 @@ class JB {
 
 
                 if (color !== JB.WHITE) {
-                    this.drawRandomShape(x, y, pieceSize);
+
+                    if (this.getPowerUp(color) > 0) {
+                        this.drawPowerUp(x, y, pieceSize, this.getPowerUp(color));
+                    }
 
                     this.ctx.save();
-                    const baseColor = JB.COLOR_MAP.get(color);
+                    const baseColor = this.colorMap(color);
 
                     // highlight
                     if (this.hoverList.has(index)) {
@@ -337,15 +376,19 @@ class JB {
         }
     }
 
-    drawRandomShape(x, y, size) {
+    drawPowerUp(x, y, size, powerUp) {
         const randomValue = Math.random();
 
-        if (randomValue < 0.01) {
-            this.drawCross(x, y, size);
-        } else if (randomValue < 0.02) {
-            this.drawPlus(x, y, size);
-        } else if (randomValue < 0.03) {
-            this.drawCircle(x, y, size);
+        switch (powerUp) {
+            case JB.POWER_CROSS:
+                this.drawCross(x, y, size);
+                break;
+            case JB.POWER_PLUS:
+                this.drawPlus(x, y, size);
+                break;
+            default:
+                this.drawCircle(x, y, size);
+                break;
         }
     }
 
@@ -433,7 +476,7 @@ class JB {
             return [];
         }
 
-        const target = this.board[index];
+        const target = this.getPiece(this.board[index]);
         if (target === JB.WHITE) {
             return [];
         }
@@ -445,7 +488,7 @@ class JB {
         while (stack.length > 0) {
             const i = stack.pop();
 
-            if (i < 0 || i >= this.board.length || this.board[i] !== target || visited[i]) {
+            if (i < 0 || i >= this.board.length || this.getPiece(this.board[i]) !== target || visited[i]) {
                 continue;
             }
 
