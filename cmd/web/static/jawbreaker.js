@@ -30,8 +30,8 @@ class JB {
      * Create a new Jawbreaker game
      */
     constructor(opts) {
-        this.rows = opts.rows || 12;
-        this.cols = opts.cols || 12;
+        this.rows = this.clamp(opts.rows, 8, 32);
+        this.cols = this.clamp(opts.cols, 8, 32);
         this.gap = opts.gap || 1;
         this.border = opts.border || 6;
         this.blockSize = opts.blockSize || 36;
@@ -45,7 +45,7 @@ class JB {
         this.canvas = document.getElementById("game-canvas");
         this.ctx = this.canvas.getContext("2d");
 
-        const canvasWidth = this.rows * this.blockSize +
+        const canvasWidth = this.cols * this.blockSize +
             (this.cols - 1) * this.gap + 2 * this.border;
         const canvasHeight = this.rows * this.blockSize +
             (this.rows - 1) * this.gap + 2 * this.border;
@@ -226,7 +226,7 @@ class JB {
         const cornerRadius = 2;
         const pieceSize = this.blockSize - this.gap;
         const outlineGap = 2;
-        const outlineSize = pieceSize-(2*outlineGap);
+        const outlineSize = pieceSize - (2 * outlineGap);
 
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
@@ -240,7 +240,7 @@ class JB {
                     this.ctx.strokeStyle = this.darkenColor(JB.COLOR_MAP.get(JB.WHITE), 70);
                     this.ctx.lineWidth = 1;
                     this.ctx.beginPath();
-                    this.ctx.rect(x+outlineGap, y+outlineGap, outlineSize, outlineSize);
+                    this.ctx.rect(x + outlineGap, y + outlineGap, outlineSize, outlineSize);
                     this.ctx.stroke();
                     this.ctx.restore();
                 } else {
@@ -267,13 +267,13 @@ class JB {
                     this.ctx.fill();
 
                     this.ctx.beginPath();
-                    this.ctx.rect(pieceX + cornerRadius, pieceY, pieceSize - (2*cornerRadius), glow);
-                    this.ctx.rect(pieceX, pieceY + cornerRadius, glow, pieceSize - (2*cornerRadius));
+                    this.ctx.rect(pieceX + cornerRadius, pieceY, pieceSize - (2 * cornerRadius), glow);
+                    this.ctx.rect(pieceX, pieceY + cornerRadius, glow, pieceSize - (2 * cornerRadius));
                     this.ctx.fillStyle = this.lightenColor(baseColor, 20);
                     this.ctx.fill();
                     this.ctx.beginPath();
-                    this.ctx.rect(pieceX + pieceSize - glow, pieceY + cornerRadius, glow, pieceSize - (2*cornerRadius));
-                    this.ctx.rect(pieceX + cornerRadius, pieceY + pieceSize - glow , pieceSize - (2*cornerRadius), glow);
+                    this.ctx.rect(pieceX + pieceSize - glow, pieceY + cornerRadius, glow, pieceSize - (2 * cornerRadius));
+                    this.ctx.rect(pieceX + cornerRadius, pieceY + pieceSize - glow, pieceSize - (2 * cornerRadius), glow);
                     this.ctx.fillStyle = this.darkenColor(baseColor, 20);
                     this.ctx.fill();
 
@@ -525,6 +525,14 @@ class JB {
             return p * p;
         }
         return 0;
+    }
+
+    clamp(value, min, max) {
+        if (value === undefined || !Number.isInteger(value)) {
+            return min;
+        }
+
+        return Math.min(Math.max(value, min), max);
     }
 
     getCookie(name) {
