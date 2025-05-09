@@ -6,6 +6,7 @@ class JB {
     static GREEN = 'g';
     static RED = 'r';
     static YELLOW = 'y';
+    static POWER = 'G';
 
     // Color pieces array for random generation
     static COLOR_PIECES = [
@@ -25,6 +26,12 @@ class JB {
         [JB.YELLOW, "#ffcc00"],
         [JB.WHITE, "#ffffff"], // was transparent
     ]);
+
+    static shapeStrokeColor = "white";
+    static shapeBorderColor = "black";
+    static shapeLineWidth = 3;
+    static shapeBorderWidth = 2;
+
 
     /**
      * Create a new Jawbreaker game
@@ -290,9 +297,11 @@ class JB {
                 const x = this.border + col * (this.blockSize + this.gap);
                 const y = this.border + row * (this.blockSize + this.gap);
 
-                if (color !== JB.WHITE) {
-                    this.ctx.save();
 
+                if (color !== JB.WHITE) {
+                    this.drawRandomShape(x, y, pieceSize);
+
+                    this.ctx.save();
                     const baseColor = JB.COLOR_MAP.get(color);
 
                     // highlight
@@ -327,6 +336,68 @@ class JB {
             }
         }
     }
+
+    drawRandomShape(x, y, size) {
+        const randomValue = Math.random();
+
+        if (randomValue < 0.01) {
+            this.drawCross(x, y, size);
+        } else if (randomValue < 0.02) {
+            this.drawPlus(x, y, size);
+        } else if (randomValue < 0.03) {
+            this.drawCircle(x, y, size);
+        }
+    }
+
+    drawCross(x, y, size) {
+        const ctx = this.ctx;
+        ctx.save();
+
+        ctx.beginPath();
+        const padding = size * 0.15;
+        ctx.moveTo(x + padding, y + padding);
+        ctx.lineTo(x + size - padding, y + size - padding);
+        ctx.moveTo(x + size - padding, y + padding);
+        ctx.lineTo(x + padding, y + size - padding);
+
+        this.drawShape(ctx)
+        ctx.restore();
+    }
+
+    drawPlus(x, y, size) {
+        const ctx = this.ctx;
+        ctx.beginPath();
+
+        const padding = size * 0.15;
+        ctx.moveTo(x + size / 2, y + padding);
+        ctx.lineTo(x + size / 2, y + size - padding);
+        ctx.moveTo(x + padding, y + size / 2);
+        ctx.lineTo(x + size - padding, y + size / 2);
+
+        this.drawShape(ctx)
+
+        ctx.restore()
+    }
+
+    drawCircle(x, y, size) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.beginPath();
+        const radius = size * 0.3;
+        ctx.arc(x + size / 2, y + size / 2, radius, 0, Math.PI * 2);
+        this.drawShape(ctx);
+        ctx.restore();
+    }
+
+    drawShape(ctx) {
+        ctx.strokeStyle = JB.shapeBorderColor;
+        ctx.lineWidth = JB.shapeLineWidth + JB.shapeBorderWidth;
+        ctx.stroke();
+        ctx.strokeStyle = JB.shapeStrokeColor;
+        ctx.lineWidth = JB.shapeLineWidth;
+        ctx.stroke();
+    }
+
 
     lightenColor(color, percent) {
         const num = parseInt(color.replace("#", ""), 16);
