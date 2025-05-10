@@ -53,7 +53,7 @@ func main() {
 
 	port := app.cfg.port
 	slog.Info("Starting server", "port", port)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), app.routes())
+	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), app.routes())
 	if err != nil {
 		logger.Error("Server failed", "error", err)
 		os.Exit(1)
