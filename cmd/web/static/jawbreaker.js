@@ -9,8 +9,8 @@ class JB {
     static YELLOW = 5000;
     static GRAY = 6000;
 
-    // Color pieces array for random generation
-    static COLOR_PIECES = [
+    // standard game pieces
+    static GAME_PIECES = [
         JB.PURPLE,
         JB.BLUE,
         JB.GREEN,
@@ -18,7 +18,6 @@ class JB {
         JB.YELLOW
     ];
 
-    // Color map for HTML class names
     static COLOR_MAP = new Map([
         [JB.PURPLE, "#8a2be2"],
         [JB.BLUE, "#00a0ff"],
@@ -26,24 +25,26 @@ class JB {
         [JB.RED, "#ff3333"],
         [JB.YELLOW, "#ffcc00"],
         [JB.GRAY, "#999999"],
-        [JB.WHITE, "#ffffff"], // was transparent
+        [JB.WHITE, "#ffffff"],
     ]);
 
     static POWER_X = 1;
     static POWER_PLUS = 2;
     static POWER_CIRCLE = 3;
     static POWER_RECT = 4;
+    static POWER_FILL = 5;
 
     static POWER_PIECES = [
         JB.POWER_X,
         JB.POWER_PLUS,
         JB.POWER_CIRCLE,
-        JB.POWER_RECT
+        JB.POWER_RECT,
+        JB.POWER_FILL,
     ];
 
     static shapeStrokeColor = "white";
     static shapeBorderColor = "black";
-    static shapeLineWidth = 3;
+    static shapeLineWidth = 4;
     static shapeBorderWidth = 2;
 
     static POWER_UP_X_DIRECTIONS = [
@@ -180,7 +181,7 @@ class JB {
         let board = [];
         for (let i = 0; i < this.rows * this.cols; i++) {
             let powerUp = 0;
-            let color = JB.COLOR_PIECES[Math.floor(Math.random() * JB.COLOR_PIECES.length)];
+            let color = JB.GAME_PIECES[Math.floor(Math.random() * JB.GAME_PIECES.length)];
 
             const rnd = Math.random();
             if (rnd < 0.02) {
@@ -293,120 +294,157 @@ class JB {
         return piece % JB.tokenSpace;
     }
 
+    /**
+     * Calculate the position of a piece on the canvas
+     */
+    getPiecePosition(row, col) {
+        const x = this.border + col * (this.blockSize + this.gap);
+        const y = this.border + row * (this.blockSize + this.gap);
+        return { x, y };
+    }
+
+    /**
+     * Draw an empty (white) space
+     */
+    drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.strokeStyle = this.darkenColor(JB.COLOR_MAP.get(JB.WHITE), 70);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.rect(x + outlineGap, y + outlineGap, outlineSize, outlineSize);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    /**
+     * Draw a colored piece
+     */
+    drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
+        const ctx = this.ctx;
+        ctx.save();
+
+        const gradient = ctx.createLinearGradient(
+            x + this.blockSize * 0.8,
+            y + this.blockSize * 0.8,
+            x + this.blockSize * 0.1,
+            y + this.blockSize * 0.1,
+        );
+
+        const color = this.colorMap(piece);
+        gradient.addColorStop(0, this.lightenColor(color, 12));
+        gradient.addColorStop(1, this.darkenColor(color, 6));
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
+        ctx.roundRect(x, y, pieceSize, pieceSize, cornerRadius);
+        ctx.fill();
+
+        // Draw top and left highlights
+        ctx.beginPath();
+        ctx.rect(x + cornerRadius, y, pieceSize - (2 * cornerRadius), glow);
+        ctx.rect(x, y + cornerRadius, glow, pieceSize - (2 * cornerRadius));
+        ctx.fillStyle = this.lightenColor(color, 20);
+        ctx.fill();
+
+        // Draw bottom and right shadows
+        ctx.beginPath();
+        ctx.rect(x + pieceSize - glow, y + cornerRadius, glow, pieceSize - (2 * cornerRadius));
+        ctx.rect(x + cornerRadius, y + pieceSize - glow, pieceSize - (2 * cornerRadius), glow);
+        ctx.fillStyle = this.darkenColor(color, 20);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    /**
+     * Draw hover effect for a piece
+     */
+    drawHoverEffect(x, y, pieceSize, color, cornerRadius) {
+        const ctx = this.ctx;
+        ctx.save();
+
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 15;
+        ctx.strokeStyle = this.lightenColor(color, 40);
+        ctx.lineWidth = 6;
+
+        // Draw rounded rectangle for hover effect
+        ctx.beginPath();
+        const hoverSize = pieceSize + 2; // Slightly larger than the piece
+        const hoverX = x - 1;
+        const hoverY = y - 1;
+
+        // Draw a rounded rectangle path for the hover effect
+        ctx.moveTo(hoverX + cornerRadius, hoverY);
+        ctx.lineTo(hoverX + hoverSize - cornerRadius, hoverY);
+        ctx.arcTo(hoverX + hoverSize, hoverY, hoverX + hoverSize, hoverY + cornerRadius, cornerRadius);
+        ctx.lineTo(hoverX + hoverSize, hoverY + hoverSize - cornerRadius);
+        ctx.arcTo(hoverX + hoverSize, hoverY + hoverSize, hoverX + hoverSize - cornerRadius, hoverY + hoverSize, cornerRadius);
+        ctx.lineTo(hoverX + cornerRadius, hoverY + hoverSize);
+        ctx.arcTo(hoverX, hoverY + hoverSize, hoverX, hoverY + hoverSize - cornerRadius, cornerRadius);
+        ctx.lineTo(hoverX, hoverY + cornerRadius);
+        ctx.arcTo(hoverX, hoverY, hoverX + cornerRadius, hoverY, cornerRadius);
+
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    /**
+     * Render the game board
+     */
     renderBoard() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const cornerRadius = 2;
         const pieceSize = this.blockSize - this.gap;
         const outlineGap = 2;
         const outlineSize = pieceSize - (2 * outlineGap);
+        const glow = 1;
 
+        // First pass: Draw all pieces (colored or empty)
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const index = row * this.cols + col;
-                const color = this.board[index];
-                const x = this.border + col * (this.blockSize + this.gap);
-                const y = this.border + row * (this.blockSize + this.gap);
+                const piece = this.board[index];
+                const { x, y } = this.getPiecePosition(row, col);
 
-                if (color === JB.WHITE) {
-                    this.ctx.save();
-                    this.ctx.strokeStyle = this.darkenColor(JB.COLOR_MAP.get(JB.WHITE), 70);
-                    this.ctx.lineWidth = 1;
-                    this.ctx.beginPath();
-                    this.ctx.rect(x + outlineGap, y + outlineGap, outlineSize, outlineSize);
-                    this.ctx.stroke();
-                    this.ctx.restore();
+                if (piece === JB.WHITE) {
+                    this.drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize);
                 } else {
-                    this.ctx.save();
-
-                    const gradient = this.ctx.createLinearGradient(
-                        x + this.blockSize * 0.8,
-                        y + this.blockSize * 0.8,
-                        x + this.blockSize * 0.1,
-                        y + this.blockSize * 0.1,
-                    );
-
-                    const baseColor = this.colorMap(color);
-
-                    gradient.addColorStop(0, this.lightenColor(baseColor, 12));
-                    gradient.addColorStop(1, this.darkenColor(baseColor, 6));
-                    this.ctx.fillStyle = gradient;
-
-                    this.ctx.beginPath();
-                    const glow = 1;
-                    const pieceX = x;
-                    const pieceY = y;
-
-                    this.ctx.roundRect(pieceX, pieceY, pieceSize, pieceSize, cornerRadius);
-                    this.ctx.fill();
-
-                    this.ctx.beginPath();
-                    this.ctx.rect(pieceX + cornerRadius, pieceY, pieceSize - (2 * cornerRadius), glow);
-                    this.ctx.rect(pieceX, pieceY + cornerRadius, glow, pieceSize - (2 * cornerRadius));
-                    this.ctx.fillStyle = this.lightenColor(baseColor, 20);
-                    this.ctx.fill();
-                    this.ctx.beginPath();
-                    this.ctx.rect(pieceX + pieceSize - glow, pieceY + cornerRadius, glow, pieceSize - (2 * cornerRadius));
-                    this.ctx.rect(pieceX + cornerRadius, pieceY + pieceSize - glow, pieceSize - (2 * cornerRadius), glow);
-                    this.ctx.fillStyle = this.darkenColor(baseColor, 20);
-                    this.ctx.fill();
-
-                    this.ctx.restore();
+                    this.drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow);
                 }
             }
         }
 
-
+        // Second pass: Draw power-ups and hover effects
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const index = row * this.cols + col;
-                const color = this.board[index];
-                const x = this.border + col * (this.blockSize + this.gap);
-                const y = this.border + row * (this.blockSize + this.gap);
+                const piece = this.board[index];
 
+                if (piece !== JB.WHITE) {
+                    const { x, y } = this.getPiecePosition(row, col);
 
-                if (color !== JB.WHITE) {
-
-                    if (this.getPowerUp(color) > 0) {
-                        this.drawPowerUp(x, y, pieceSize, this.getPowerUp(color));
+                    // Draw power-up if present
+                    if (this.getPowerUp(piece) > 0) {
+                        this.drawPowerUp(x, y, pieceSize, this.getPowerUp(piece));
                     }
 
-                    this.ctx.save();
-                    const baseColor = this.colorMap(color);
-
-                    // highlight
+                    // Draw hover effect if this piece is in the hover list
                     if (this.hoverList.has(index)) {
-                        this.ctx.shadowColor = baseColor;
-                        this.ctx.shadowBlur = 15;
-                        this.ctx.strokeStyle = this.lightenColor(baseColor, 40);
-                        this.ctx.lineWidth = 6;
-
-                        // Draw rounded rectangle for hover effect
-                        this.ctx.beginPath();
-                        const hoverSize = pieceSize + 2; // Slightly larger than the piece
-                        const hoverX = x - 1;
-                        const hoverY = y - 1;
-
-                        // Draw a rounded rectangle path for the hover effect
-                        this.ctx.moveTo(hoverX + cornerRadius, hoverY);
-                        this.ctx.lineTo(hoverX + hoverSize - cornerRadius, hoverY);
-                        this.ctx.arcTo(hoverX + hoverSize, hoverY, hoverX + hoverSize, hoverY + cornerRadius, cornerRadius);
-                        this.ctx.lineTo(hoverX + hoverSize, hoverY + hoverSize - cornerRadius);
-                        this.ctx.arcTo(hoverX + hoverSize, hoverY + hoverSize, hoverX + hoverSize - cornerRadius, hoverY + hoverSize, cornerRadius);
-                        this.ctx.lineTo(hoverX + cornerRadius, hoverY + hoverSize);
-                        this.ctx.arcTo(hoverX, hoverY + hoverSize, hoverX, hoverY + hoverSize - cornerRadius, cornerRadius);
-                        this.ctx.lineTo(hoverX, hoverY + cornerRadius);
-                        this.ctx.arcTo(hoverX, hoverY, hoverX + cornerRadius, hoverY, cornerRadius);
-
-                        this.ctx.stroke();
+                        const color = this.colorMap(piece);
+                        this.drawHoverEffect(x, y, pieceSize, color, cornerRadius);
                     }
-
-                    this.ctx.restore();
                 }
             }
         }
     }
 
     drawPowerUp(x, y, size, powerUp) {
+        const f = 8;
+        size -= f;
+        x += (f/2);
+        y += (f/2);
         switch (powerUp) {
             case JB.POWER_X:
                 this.drawX(x, y, size);
