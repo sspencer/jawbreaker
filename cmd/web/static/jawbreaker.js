@@ -47,18 +47,32 @@ class JB {
     static shapeBorderWidth = 2;
 
     static POWER_UP_X_DIRECTIONS = [
-        { dr: -1, dc: -1 }, // Top-left
-        { dr: -1, dc: 1 }, // Top-right
-        { dr: 1, dc: -1 }, // Bottom-left
-        { dr: 1, dc: 1 }, // Bottom-right
+        { sr: -1, sc: -1, dr: -1, dc: -1 }, // Top-left
+        { sr: -1, sc:  1, dr: -1, dc:  1 }, // Top-right
+        { sr:  1, sc: -1, dr:  1, dc: -1 }, // Bottom-left
+        { sr:  1, sc:  1, dr:  1, dc:  1 }, // Bottom-right
     ];
 
     static POWER_UP_PLUS_DIRECTIONS = [
-        { dr: -1, dc: 0 }, // Up
-        { dr: 1, dc: 0 }, // Down
-        { dr: 0, dc: -1 }, // Left
-        { dr: 0, dc: 1 }, // Right
+        { sr: -1, sc:  0, dr: -1, dc:  0 }, // Up
+        { sr:  1, sc:  0, dr:  1, dc:  0 }, // Down
+        { sr:  0, sc: -1, dr:  0, dc: -1 }, // Left
+        { sr:  0, sc:  1, dr:  0, dc:  1 }, // Right
     ];
+
+    static POWER_UP_RECT_DIRECTIONS = [
+        { sr: -2, sc: -2, dc:  0, dr:  1 },
+        { sr:  2, sc: -2, dc:  1, dr:  0 },
+        { sr:  2, sc:  2, dc:  0, dr: -1 },
+        { sr: -2, sc:  2, dc: -1, dr:  0 },
+    ]
+
+    static POWER_UP_CIRCLE_DIRECTIONS = [
+        { sr: -1, sc: -3, dc:  0, dr:  1 },
+        { sr:  3, sc: -1, dc:  1, dr:  0 },
+        { sr:  1, sc:  3, dc:  0, dr: -1 },
+        { sr: -3, sc:  1, dc: -1, dr:  0 },
+    ]
 
     /**
      * Create a new Jawbreaker game
@@ -169,10 +183,10 @@ class JB {
             let color = JB.COLOR_PIECES[Math.floor(Math.random() * JB.COLOR_PIECES.length)];
 
             const rnd = Math.random();
-            if (rnd < 0.03) {
+            if (rnd < 0.02) {
                 powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
                 color = JB.GRAY;
-            } else if (rnd < 0.10) {
+            } else if (rnd < 0.07) {
                 powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
             }
 
@@ -262,12 +276,8 @@ class JB {
                 for (const i of pieces) {
                     this.hoverList.add(i);
                 }
-                this.renderBoard();
-            } else if (this.hoverList.size > 0) {
-                this.hoverList.clear();
-                this.hoverIndex = -1;
-                this.renderBoard();
             }
+            this.renderBoard();
         }
     }
 
@@ -529,7 +539,7 @@ class JB {
             if (c.length > 0) {
                 c.unshift(index);
             }
-            console.log("connected:", c);
+
             return filtered ? c.filter(value => value >= 0) : c;
         }
 
@@ -566,47 +576,51 @@ class JB {
     getPowerUpConnections(index, target, powerUp) {
         switch(powerUp) {
             case JB.POWER_X:
-                return this.getPowerUpXConnections(index, target);
+                return this.getXConnections(index, target);
             case JB.POWER_PLUS:
-                return this.getPowerUpPlusConnections(index, target)
+                return this.getPlusConnections(index, target)
             case JB.POWER_RECT:
-                return this.getPowerUpRectConnections(index, target);
+                return this.getRectConnections(index, target);
             default:
-                return this.getPowerUpCircleConnections(index, target);
+                return this.getCircularConnections(index, target);
         }
     }
 
-    getPowerUpPlusConnections(index, target) {
-        return this.getPowerUpConnectionsWithDirections(index, target, JB.POWER_UP_PLUS_DIRECTIONS);
+    getPlusConnections(index, target) {
+        const maxIters = Math.max(this.rows, this.cols);
+        return this.geConnectionsWithDirections(index, target, JB.POWER_UP_PLUS_DIRECTIONS, maxIters);
     }
 
-    getPowerUpXConnections(index, target) {
-        return this.getPowerUpConnectionsWithDirections(index, target, JB.POWER_UP_X_DIRECTIONS);
+    getXConnections(index, target) {
+        const maxIters = Math.max(this.rows, this.cols);
+        return this.geConnectionsWithDirections(index, target, JB.POWER_UP_X_DIRECTIONS, maxIters);
     }
 
-    getPowerUpRectConnections(index, target) {
-        return [];
+    getRectConnections(index, target) {
+        return this.geConnectionsWithDirections(index, target, JB.POWER_UP_RECT_DIRECTIONS, 4);
     }
 
-    getPowerUpCircleConnections(index, target) {
-        return [];
+    getCircularConnections(index, target) {
+        let c1 = this.geConnectionsWithDirections(index, target, JB.POWER_UP_RECT_DIRECTIONS, 1);
+        let c2 = this.geConnectionsWithDirections(index, target, JB.POWER_UP_CIRCLE_DIRECTIONS, 3);
+        return [...c1, ...c2];
     }
 
-    getPowerUpConnectionsWithDirections(index, target, directions) {
-        const max = Math.max(this.rows, this.cols);
+    geConnectionsWithDirections(index, target, directions, max) {
         const point = this.getPointFromIndex(index);
         let startRow = point.row;
         let startCol = point.col;
         let connectedIndices = [];
 
-        for (let i = 1; i < max; i++) {
+        for (let i = 0; i < max; i++) {
             for (const dir of directions) {
-                const r = startRow + dir.dr * i;
-                const c = startCol + dir.dc * i;
+                const r = startRow + dir.sr + dir.dr * i;
+                const c = startCol + dir.sc + dir.dc * i;
 
                 if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
                     index = r * this.cols + c;
-                    if (this.board[index] === target || (target === JB.GRAY && target !== JB.WHITE)) {
+                    const piece = this.getPiece(this.board[index]);
+                    if (piece === target || (target === JB.GRAY && target !== JB.WHITE)) {
                         connectedIndices.push(index);
                     } else {
                         connectedIndices.push(-1);
@@ -620,11 +634,6 @@ class JB {
 
     floodFill(index) {
         const connectedPieces = this.getConnections(index);
-        console.log(
-            "floodFill:",
-            index,
-            connectedPieces,
-        )
         if (connectedPieces.length < 2) {
             return 0;
         }
@@ -646,7 +655,6 @@ class JB {
             boardArray.push(rowArray);
         }
 
-
         for (let col = 0; col < this.cols; col++) {
             let writeRow = this.rows - 1;
             for (let row = this.rows - 1; row >= 0; row--) {
@@ -659,7 +667,6 @@ class JB {
                 }
             }
         }
-
 
         let writeCol = this.cols - 1;
         for (let col = this.cols - 1; col >= 0; col--) {
@@ -682,13 +689,13 @@ class JB {
             }
         }
 
-        let newBoard = [];
+        let b = [];
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
-                newBoard.push(boardArray[row][col]);
+                b.push(boardArray[row][col]);
             }
         }
-        this.board = newBoard;
+        this.board = b;
     }
 
     move(index) {
