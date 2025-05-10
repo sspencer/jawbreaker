@@ -8,6 +8,7 @@ class JB {
     static RED = 4000;
     static YELLOW = 5000;
     static GRAY = 6000;
+    static BLACK = 7000;
 
     // standard game pieces
     static GAME_PIECES = [
@@ -24,7 +25,8 @@ class JB {
         [JB.GREEN, "#00cc66"],
         [JB.RED, "#ff3333"],
         [JB.YELLOW, "#ffcc00"],
-        [JB.GRAY, "#999999"],
+        [JB.GRAY, "#888888"],
+        [JB.BLACK, "#333333"],
         [JB.WHITE, "#ffffff"],
     ]);
 
@@ -39,7 +41,6 @@ class JB {
         JB.POWER_PLUS,
         JB.POWER_CIRCLE,
         JB.POWER_RECT,
-        JB.POWER_FILL,
     ];
 
     static shapeStrokeColor = "white";
@@ -185,7 +186,8 @@ class JB {
 
             const rnd = Math.random();
             if (rnd < 0.02) {
-                powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
+                const extraPower = [...JB.POWER_PIECES, JB.POWER_FILL];
+                powerUp = extraPower[Math.floor(Math.random() * extraPower.length)];
                 color = JB.GRAY;
             } else if (rnd < 0.07) {
                 powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
@@ -194,6 +196,14 @@ class JB {
             board.push(color+powerUp);
         }
         return board;
+    }
+
+    fillEmptySpaces() {
+        for (let i = 0; i < this.rows * this.cols; i++) {
+            if (this.board[i] === JB.WHITE) {
+                this.board[i] = JB.GAME_PIECES[Math.floor(Math.random() * JB.GAME_PIECES.length)];
+            }
+        }
     }
 
     getCanvasCoordinates(e) {
@@ -272,8 +282,17 @@ class JB {
         if (index >= 0 && index < this.board.length && index !== this.hoverIndex) {
             this.hoverList.clear();
             this.hoverIndex = index;
+
+
             const pieces = this.getConnections(index);
-            if (pieces.length > 1) {
+            const powerUp = this.getPowerUp(this.board[index]);
+            if (powerUp === JB.POWER_FILL) {
+                if (pieces.indexOf(index) === -1) {
+                    pieces.push(index);
+                }
+            }
+
+            if (pieces.length > 1 || (pieces.length === 1 && powerUp === JB.POWER_FILL)) {
                 for (const i of pieces) {
                     this.hoverList.add(i);
                 }
@@ -325,13 +344,16 @@ class JB {
         ctx.save();
 
         const gradient = ctx.createLinearGradient(
-            x + this.blockSize * 0.8,
-            y + this.blockSize * 0.8,
-            x + this.blockSize * 0.1,
-            y + this.blockSize * 0.1,
+            x + this.blockSize * 0.7,
+            y + this.blockSize * 0.7,
+            x + this.blockSize * 0.2,
+            y + this.blockSize * 0.2,
         );
 
-        const color = this.colorMap(piece);
+        let color = this.colorMap(piece);
+        if (this.getPowerUp(piece) === JB.POWER_FILL) {
+            color = this.darkenColor(color, 90);
+        }
         gradient.addColorStop(0, this.lightenColor(color, 12));
         gradient.addColorStop(1, this.darkenColor(color, 6));
         ctx.fillStyle = gradient;
@@ -358,9 +380,9 @@ class JB {
     }
 
     /**
-     * Draw hover effect for a piece
+     * Draw the hover effect for a piece
      */
-    drawHoverEffect(x, y, pieceSize, color, cornerRadius) {
+    drawHoverEffect(x, y, pieceSize, color, cornerRadius, bigger) {
         const ctx = this.ctx;
         ctx.save();
 
@@ -371,10 +393,13 @@ class JB {
 
         // Draw rounded rectangle for hover effect
         ctx.beginPath();
-        const hoverSize = pieceSize + 2; // Slightly larger than the piece
-        const hoverX = x - 1;
-        const hoverY = y - 1;
-
+        let hoverSize = pieceSize + 2; // Slightly larger than the piece
+        let hoverX = x - 1;
+        let hoverY = y - 1;
+        if (bigger === true) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.lineWidth = 16;
+        }
         // Draw a rounded rectangle path for the hover effect
         ctx.moveTo(hoverX + cornerRadius, hoverY);
         ctx.lineTo(hoverX + hoverSize - cornerRadius, hoverY);
@@ -424,16 +449,16 @@ class JB {
 
                 if (piece !== JB.WHITE) {
                     const { x, y } = this.getPiecePosition(row, col);
-
+                    const powerUp = this.getPowerUp(piece);
                     // Draw power-up if present
-                    if (this.getPowerUp(piece) > 0) {
+                    if (powerUp > 0) {
                         this.drawPowerUp(x, y, pieceSize, this.getPowerUp(piece));
                     }
 
-                    // Draw hover effect if this piece is in the hover list
                     if (this.hoverList.has(index)) {
                         const color = this.colorMap(piece);
-                        this.drawHoverEffect(x, y, pieceSize, color, cornerRadius);
+                        const bigger = this.getPowerUp(piece) === JB.POWER_FILL;
+                        this.drawHoverEffect(x, y, pieceSize, color, cornerRadius, bigger);
                     }
                 }
             }
@@ -442,21 +467,25 @@ class JB {
 
     drawPowerUp(x, y, size, powerUp) {
         const f = 8;
-        size -= f;
-        x += (f/2);
-        y += (f/2);
+        const shapeSize = size - f;
+        const shapeX = x + (f/2);
+        const shapeY = y + (f/2);
         switch (powerUp) {
             case JB.POWER_X:
-                this.drawX(x, y, size);
+                this.drawX(shapeX, shapeY, shapeSize);
                 break;
             case JB.POWER_PLUS:
-                this.drawPlus(x, y, size);
+                this.drawPlus(shapeX, shapeY, shapeSize);
                 break;
             case JB.POWER_RECT:
-                this.drawRect(x, y, size);
+                this.drawRect(shapeX, shapeY, shapeSize);
+                break;
+            case JB.POWER_FILL:
+                //this.drawPowerFill(x, y, size);
+                this.drawPowerFill(shapeX, shapeY, shapeSize);
                 break;
             default:
-                this.drawCircle(x, y, size);
+                this.drawCircle(shapeX, shapeY, shapeSize);
                 break;
         }
     }
@@ -515,6 +544,65 @@ class JB {
         ctx.rect(x + padding, y + padding, rectSize, rectSize);
 
         this.drawShape(ctx);
+        ctx.restore();
+    }
+
+    drawPowerFill(x, y, size) {
+        const ctx = this.ctx;
+        ctx.save();
+
+        // Calculate dimensions
+        const halfSize = size / 2;
+        const centerSize = size * 0.3; // Size of the center section
+        const centerOffset = (size - centerSize) / 2;
+
+        // Draw the four quadrants
+        // Top-left (blue)
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + halfSize, y);
+        ctx.lineTo(x + halfSize, y + halfSize);
+        ctx.lineTo(x, y + halfSize);
+        ctx.closePath();
+        ctx.fillStyle = JB.COLOR_MAP.get(JB.BLUE);
+        ctx.fill();
+
+        // Top-right (green)
+        ctx.beginPath();
+        ctx.moveTo(x + halfSize, y);
+        ctx.lineTo(x + size, y);
+        ctx.lineTo(x + size, y + halfSize);
+        ctx.lineTo(x + halfSize, y + halfSize);
+        ctx.closePath();
+        ctx.fillStyle = JB.COLOR_MAP.get(JB.GREEN);
+        ctx.fill();
+
+        // Bottom-left (red)
+        ctx.beginPath();
+        ctx.moveTo(x, y + halfSize);
+        ctx.lineTo(x + halfSize, y + halfSize);
+        ctx.lineTo(x + halfSize, y + size);
+        ctx.lineTo(x, y + size);
+        ctx.closePath();
+        ctx.fillStyle = JB.COLOR_MAP.get(JB.RED);
+        ctx.fill();
+
+        // Bottom-right (yellow)
+        ctx.beginPath();
+        ctx.moveTo(x + halfSize, y + halfSize);
+        ctx.lineTo(x + size, y + halfSize);
+        ctx.lineTo(x + size, y + size);
+        ctx.lineTo(x + halfSize, y + size);
+        ctx.closePath();
+        ctx.fillStyle = JB.COLOR_MAP.get(JB.YELLOW);
+        ctx.fill();
+
+        // Center section (purple)
+        ctx.beginPath();
+        ctx.rect(x + centerOffset, y + centerOffset, centerSize, centerSize);
+        ctx.fillStyle = JB.COLOR_MAP.get(JB.PURPLE);
+        ctx.fill();
+
         ctx.restore();
     }
 
@@ -619,8 +707,10 @@ class JB {
                 return this.getPlusConnections(index, target)
             case JB.POWER_RECT:
                 return this.getRectConnections(index, target);
-            default:
+            case JB.POWER_CIRCLE:
                 return this.getCircularConnections(index, target);
+            default:
+                return [];
         }
     }
 
@@ -737,6 +827,17 @@ class JB {
     }
 
     move(index) {
+        const powerUp = this.getPowerUp(this.board[index]);
+        if (powerUp === JB.POWER_FILL) {
+            this.board[index] = JB.WHITE;
+            this.fillEmptySpaces();
+            return {
+                board: this.board,
+                score: this.score,
+                gameOver: false,
+            };
+        }
+
         const n = this.floodFill(index);
         if (n < 2) {
             return {
