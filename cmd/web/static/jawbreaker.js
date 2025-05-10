@@ -29,13 +29,13 @@ class JB {
         [JB.WHITE, "#ffffff"], // was transparent
     ]);
 
-    static POWER_CROSS = 1;
+    static POWER_X = 1;
     static POWER_PLUS = 2;
     static POWER_CIRCLE = 3;
     static POWER_RECT = 4;
 
     static POWER_PIECES = [
-        JB.POWER_CROSS,
+        JB.POWER_X,
         JB.POWER_PLUS,
         JB.POWER_CIRCLE,
         JB.POWER_RECT
@@ -46,6 +46,19 @@ class JB {
     static shapeLineWidth = 3;
     static shapeBorderWidth = 2;
 
+    static POWER_UP_X_DIRECTIONS = [
+        { dr: -1, dc: -1 }, // Top-left
+        { dr: -1, dc: 1 }, // Top-right
+        { dr: 1, dc: -1 }, // Bottom-left
+        { dr: 1, dc: 1 }, // Bottom-right
+    ];
+
+    static POWER_UP_PLUS_DIRECTIONS = [
+        { dr: -1, dc: 0 }, // Up
+        { dr: 1, dc: 0 }, // Down
+        { dr: 0, dc: -1 }, // Left
+        { dr: 0, dc: 1 }, // Right
+    ];
 
     /**
      * Create a new Jawbreaker game
@@ -156,14 +169,13 @@ class JB {
             let color = JB.COLOR_PIECES[Math.floor(Math.random() * JB.COLOR_PIECES.length)];
 
             const rnd = Math.random();
-            if (rnd < 0.01) {
+            if (rnd < 0.03) {
                 powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
                 color = JB.GRAY;
-            } else if (rnd < 0.03) {
+            } else if (rnd < 0.10) {
                 powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
             }
 
-            console.log(color, powerUp);
             board.push(color+powerUp);
         }
         return board;
@@ -190,6 +202,12 @@ class JB {
         }
 
         return row * this.cols + col;
+    }
+
+    getPointFromIndex(index) {
+        const col = index % this.cols;
+        const row = Math.floor(index / this.cols);
+        return {col: col, row: row};
     }
 
     handleClick(e) {
@@ -220,7 +238,7 @@ class JB {
 
             this.hoverList.clear();
             this.hoverIndex = -1;
-            const pieces = this.getConnectedPieces(index);
+            const pieces = this.getConnections(index);
             if (pieces.length > 1) {
                 this.hoverIndex = index;
                 for (const i of pieces) {
@@ -239,7 +257,7 @@ class JB {
         if (index >= 0 && index < this.board.length && index !== this.hoverIndex) {
             this.hoverList.clear();
             this.hoverIndex = index;
-            const pieces = this.getConnectedPieces(index);
+            const pieces = this.getConnections(index);
             if (pieces.length > 1) {
                 for (const i of pieces) {
                     this.hoverList.add(i);
@@ -380,8 +398,8 @@ class JB {
 
     drawPowerUp(x, y, size, powerUp) {
         switch (powerUp) {
-            case JB.POWER_CROSS:
-                this.drawCross(x, y, size);
+            case JB.POWER_X:
+                this.drawX(x, y, size);
                 break;
             case JB.POWER_PLUS:
                 this.drawPlus(x, y, size);
@@ -405,7 +423,7 @@ class JB {
         return ctx;
     }
 
-    drawCross(x, y, size) {
+    drawX(x, y, size) {
         const ctx = this.prepareShapeContext();
         const padding = size * 0.15;
 
@@ -491,14 +509,28 @@ class JB {
         ).toString(16).slice(1);
     }
 
-    getConnectedPieces(index) {
+      getConnections(index, filtered) {
         if (index < 0 || index >= this.board.length) {
             return [];
+        }
+
+        if (filtered === undefined) {
+            filtered = true;
         }
 
         const target = this.getPiece(this.board[index]);
         if (target === JB.WHITE) {
             return [];
+        }
+
+        const powerUp = this.getPowerUp(this.board[index]);
+        if (powerUp > 0) {
+            let c = this.getPowerUpConnections(index, target, powerUp);
+            if (c.length > 0) {
+                c.unshift(index);
+            }
+            console.log("connected:", c);
+            return filtered ? c.filter(value => value >= 0) : c;
         }
 
         const connectedIndices = [];
@@ -528,11 +560,71 @@ class JB {
             return [];
         }
 
+          return filtered ? connectedIndices.filter(value => value >= 0) : connectedIndices;
+    }
+
+    getPowerUpConnections(index, target, powerUp) {
+        switch(powerUp) {
+            case JB.POWER_X:
+                return this.getPowerUpXConnections(index, target);
+            case JB.POWER_PLUS:
+                return this.getPowerUpPlusConnections(index, target)
+            case JB.POWER_RECT:
+                return this.getPowerUpRectConnections(index, target);
+            default:
+                return this.getPowerUpCircleConnections(index, target);
+        }
+    }
+
+    getPowerUpPlusConnections(index, target) {
+        return this.getPowerUpConnectionsWithDirections(index, target, JB.POWER_UP_PLUS_DIRECTIONS);
+    }
+
+    getPowerUpXConnections(index, target) {
+        return this.getPowerUpConnectionsWithDirections(index, target, JB.POWER_UP_X_DIRECTIONS);
+    }
+
+    getPowerUpRectConnections(index, target) {
+        return [];
+    }
+
+    getPowerUpCircleConnections(index, target) {
+        return [];
+    }
+
+    getPowerUpConnectionsWithDirections(index, target, directions) {
+        const max = Math.max(this.rows, this.cols);
+        const point = this.getPointFromIndex(index);
+        let startRow = point.row;
+        let startCol = point.col;
+        let connectedIndices = [];
+
+        for (let i = 1; i < max; i++) {
+            for (const dir of directions) {
+                const r = startRow + dir.dr * i;
+                const c = startCol + dir.dc * i;
+
+                if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+                    index = r * this.cols + c;
+                    if (this.board[index] === target || (target === JB.GRAY && target !== JB.WHITE)) {
+                        connectedIndices.push(index);
+                    } else {
+                        connectedIndices.push(-1);
+                    }
+                }
+            }
+        }
+
         return connectedIndices;
     }
 
     floodFill(index) {
-        const connectedPieces = this.getConnectedPieces(index);
+        const connectedPieces = this.getConnections(index);
+        console.log(
+            "floodFill:",
+            index,
+            connectedPieces,
+        )
         if (connectedPieces.length < 2) {
             return 0;
         }
@@ -635,7 +727,7 @@ class JB {
             if (this.board[i] === JB.WHITE) {
                 continue;
             }
-            if (this.getConnectedPieces(i).length > 1) {
+            if (this.getConnections(i).length > 1) {
                 return false;
             }
         }
