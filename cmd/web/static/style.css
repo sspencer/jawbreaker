@@ -101,7 +101,7 @@ body::before {
     text-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
 }
 
-.help-btn {
+.btn, .help-btn {
     background: #19a;
     color: white;
     border: none;
@@ -115,7 +115,7 @@ body::before {
     margin-top: 10px;
 }
 
-.help-btn:hover {
+.btn:hover, .help-btn:hover {
     transform: translateY(-3px) scale(1.05);
 }
 

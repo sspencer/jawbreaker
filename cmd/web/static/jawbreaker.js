@@ -145,6 +145,19 @@ class JB {
             });
         }
 
+        // Restart and Undo buttons
+        const restartBtn = document.getElementById("restart-btn");
+        const undoBtn = document.getElementById("undo-btn");
+
+        restartBtn.addEventListener("click", () => {
+            console.log("Restart button clicked");
+            this.resetGame();
+        });
+
+        undoBtn.addEventListener("click", () => {
+            console.log("Undo button clicked");
+        });
+
         // Help button and modal
         const helpBtn = document.getElementById("help-btn");
         const helpModal = document.getElementById("help-modal");
