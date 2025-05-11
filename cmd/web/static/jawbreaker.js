@@ -10,6 +10,9 @@ class JB {
     static GRAY = 6000;
     static BLACK = 7000;
 
+    static GAP = 1;
+    static BORDER = 8;
+    
     // standard game pieces
     static GAME_PIECES = [
         JB.PURPLE,
@@ -88,28 +91,22 @@ class JB {
      * Create a new Jawbreaker game
      */
     constructor(opts) {
-        this.rows = this.clamp(opts.rows, 8, 32);
-        this.cols = this.clamp(opts.cols, 8, 32);
-        this.gap = opts.gap || 1;
-        this.border = opts.border || 6;
-        this.blockSize = opts.blockSize || 36;
+        this.size = this.clamp(opts.size, 8, 32);
+        this.block = opts.blockSize || 36;
         this.cookieName = opts.cookieName || "jawbreaker";
         this.score = 0;
         this.lastScore = 0;
         this.bestScore = 0;
-        this.board = this.newBoard();
+        this.board = this.newGame();
         this.hoverList = new Set();
-
         this.canvas = document.getElementById("game-canvas");
         this.ctx = this.canvas.getContext("2d");
 
-        const canvasWidth = this.cols * this.blockSize +
-            (this.cols - 1) * this.gap + 2 * this.border;
-        const canvasHeight = this.rows * this.blockSize +
-            (this.rows - 1) * this.gap + 2 * this.border;
+        const canvasSize = this.size * this.block +
+            (this.size - 1) * JB.GAP + 2 * JB.BORDER;
 
-        this.canvas.width = canvasWidth;
-        this.canvas.height = canvasHeight;
+        this.canvas.width = canvasSize;
+        this.canvas.height = canvasSize;
 
         // Read scores cookie
         const scoresCookie = this.getCookie(this.cookieName);
@@ -187,7 +184,7 @@ class JB {
     }
 
     resetGame() {
-        this.board = this.newBoard();
+        this.board = this.newGame();
         this.hoverList.clear();
         this.hoverIndex = -1;
         this.score = 0;
@@ -199,28 +196,67 @@ class JB {
      * Create a random board with the given dimensions
      * @returns {Array} - Board as an array of integers
      */
-    newBoard() {
+    newGame() {
         let board = [];
-        for (let i = 0; i < this.rows * this.cols; i++) {
+        for (let i = 0; i < this.size * this.size; i++) {
             let powerUp = 0;
             let color = JB.GAME_PIECES[Math.floor(Math.random() * JB.GAME_PIECES.length)];
 
-            const rnd = Math.random();
-            if (rnd < 0.02) {
-                const extraPower = [...JB.POWER_PIECES, ...JB.EXTRA_PIECES];
-                powerUp = extraPower[Math.floor(Math.random() * extraPower.length)];
-                color = JB.GRAY;
-            } else if (rnd < 0.07) {
-                powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
-            }
-
+            // const rnd = Math.random();
+            // if (rnd < 0.02) {
+            //     const extraPower = [...JB.POWER_PIECES, ...JB.EXTRA_PIECES];
+            //     powerUp = extraPower[Math.floor(Math.random() * extraPower.length)];
+            //     color = JB.GRAY;
+            // } else if (rnd < 0.07) {
+            //     powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
+            // }
             board.push(color+powerUp);
         }
+
+        board[Math.floor(Math.random() * this.size * this.size)] = JB.GRAY + JB.POWER_FILL;
+        board[Math.floor(Math.random() * this.size * this.size)] = JB.GRAY + JB.POWER_CLOCKWISE;
+
+
+        const colors = [...JB.GAME_PIECES, JB.GRAY];
+
+        const uniq = this.generateUniqueRandomNums(JB.POWER_PIECES.length * colors.length + JB.EXTRA_PIECES.length, this.size * this.size);
+        let counter = 0;
+        for (let i = 0; i < JB.EXTRA_PIECES.length; i++) {
+            board[uniq.shift()] = JB.GRAY + JB.EXTRA_PIECES[i];
+            counter++;
+        }
+
+        for (let col in colors) {
+            for (let pow in JB.POWER_PIECES) {
+                board[uniq.shift()] = colors[col] + JB.POWER_PIECES[pow];
+                counter++;
+                if (uniq.length === 0) {
+                    break;
+                }
+            }
+        }
+
+        console.log("counter:", counter);
         return board;
     }
 
+    generateUniqueRandomNums(n, max) {
+        if (n > max + 1) {
+            throw new Error("Cannot generate more unique numbers than the range allows.");
+        }
+
+        const randomNumbers = new Set();
+
+        while (randomNumbers.size < n) {
+            const randomNum = Math.floor(Math.random() * (max + 1));
+            randomNumbers.add(randomNum);
+        }
+
+        return Array.from(randomNumbers);
+    }
+
     fillEmptySpaces() {
-        for (let i = 0; i < this.rows * this.cols; i++) {
+        for (let i = 0; i < this.size * this.size; i++) {
             if (this.board[i] === JB.WHITE) {
                 this.board[i] = JB.GAME_PIECES[Math.floor(Math.random() * JB.GAME_PIECES.length)];
             }
@@ -236,23 +272,23 @@ class JB {
 
     getBoardIndexFromCoordinates(x, y) {
         // Adjust coordinates to account for a border
-        const adjustedX = x - this.border;
-        const adjustedY = y - this.border;
+        const adjustedX = x - JB.BORDER;
+        const adjustedY = y - JB.BORDER;
 
         // Calculate column and row
-        const col = Math.floor(adjustedX / (this.blockSize + this.gap));
-        const row = Math.floor(adjustedY / (this.blockSize + this.gap));
+        const col = Math.floor(adjustedX / (this.block + JB.GAP));
+        const row = Math.floor(adjustedY / (this.block + JB.GAP));
 
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+        if (col < 0 || col >= this.size || row < 0 || row >= this.size) {
             return -1;
         }
 
-        return row * this.cols + col;
+        return row * this.size + col;
     }
 
     getPointFromIndex(index) {
-        const col = index % this.cols;
-        const row = Math.floor(index / this.cols);
+        const col = index % this.size;
+        const row = Math.floor(index / this.size);
         return {col: col, row: row};
     }
 
@@ -338,8 +374,8 @@ class JB {
      * Calculate the position of a piece on the canvas
      */
     getPiecePosition(row, col) {
-        const x = this.border + col * (this.blockSize + this.gap);
-        const y = this.border + row * (this.blockSize + this.gap);
+        const x = JB.BORDER + col * (this.block + JB.GAP);
+        const y = JB.BORDER + row * (this.block + JB.GAP);
         return { x, y };
     }
 
@@ -365,10 +401,10 @@ class JB {
         ctx.save();
 
         const gradient = ctx.createLinearGradient(
-            x + this.blockSize * 0.7,
-            y + this.blockSize * 0.7,
-            x + this.blockSize * 0.2,
-            y + this.blockSize * 0.2,
+            x + this.block * 0.7,
+            y + this.block * 0.7,
+            x + this.block * 0.2,
+            y + this.block * 0.2,
         );
 
         let color = this.colorMap(piece);
@@ -443,15 +479,15 @@ class JB {
     renderBoard() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const cornerRadius = 2;
-        const pieceSize = this.blockSize - this.gap;
+        const pieceSize = this.block - JB.GAP;
         const outlineGap = 2;
         const outlineSize = pieceSize - (2 * outlineGap);
         const glow = 1;
 
         // First pass: Draw all pieces (colored or empty)
-        for (let row = 0; row < this.rows; row++) {
-            for (let col = 0; col < this.cols; col++) {
-                const index = row * this.cols + col;
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                const index = row * this.size + col;
                 const piece = this.board[index];
                 const { x, y } = this.getPiecePosition(row, col);
 
@@ -464,9 +500,9 @@ class JB {
         }
 
         // Second pass: Draw power-ups and hover effects
-        for (let row = 0; row < this.rows; row++) {
-            for (let col = 0; col < this.cols; col++) {
-                const index = row * this.cols + col;
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                const index = row * this.size + col;
                 const piece = this.board[index];
 
                 if (piece !== JB.WHITE) {
@@ -729,7 +765,7 @@ class JB {
 
         const connectedIndices = [];
         const stack = [index];
-        const visited = new Array(this.rows * this.cols).fill(false);
+        const visited = new Array(this.size * this.size).fill(false);
 
         while (stack.length > 0) {
             const i = stack.pop();
@@ -741,13 +777,13 @@ class JB {
             visited[i] = true;
             connectedIndices.push(i);
 
-            const row = Math.floor(i / this.cols);
-            const col = i % this.cols;
+            const row = Math.floor(i / this.size);
+            const col = i % this.size;
 
-            if (row > 0) stack.push(i - this.cols);
-            if (row < this.rows - 1) stack.push(i + this.cols);
+            if (row > 0) stack.push(i - this.size);
+            if (row < this.size - 1) stack.push(i + this.size);
             if (col > 0) stack.push(i - 1);
-            if (col < this.cols - 1) stack.push(i + 1);
+            if (col < this.size - 1) stack.push(i + 1);
         }
 
         if (connectedIndices.length < 2) {
@@ -773,12 +809,12 @@ class JB {
     }
 
     getPlusConnections(index, target) {
-        const maxIters = Math.max(this.rows, this.cols);
+        const maxIters = Math.max(this.size, this.size);
         return this.geConnectionsWithDirections(index, target, JB.POWER_UP_PLUS_DIRECTIONS, maxIters);
     }
 
     getXConnections(index, target) {
-        const maxIters = Math.max(this.rows, this.cols);
+        const maxIters = Math.max(this.size, this.size);
         return this.geConnectionsWithDirections(index, target, JB.POWER_UP_X_DIRECTIONS, maxIters);
     }
 
@@ -803,8 +839,8 @@ class JB {
                 const r = startRow + dir.sr + dir.dr * i;
                 const c = startCol + dir.sc + dir.dc * i;
 
-                if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-                    index = r * this.cols + c;
+                if (r >= 0 && r < this.size && c >= 0 && c < this.size) {
+                    index = r * this.size + c;
                     const piece = this.getPiece(this.board[index]);
                     if (piece === target || (target === JB.GRAY && target !== JB.WHITE)) {
                         connectedIndices.push(index);
@@ -837,10 +873,10 @@ class JB {
      */
     boardTo2DArray() {
         let boardArray = [];
-        for (let row = 0; row < this.rows; row++) {
+        for (let row = 0; row < this.size; row++) {
             const rowArray = [];
-            for (let col = 0; col < this.cols; col++) {
-                rowArray.push(this.board[row * this.cols + col]);
+            for (let col = 0; col < this.size; col++) {
+                rowArray.push(this.board[row * this.size + col]);
             }
             boardArray.push(rowArray);
         }
@@ -853,8 +889,8 @@ class JB {
      */
     updateBoardFrom2DArray(boardArray) {
         let b = [];
-        for (let row = 0; row < this.rows; row++) {
-            for (let col = 0; col < this.cols; col++) {
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
                 b.push(boardArray[row][col]);
             }
         }
@@ -865,10 +901,10 @@ class JB {
      * Update canvas dimensions based on current board dimensions
      */
     updateCanvasDimensions() {
-        const canvasWidth = this.cols * this.blockSize +
-            (this.cols - 1) * this.gap + 2 * this.border;
-        const canvasHeight = this.rows * this.blockSize +
-            (this.rows - 1) * this.gap + 2 * this.border;
+        const canvasWidth = this.size * this.block +
+            (this.size - 1) * JB.GAP + 2 * JB.BORDER;
+        const canvasHeight = this.size * this.block +
+            (this.size - 1) * JB.GAP + 2 * JB.BORDER;
 
         this.canvas.width = canvasWidth;
         this.canvas.height = canvasHeight;
@@ -883,18 +919,18 @@ class JB {
 
         // Create a new 2D array with swapped dimensions
         let rotatedArray = [];
-        for (let col = 0; col < this.cols; col++) {
+        for (let col = 0; col < this.size; col++) {
             const newRow = [];
-            for (let row = this.rows - 1; row >= 0; row--) {
+            for (let row = this.size - 1; row >= 0; row--) {
                 newRow.push(boardArray[row][col]);
             }
             rotatedArray.push(newRow);
         }
 
         // Swap rows and cols
-        const temp = this.rows;
-        this.rows = this.cols;
-        this.cols = temp;
+        const temp = this.size;
+        this.size = this.size;
+        this.size = temp;
 
         // Update the board
         this.updateBoardFrom2DArray(rotatedArray);
@@ -917,18 +953,18 @@ class JB {
 
         // Create a new 2D array with swapped dimensions
         let rotatedArray = [];
-        for (let col = this.cols - 1; col >= 0; col--) {
+        for (let col = this.size - 1; col >= 0; col--) {
             const newRow = [];
-            for (let row = 0; row < this.rows; row++) {
+            for (let row = 0; row < this.size; row++) {
                 newRow.push(boardArray[row][col]);
             }
             rotatedArray.push(newRow);
         }
 
         // Swap rows and cols
-        const temp = this.rows;
-        this.rows = this.cols;
-        this.cols = temp;
+        const temp = this.size;
+        this.size = this.size;
+        this.size = temp;
 
         // Update the board
         this.updateBoardFrom2DArray(rotatedArray);
@@ -945,9 +981,9 @@ class JB {
     applyGravityAndShiftRight() {
         let boardArray = this.boardTo2DArray();
 
-        for (let col = 0; col < this.cols; col++) {
-            let writeRow = this.rows - 1;
-            for (let row = this.rows - 1; row >= 0; row--) {
+        for (let col = 0; col < this.size; col++) {
+            let writeRow = this.size - 1;
+            for (let row = this.size - 1; row >= 0; row--) {
                 if (boardArray[row][col] !== JB.WHITE) {
                     boardArray[writeRow][col] = boardArray[row][col];
                     if (writeRow !== row) {
@@ -958,10 +994,10 @@ class JB {
             }
         }
 
-        let writeCol = this.cols - 1;
-        for (let col = this.cols - 1; col >= 0; col--) {
+        let writeCol = this.size - 1;
+        for (let col = this.size - 1; col >= 0; col--) {
             let isEmpty = true;
-            for (let row = 0; row < this.rows; row++) {
+            for (let row = 0; row < this.size; row++) {
                 if (boardArray[row][col] !== JB.WHITE) {
                     isEmpty = false;
                     break;
@@ -970,7 +1006,7 @@ class JB {
 
             if (!isEmpty) {
                 if (writeCol !== col) {
-                    for (let row = 0; row < this.rows; row++) {
+                    for (let row = 0; row < this.size; row++) {
                         boardArray[row][writeCol] = boardArray[row][col];
                         boardArray[row][col] = JB.WHITE;
                     }

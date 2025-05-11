@@ -10,25 +10,20 @@ import (
 )
 
 const (
-	defPort   = 8000
-	defRows   = 12
-	defCols   = 12
-	defBlock  = 40
-	defMBlock = 30
-	defBorder = 6
-	defGap    = 1
-	defCookie = "jawbreaker"
+	defPort    = 8000
+	defSize    = 16
+	defBlock   = 40
+	defMSize   = 12
+	defMBlock  = 30
+	cookieName = "jawbreaker"
 )
 
 type config struct {
 	port   int
-	rows   int
-	cols   int
+	size   int
 	block  int
 	mblock int
-	border int
-	gap    int
-	cookie string
+	msize  int
 }
 type application struct {
 	envFile string

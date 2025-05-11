@@ -32,12 +32,18 @@
 <script src="{{.GameSrc}}" defer></script>
 <script defer>
     window.addEventListener('DOMContentLoaded', () => {
+        function isMobileDevice() {
+            const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isSmallScreen = window.matchMedia('(max-width: 768px)').matches;
+            return isTouchCapable && isSmallScreen;
+        }
+
+        const size = isMobileDevice() ? parseInt('{{ .MSize }}') : parseInt('{{ .Size }}');
+        const block = isMobileDevice() ? parseInt('{{ .MBlock }}') : parseInt('{{ .Block }}');
+
         new JB({
-            rows: parseInt('{{ .Rows }}'),
-            cols: parseInt('{{ .Cols }}'),
-            gap: parseInt('{{ .Gap }}'),
-            blockSize: parseInt('{{ .Block }}'),
-            border: parseInt('{{ .Border }}'),
+            size: size,
+            blockSize: block,
             cookieName: '{{ .CookieName }}',
         });
 

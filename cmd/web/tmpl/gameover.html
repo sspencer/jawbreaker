@@ -1,9 +1,9 @@
 {{ define "gameover" }}
-<section class="game-over-overlay" id="game-over-overlay" {{ if .DS }} data-class="{'visible': $gameOver}" {{ end }}>
+<section class="game-over-overlay" id="game-over-overlay">
     <article class="game-over-content">
         <h2>Game Over!</h2>
-        <p>You scored <span id="game-over-score" {{ if .DS }} data-text="$currentScore" {{ end }}>0</span> points.</p>
-        <button class="new-game-btn" {{ if .DS }} data-on-click="@post('new');" {{ end }}>
+        <p>You scored <span id="game-over-score">0</span> points.</p>
+        <button class="new-game-btn">
             New Game
         </button>
     </article>
