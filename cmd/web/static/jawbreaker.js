@@ -39,7 +39,6 @@ class JB {
     static POWER_RECT = 4;
     static POWER_FILL = 5;
     static POWER_CLOCKWISE = 6;
-    static POWER_COUNTER_CLOCKWISE = 7;
 
     static POWER_PIECES = [
         JB.POWER_X,
@@ -51,7 +50,6 @@ class JB {
     static EXTRA_PIECES = [
         JB.POWER_FILL,
         JB.POWER_CLOCKWISE,
-        JB.POWER_COUNTER_CLOCKWISE,
     ]
 
     static shapeStrokeColor = "white";
@@ -197,46 +195,32 @@ class JB {
      * @returns {Array} - Board as an array of integers
      */
     newGame() {
+        const boardLen = this.size * this.size;
         let board = [];
-        for (let i = 0; i < this.size * this.size; i++) {
-            let powerUp = 0;
+        for (let i = 0; i < boardLen; i++) {
             let color = JB.GAME_PIECES[Math.floor(Math.random() * JB.GAME_PIECES.length)];
-
-            // const rnd = Math.random();
-            // if (rnd < 0.02) {
-            //     const extraPower = [...JB.POWER_PIECES, ...JB.EXTRA_PIECES];
-            //     powerUp = extraPower[Math.floor(Math.random() * extraPower.length)];
-            //     color = JB.GRAY;
-            // } else if (rnd < 0.07) {
-            //     powerUp = JB.POWER_PIECES[Math.floor(Math.random() * JB.POWER_PIECES.length)];
-            // }
-            board.push(color+powerUp);
+            board.push(color);
         }
 
-        board[Math.floor(Math.random() * this.size * this.size)] = JB.GRAY + JB.POWER_FILL;
-        board[Math.floor(Math.random() * this.size * this.size)] = JB.GRAY + JB.POWER_CLOCKWISE;
-
-
         const colors = [...JB.GAME_PIECES, JB.GRAY];
+        const ppLen = JB.POWER_PIECES.length;
+        const exLen = JB.EXTRA_PIECES.length;
+        const clrLen = colors.length;
+        const uniq = this.generateUniqueRandomNums(ppLen * clrLen + exLen, boardLen);
 
-        const uniq = this.generateUniqueRandomNums(JB.POWER_PIECES.length * colors.length + JB.EXTRA_PIECES.length, this.size * this.size);
-        let counter = 0;
         for (let i = 0; i < JB.EXTRA_PIECES.length; i++) {
             board[uniq.shift()] = JB.GRAY + JB.EXTRA_PIECES[i];
-            counter++;
         }
 
         for (let col in colors) {
             for (let pow in JB.POWER_PIECES) {
                 board[uniq.shift()] = colors[col] + JB.POWER_PIECES[pow];
-                counter++;
                 if (uniq.length === 0) {
                     break;
                 }
             }
         }
 
-        console.log("counter:", counter);
         return board;
     }
 
@@ -545,9 +529,6 @@ class JB {
             case JB.POWER_CLOCKWISE:
                 this.drawClockwiseArrow(shapeX, shapeY, shapeSize);
                 break;
-            case JB.POWER_COUNTER_CLOCKWISE:
-                this.drawCounterClockwiseArrow(shapeX, shapeY, shapeSize);
-                break;
             default:
                 this.drawCircle(shapeX, shapeY, shapeSize);
                 break;
@@ -680,21 +661,6 @@ class JB {
         ctx.moveTo(centerX - lineLength, centerY - lineLength);
         ctx.lineTo(centerX + lineLength, centerY);
         ctx.lineTo(centerX - lineLength, centerY + lineLength);
-
-        this.drawShape(ctx);
-        ctx.restore();
-    }
-
-    drawCounterClockwiseArrow(x, y, size) {
-        const ctx = this.prepareShapeContext();
-        const centerX = x + size / 2;
-        const centerY = y + size / 2;
-        const lineLength = size * 0.3;
-
-        // Draw a less than sign (<)
-        ctx.moveTo(centerX + lineLength, centerY - lineLength);
-        ctx.lineTo(centerX - lineLength, centerY);
-        ctx.lineTo(centerX + lineLength, centerY + lineLength);
 
         this.drawShape(ctx);
         ctx.restore();
@@ -928,44 +894,6 @@ class JB {
         }
 
         // Swap rows and cols
-        const temp = this.size;
-        this.size = this.size;
-        this.size = temp;
-
-        // Update the board
-        this.updateBoardFrom2DArray(rotatedArray);
-
-        // Update canvas dimensions
-        this.updateCanvasDimensions();
-
-        this.applyGravityAndShiftRight();
-
-        // Redraw the board
-        this.renderBoard();
-    }
-
-    /**
-     * Rotate the game board counter-clockwise
-     */
-    rotateCounterClockwise() {
-        // Convert 1D board to 2D array
-        let boardArray = this.boardTo2DArray();
-
-        // Create a new 2D array with swapped dimensions
-        let rotatedArray = [];
-        for (let col = this.size - 1; col >= 0; col--) {
-            const newRow = [];
-            for (let row = 0; row < this.size; row++) {
-                newRow.push(boardArray[row][col]);
-            }
-            rotatedArray.push(newRow);
-        }
-
-        // Swap rows and cols
-        const temp = this.size;
-        this.size = this.size;
-        this.size = temp;
-
         // Update the board
         this.updateBoardFrom2DArray(rotatedArray);
 
@@ -1029,14 +957,8 @@ class JB {
                 gameOver: false,
             };
         } else if (powerUp === JB.POWER_CLOCKWISE) {
+            this.board[index] = JB.WHITE;
             this.rotateClockwise();
-            return {
-                board: this.board,
-                score: this.score,
-                gameOver: false,
-            }
-        } else if (powerUp === JB.POWER_COUNTER_CLOCKWISE) {
-            this.rotateCounterClockwise();
             return {
                 board: this.board,
                 score: this.score,
