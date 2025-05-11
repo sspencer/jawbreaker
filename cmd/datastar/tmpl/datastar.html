@@ -1,0 +1,41 @@
+{{ define "datastar" }}
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Jawbreaker</title>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Jawbreaker Game, also called Same Game"/>
+    <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
+    <meta name="rating" content="Safe For Kids"/>
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
+    <link rel="stylesheet" href="{{.StyleCSS}}"/>
+    <style>
+        {{.GameSize}}
+    </style>
+    <script type="module" src="{{.DatastarJS}}"></script>
+</head>
+<body>
+<header id="page-header" class="page-header"
+        data-on-load__delay.2s="document.getElementById('page-header').classList.add('fade-out')">
+    <h1>Jawbreaker</h1>
+</header>
+<div class="container"
+     data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
+>
+    {{ template "sidebar" . }}
+    <main id="game-container"
+          data-on-click="@post('click/'+evt.target.id)"
+          data-on-mouseover="@post('mouse/'+evt.target.id)"
+          data-on-mouseleave="@post('mouse/exit')">
+        {{.Game}}
+        {{ template "gameover" . }}
+    </main>
+</div>
+
+{{ template "help" . }}
+
+</body>
+</html>
+{{ end }}

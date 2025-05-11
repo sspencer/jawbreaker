@@ -1,0 +1,21 @@
+{{ define "help" }}
+<section id="help-modal" class="modal" style="display: none;" {{ if .DS }} data-show="$help" data-on-click="$help=false"{{ end }}>
+    <article class="modal-content">
+        <span class="close" {{ if .DS }} data-on-click="$help=false"{{ end }}>&times;</span>
+        <h2>How to Play Jawbreaker</h2>
+        <p>Jawbreaker is a puzzle game where you remove groups of connected balls of the same color.</p>
+        <p><strong>Rules:</strong></p>
+        <ul>
+            <li>Click on a group of two or more connected balls of the same color to remove them.</li>
+            <li>After removing balls, the remaining balls will fall down to fill empty spaces.</li>
+            <li>If a column becomes empty, columns to the right will shift left to fill the gap.</li>
+            <li>The more balls you remove at once, the higher your score.</li>
+            <li>The game ends when there are no more valid moves.</li>
+            <li>If you clear most of the board, you'll get bonus points!</li>
+        </ul>
+        <p><strong>Scoring:</strong></p>
+        <p>Score = n × (n-1) where n is the number of balls removed.</p>
+        <p>Bonus points are awarded if you finish with fewer than 20 balls remaining.</p>
+    </article>
+</section>
+{{ end }}

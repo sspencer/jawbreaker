@@ -1,0 +1,55 @@
+{{ define "one" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Jawbreaker</title>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Jawbreaker Game, also called Same Game"/>
+    <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
+    <meta name="rating" content="Safe For Kids"/>
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
+    <link rel="stylesheet" href="{{.StyleCSS}}"/>
+</head>
+<body>
+
+<header id="page-header" class="page-header">
+    <h1>Jawbreaker</h1>
+</header>
+
+<div class="container">
+    {{ template "sidebar" . }}
+
+    <main id="game-container">
+        <canvas id="game-canvas"></canvas>
+        {{ template "gameover" . }}
+    </main>
+</div>
+
+{{ template "help" . }}
+
+<script>{{.GameCode}}</script>
+<script defer>
+    window.addEventListener('DOMContentLoaded', () => {
+        new JB({
+            rows: parseInt('{{ .Rows }}'),
+            cols: parseInt('{{ .Cols }}'),
+            gap: parseInt('{{ .Gap }}'),
+            blockSize: parseInt('{{ .Block }}'),
+            border: parseInt('{{ .Border }}'),
+            cookieName: '{{ .CookieName }}',
+        });
+
+        // Title fade out after 20 seconds
+        setTimeout(() => {
+            const header = document.getElementById('page-header');
+            if (header) {
+                header.classList.add('fade-out');
+            }
+        }, 2000);
+    })
+</script>
+</body>
+</html>
+{{ end }}
