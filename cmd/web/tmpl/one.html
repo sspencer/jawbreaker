@@ -40,12 +40,13 @@
 
         const size = isMobileDevice() ? parseInt('{{ .MSize }}') : parseInt('{{ .Size }}');
         const block = isMobileDevice() ? parseInt('{{ .MBlock }}') : parseInt('{{ .Block }}');
-
-        new JB({
+        const opts = {
             size: size,
             blockSize: block,
             cookieName: '{{ .CookieName }}',
-        });
+        };
+
+        initGame(opts)
 
         setTimeout(() => {
             const header = document.getElementById('page-header');
