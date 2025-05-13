@@ -87,6 +87,11 @@ let gameState = {
     lastScore: 0,
     bestScore: 0,
     board: [],
+    animateStart: [], // for animation
+    animateEnd: [], // for animation
+    animateIndices: [], // draw (n) animated pieces per frame
+    animatePosition: 0,
+    animatedFrames: 4, // draw (n) animated pieces per frame
     hoverList: new Set(),
     hoverIndex: -1,
     mobile: false,
@@ -164,10 +169,10 @@ function generateUniqueRandomNums(n, max) {
 
 function createNewBoard() {
     const boardLen = gameState.size * gameState.size;
-    let board = [];
+
+    let board = Array(boardLen).fill(WHITE);
     for (let i = 0; i < boardLen; i++) {
-        let color = GAME_PIECES[Math.floor(Math.random() * GAME_PIECES.length)];
-        board.push(color);
+        board[i] = randomItem(GAME_PIECES);
     }
 
     const colors = [...GAME_PIECES, GRAY]; // Colors that power-ups can be on
@@ -176,7 +181,6 @@ function createNewBoard() {
     // Max number of unique spots needed for power-ups.
     // Each of ppLen can be on any of 'colors' length. Each of exLen is typically on GRAY.
     const numPowerUpSlotsToGenerate = Math.min(boardLen, (ppLen * colors.length) + exLen);
-
 
     const uniqIndices = generateUniqueRandomNums(numPowerUpSlotsToGenerate, boardLen - 1);
 
@@ -195,13 +199,18 @@ function createNewBoard() {
         if (uniqIndices.length === 0) break;
     }
     gameState.board = board;
-    return board;
+
+
+}
+
+function randomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function fillEmptySpacesOnBoard() {
     for (let i = 0; i < gameState.board.length; i++) {
         if (gameState.board[i] === WHITE) {
-            gameState.board[i] = GAME_PIECES[Math.floor(Math.random() * GAME_PIECES.length)];
+            gameState.board[i] = randomItem(GAME_PIECES);
         }
     }
 }
@@ -271,6 +280,7 @@ function drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
     );
 
     let color = getPieceColorCode(piece);
+
     if (EXTRA_PIECES.includes(getPowerUpType(piece))) {
         color = darkenColor(color, 30);
     }
@@ -524,6 +534,49 @@ function renderBoard() {
         }
     }
 }
+
+function getShuffledArray(n) {
+    // Create an array of integers from 0 to n
+    const arr = Array.from({ length: n }, (_, i) => i);
+
+    // Fisher-Yates Shuffle
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]]; // Swap elements
+    }
+
+    return arr;
+}
+
+function renderBoardAnimated() {
+    const size = gameState.board.length;
+
+    gameState.boardCopy = gameState.board.slice(); // copy array
+    gameState.animateIndices = getShuffledArray(size);
+    gameState.animatePosition = 0;
+    doRenderBoardAnimated();
+}
+
+function doRenderBoardAnimated(timestamp) {
+    const size = gameState.animateIndices.length;
+    const lastIter = Math.min(gameState.animatePosition + gameState.animatedFrames, size);
+
+    gameState.board = Array(size).fill(WHITE);
+
+    for (let iter = 0; iter < lastIter; iter++) {
+        gameState.board[gameState.animateIndices[iter]] = gameState.boardCopy[gameState.animateIndices[iter]];
+        renderBoard();
+    }
+
+    gameState.animatePosition += gameState.animatedFrames;
+
+    if (gameState.animatePosition < size) {
+        requestAnimationFrame(doRenderBoardAnimated)
+    }
+}
+
+
+
 
 // --- Connection Logic ---
 function getConnectionsForPowerUp(index, targetColor, powerUpType) {
@@ -935,7 +988,7 @@ function resetCurrentGame() {
     gameState.remainingPieces = 0;
     document.getElementById("current-score").innerText = gameState.score;
     document.getElementById("game-over-overlay").classList.remove("visible");
-    renderBoard();
+    renderBoardAnimated();
 }
 
 function registerGameEvents() {
@@ -1020,6 +1073,6 @@ function initGame(opts) {
 
 
     registerGameEvents();
-    renderBoard(); // Initial render of the game board
+    renderBoardAnimated(); // Initial render of the game board
 }
 
