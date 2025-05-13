@@ -843,6 +843,8 @@ function processMove(index) {
 }
 
 function handleTouch(e) {
+    const {x, y} = getCanvasCoordinates(e);
+    const index = getBoardIndexFromCoordinates(x, y);
     if (index === gameState.hoverIndex) {
         handleClick(e);
         return
@@ -883,14 +885,15 @@ function handleClick(e) {
 
         gameState.hoverList.clear(); // Clear hover after a click
         gameState.hoverIndex = -1;
-        const pieces = getConnectedPieces(index);
-        if (pieces.length > 1) {
-            gameState.hoverIndex = index;
-            for (const i of pieces) {
-                gameState.hoverList.add(i);
+        if (gameState.mobile) {
+            const pieces = getConnectedPieces(index);
+            if (pieces.length > 1) {
+                gameState.hoverIndex = index;
+                for (const i of pieces) {
+                    gameState.hoverList.add(i);
+                }
             }
         }
-
 
         renderBoard(); // Re-render the board after the move
     }
@@ -938,8 +941,6 @@ function resetCurrentGame() {
 function registerGameEvents() {
     if (!gameState.canvas) return;
     if (gameState.mobile) {
-        //gameState.canvas.addEventListener("touchstart", handleMouseMove);
-        //gameState.canvas.addEventListener("touchend", handleMouseLeave);
         gameState.canvas.addEventListener("click", handleTouch);
     } else {
         gameState.canvas.addEventListener("click", handleClick);
