@@ -269,7 +269,7 @@ function drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
 
     let color = getPieceColorCode(piece);
     if (EXTRA_PIECES.includes(getPowerUpType(piece))) {
-        color = darkenColor(color, 30);
+        color = darkenColor(color, 30); // Darken background for extra power-ups
     }
     gradient.addColorStop(0, lightenColor(color, 12));
     gradient.addColorStop(1, darkenColor(color, 6));
@@ -328,7 +328,7 @@ function finalizeShapeDraw(ctx) {
     ctx.strokeStyle = SHAPE_BORDER_COLOR;
     ctx.lineWidth = SHAPE_LINE_WIDTH + SHAPE_BORDER_LINE_WIDTH * 2; // Ensure border is outside main line
     ctx.stroke();
-    // Draw the main shape line
+    // Draw main shape line
     ctx.strokeStyle = SHAPE_STROKE_COLOR;
     ctx.lineWidth = SHAPE_LINE_WIDTH;
     ctx.stroke();
@@ -393,12 +393,33 @@ function drawPowerFill(x, y, size) {
         ctx.fillStyle = COLOR_MAP.get(quadColors[i]);
         ctx.fill();
     }
-    // Centerpiece
+    // Center piece
     ctx.beginPath();
     ctx.rect(x + centerOffset, y + centerOffset, centerSize, centerSize);
     ctx.fillStyle = COLOR_MAP.get(PURPLE);
     ctx.fill();
     ctx.restore();
+}
+
+function drawRotateRight2(x, y, size) {
+    const ctx = prepareShapeContext();
+    const cx = x + size / 2;
+    const cy = y + size / 2;
+    const r = size * 0.3; // Radius of the semi-circle
+    const arrowLength = size * 0.15; // Length of the arrowhead sides
+    const arrowWidth = size * 0.1;  // Half-width of the arrowhead base
+
+    // Draw the top semi-circular arc (clockwise)
+    ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false); // Start left (PI), end right (2PI or 0)
+
+    // Arrowhead at the right end of the arc (pointing right)
+    const tipX = cx + r;
+    const tipY = cy;
+    ctx.moveTo(tipX - arrowLength, tipY - arrowWidth);
+    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(tipX - arrowLength, tipY + arrowWidth);
+
+    finalizeShapeDraw(ctx);
 }
 
 function drawRotateRight(x, y, size) {
@@ -409,7 +430,7 @@ function drawRotateRight(x, y, size) {
     const arrowLength = size * 0.25; // Bigger arrowhead
     const arrowWidth = size * 0.15;
 
-    // Draw the top semicircular arc (clockwise)
+    // Draw the top semi-circular arc (clockwise)
     ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false);
 
     // Arrowhead at the right end of the arc (pointing right)
@@ -431,7 +452,7 @@ function drawRotateLeft(x, y, size) {
     const arrowLength = size * 0.25;
     const arrowWidth = size * 0.15;
 
-    // Draw the top semicircular arc (counter-clockwise)
+    // Draw the top semi-circular arc (counter-clockwise)
     ctx.arc(cx, cy, r, 0, Math.PI, true);
 
     // Arrowhead at the left end of the arc (pointing left)
@@ -553,7 +574,7 @@ function getConnectionsWithDirections(index, targetColor, directions, maxIterati
 
             if (r >= 0 && r < gameState.size && c >= 0 && c < gameState.size) {
                 const currentIndex = r * gameState.size + c;
-                // Power ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
+                // Power-ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
                 const currentPieceBase = getBasePiece(gameState.board[currentIndex]);
                 if (gameState.board[currentIndex] !== WHITE &&
                     (currentPieceBase === targetColor || targetColor === GRAY)) {
@@ -604,7 +625,7 @@ function getConnectedPieces(index) {
     // 2. Handle other POWER_PIECES (X, Plus, Circle, Rect)
     if (POWER_PIECES.includes(powerUpType)) {
         let affectedIndices = getConnectionsForPowerUp(index, baseColorOfClickedPiece, powerUpType);
-        if (affectedIndices.length > 0 /*&& !affectedIndices.includes(index)*/) {
+        if (affectedIndices.length > 0) {
             affectedIndices.unshift(index);
         }
         return affectedIndices.filter(i => i >= 0 && i < gameState.board.length && gameState.board[i] !== WHITE);
@@ -638,7 +659,6 @@ function getConnectedPieces(index) {
         }
     }
 
-    console.log("connected indices:", connectedIndices);
     // For normal pieces, only return if 2 or more are connected.
     return connectedIndices.length >= 2 ? connectedIndices : [];
 }
@@ -827,8 +847,8 @@ function processMove(index) {
     if (!removalResult.isSpecialAction) { // Score only for non-special actions based on count
         gameState.score += calculateMoveScore(n);
     }
-    // Else: Special actions (Fill, Rotations) might have a flat score or no direct score from the removal count.
-    // For example, gameState.score += 10; // for using a rotation power-up.
+    // else: Special actions (Fill, Rotations) might have a flat score or no direct score from removal count.
+    // For example: gameState.score += 10; // for using a rotation power-up.
 
     const gameOver = isGameOver();
     if (gameOver) {
@@ -852,7 +872,7 @@ function handleClick(e) {
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
         const status = processMove(index);
-        document.getElementById("current-score").innerText = ""+status.score;
+        document.getElementById("current-score").innerText = status.score;
 
         if (status.gameOver) {
             gameState.lastScore = gameState.score; // Update last score before potential best score update
@@ -869,15 +889,6 @@ function handleClick(e) {
 
         gameState.hoverList.clear(); // Clear hover after a click
         gameState.hoverIndex = -1;
-        const pieces = getConnectedPieces(index);
-        if (pieces.length > 1) {
-            gameState.hoverIndex = index;
-            for (const i of pieces) {
-                gameState.hoverList.add(i);
-            }
-        }
-
-
         renderBoard(); // Re-render the board after the move
     }
 }
@@ -889,16 +900,19 @@ function handleMouseMove(e) {
     if (index === gameState.hoverIndex) return; // No change if hovering over the same piece
 
     gameState.hoverList.clear();
-    gameState.hoverIndex = index;
+    gameState.hoverIndex = index; // Update current hover index
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
         const piecesToHighlight = getConnectedPieces(index);
-        console.log("pieces to highlight:", piecesToHighlight);
         if (piecesToHighlight.length > 0) {
             piecesToHighlight.forEach(i => gameState.hoverList.add(i));
+        } else {
+            // If getConnectedPieces returns empty (e.g. single non-powerup piece),
+            // still highlight the piece under the mouse if it's not white.
+            gameState.hoverList.add(index);
         }
     }
-    // Always rerender on mouse move to update the hover effect or clear it
+    // Always re-render on mouse move to update hover effect or clear it
     renderBoard();
 }
 
@@ -980,7 +994,7 @@ function initGame(opts) {
     updateCanvasDimensions(); // Set canvas size based on game size and block size
     createNewBoard(); // Initialize the board
 
-    // Load scores from the cookie
+    // Load scores from cookie
     const scoresCookie = getCookie(gameState.cookieName);
     if (scoresCookie) {
         const [last, best] = scoresCookie.split('|');
