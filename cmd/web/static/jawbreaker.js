@@ -842,6 +842,16 @@ function processMove(index) {
     };
 }
 
+function handleTouch(e) {
+    if (index === gameState.hoverIndex) {
+        handleClick(e);
+        return
+    }
+
+    handleMouseMove(e);
+}
+
+
 // --- Event Handlers ---
 function handleClick(e) {
     const {x, y} = getCanvasCoordinates(e);
@@ -927,11 +937,12 @@ function resetCurrentGame() {
 
 function registerGameEvents() {
     if (!gameState.canvas) return;
-    gameState.canvas.addEventListener("click", handleClick);
     if (gameState.mobile) {
-        gameState.canvas.addEventListener("touchstart", handleMouseMove);
-        gameState.canvas.addEventListener("touchend", handleMouseLeave);
+        //gameState.canvas.addEventListener("touchstart", handleMouseMove);
+        //gameState.canvas.addEventListener("touchend", handleMouseLeave);
+        gameState.canvas.addEventListener("click", handleTouch);
     } else {
+        gameState.canvas.addEventListener("click", handleClick);
         gameState.canvas.addEventListener("mousemove", handleMouseMove);
         gameState.canvas.addEventListener("mouseleave", handleMouseLeave);
     }
