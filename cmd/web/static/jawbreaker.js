@@ -756,8 +756,8 @@ function removeTargetedPieces(index) {
 
     if (powerUpType === POWER_FILL) {
         gameState.board[index] = WHITE; // Remove the fill piece itself
-        fillEmptySpacesOnBoard(); // Fill action
-        // Gravity is applied by processMove after this
+        applyGravityAndShiftColumns();
+        fillEmptySpacesOnBoard();
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         gameState.board[index] = WHITE;
@@ -771,11 +771,6 @@ function removeTargetedPieces(index) {
 
     // For standard pieces or non-EXTRA power-ups
     piecesToRemove = getConnectedPieces(index); // getConnectedPieces now correctly identifies targets
-
-    // if (piecesToRemove.length > 0 && POWER_PIECES.includes(powerUpType)) {
-    //     // If a non-EXTRA power-up is clicked and finds no connections, it removes itself.
-    //     piecesToRemove = [index];
-    // }
 
     for (const i of piecesToRemove) {
         if (gameState.board[i] !== WHITE) {
