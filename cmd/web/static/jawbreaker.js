@@ -92,6 +92,7 @@ let gameState = {
     animateIndices: [], // draw (n) animated pieces per frame
     animatePosition: 0,
     animatedFrames: 4, // draw (n) animated pieces per frame
+    animatedId: null,
     hoverList: new Set(),
     hoverIndex: -1,
     mobile: false,
@@ -168,10 +169,11 @@ function generateUniqueRandomNums(n, max) {
 }
 
 function createNewBoard() {
-    const boardLen = gameState.size * gameState.size;
+    const size = gameState.size * gameState.size;
 
-    let board = Array(boardLen).fill(WHITE);
-    for (let i = 0; i < boardLen; i++) {
+    let board = Array(size).fill(WHITE);
+    gameState.animateStart = board.slice();
+    for (let i = 0; i < size; i++) {
         board[i] = randomItem(GAME_PIECES);
     }
 
@@ -180,9 +182,9 @@ function createNewBoard() {
     const exLen = EXTRA_PIECES.length;
     // Max number of unique spots needed for power-ups.
     // Each of ppLen can be on any of 'colors' length. Each of exLen is typically on GRAY.
-    const numPowerUpSlotsToGenerate = Math.min(boardLen, (ppLen * colors.length) + exLen);
+    const numPowerUpSlotsToGenerate = Math.min(size, (ppLen * colors.length) + exLen);
 
-    const uniqIndices = generateUniqueRandomNums(numPowerUpSlotsToGenerate, boardLen - 1);
+    const uniqIndices = generateUniqueRandomNums(numPowerUpSlotsToGenerate, size - 1);
 
     // Place EXTRA_PIECES (typically on GRAY)
     for (let i = 0; i < EXTRA_PIECES.length; i++) {
@@ -198,9 +200,10 @@ function createNewBoard() {
         }
         if (uniqIndices.length === 0) break;
     }
-    gameState.board = board;
 
-
+    gameState.animateIndices = createIndexArray(size);
+    shuffleArray(gameState.animateIndices);
+    gameState.animateEnd = board;
 }
 
 function randomItem(arr) {
@@ -256,6 +259,79 @@ function getPiecePositionOnCanvas(row, col) {
     const x = BORDER_WIDTH + col * (gameState.blockSize + GAP);
     const y = BORDER_WIDTH + row * (gameState.blockSize + GAP);
     return {x, y};
+}
+
+
+function createIndexArray(n) {
+    return Array.from({ length: n }, (_, index) => index);
+}
+
+// Fisher-Yates shuffle algorithm
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+function findChangedIndices(array1, array2, startIndex) {
+    const total = array1.length;
+
+    if (total !== array2.length) {
+        throw new Error("Arrays must be of the same length.");
+    }
+
+    const N = Math.sqrt(total);
+    if (!Number.isInteger(N)) {
+        throw new Error("Arrays must represent a square grid.");
+    }
+
+    const startRow = Math.floor(startIndex / N);
+    const startCol = startIndex % N;
+
+    const visited = new Set();
+    const changed = [];
+
+    const enqueue = (r, c) => {
+        if (r < 0 || r >= N || c < 0 || c >= N) return;
+        const idx = r * N + c;
+        if (!visited.has(idx)) {
+            visited.add(idx);
+            if (array1[idx] !== array2[idx]) {
+                changed.push(idx);
+            }
+        }
+    };
+
+    // Spiral logic: expand radius step-by-step
+    let radius = 0;
+    enqueue(startRow, startCol); // center first
+
+    while (visited.size < total) {
+        radius++;
+
+        // Top edge (left to right)
+        for (let dx = -radius + 1; dx <= radius; dx++) {
+            enqueue(startRow - radius, startCol + dx);
+        }
+
+        // Right edge (top to bottom)
+        for (let dy = -radius + 1; dy <= radius; dy++) {
+            enqueue(startRow + dy, startCol + radius);
+        }
+
+        // Bottom edge (right to left)
+        for (let dx = radius - 1; dx >= -radius; dx--) {
+            enqueue(startRow + radius, startCol + dx);
+        }
+
+        // Left edge (bottom to top)
+        for (let dy = radius - 1; dy >= -radius; dy--) {
+            enqueue(startRow + dy, startCol - radius);
+        }
+    }
+
+    return changed;
 }
 
 // --- Drawing Functions ---
@@ -505,9 +581,10 @@ function renderBoard() {
             const piece = gameState.board[index];
             const {x, y} = getPiecePositionOnCanvas(row, col);
 
-            if (piece === WHITE) {
+            if (piece === WHITE || piece === undefined) { // TODO remove undefined condition
                 drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize);
             } else {
+                //console.log(`draw piece ${piece} at ${x}, ${y}`);
                 drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glowEffectSize);
             }
         }
@@ -535,48 +612,40 @@ function renderBoard() {
     }
 }
 
-function getShuffledArray(n) {
-    // Create an array of integers from 0 to n
-    const arr = Array.from({ length: n }, (_, i) => i);
-
-    // Fisher-Yates Shuffle
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]]; // Swap elements
-    }
-
-    return arr;
-}
-
 function renderBoardAnimated() {
-    const size = gameState.board.length;
-
-    gameState.boardCopy = gameState.board.slice(); // copy array
-    gameState.animateIndices = getShuffledArray(size);
     gameState.animatePosition = 0;
-    doRenderBoardAnimated();
+    gameState.animatedId = requestAnimationFrame(doRenderBoardAnimated);
 }
 
 function doRenderBoardAnimated(timestamp) {
-    const size = gameState.animateIndices.length;
-    const lastIter = Math.min(gameState.animatePosition + gameState.animatedFrames, size);
+    gameState.board = gameState.animateStart.slice();
 
-    gameState.board = Array(size).fill(WHITE);
+    const newPos = gameState.animatePosition + gameState.animatedFrames;
+    const maxPos = gameState.animateIndices.length;
+    const endPos = Math.min(newPos, maxPos);
 
-    for (let iter = 0; iter < lastIter; iter++) {
-        gameState.board[gameState.animateIndices[iter]] = gameState.boardCopy[gameState.animateIndices[iter]];
+    // console.log(`animate from 0 to ${endPos}, board is size: ${gameState.board.length}`);
+    for (let iter = 0; iter < endPos; iter++) {
+        const index =gameState.animateIndices[iter];
+        const color = gameState.animateEnd[index];
+        //console.log(`copy index ${index} of color ${color} to board`);
+        gameState.board[index] = gameState.animateEnd[index];
         renderBoard();
     }
 
-    gameState.animatePosition += gameState.animatedFrames;
+    gameState.animateStart = gameState.board.slice();
+    gameState.animatePosition = endPos;
 
-    if (gameState.animatePosition < size) {
-        requestAnimationFrame(doRenderBoardAnimated)
+    if (gameState.animatePosition < maxPos) {
+        gameState.animatedId = requestAnimationFrame(doRenderBoardAnimated)
+        return;
     }
+
+    gameState.animateStart = [];
+    gameState.animateEnd = [];
+    gameState.animatePosition = 0;
+    gameState.animatedId = null;
 }
-
-
-
 
 // --- Connection Logic ---
 function getConnectionsForPowerUp(index, targetColor, powerUpType) {
@@ -813,6 +882,7 @@ function removeTargetedPieces(index) {
         gameState.board[index] = WHITE; // Remove the fill piece itself
         applyGravityAndShiftColumns();
         fillEmptySpacesOnBoard();
+
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         gameState.board[index] = WHITE;
@@ -865,10 +935,15 @@ function isGameOver() {
 }
 
 function processMove(index) {
+    gameState.animateStart = gameState.board.slice();
     const removalResult = removeTargetedPieces(index);
+
     const n = removalResult.count;
 
     if (n > 0 && !removalResult.isSpecialAction) { // Apply gravity only if pieces were removed by non-special actions
+        gameState.animateEnd = gameState.board.slice();
+        const ch = gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
+        console.log("changed indices: ", ch);
         applyGravityAndShiftColumns();
     }
 
@@ -896,6 +971,10 @@ function processMove(index) {
 }
 
 function handleTouch(e) {
+    if (gameState.animatedId !== null) {
+        return;
+    }
+
     const {x, y} = getCanvasCoordinates(e);
     const index = getBoardIndexFromCoordinates(x, y);
     if (index === gameState.hoverIndex) {
@@ -909,6 +988,10 @@ function handleTouch(e) {
 
 // --- Event Handlers ---
 function handleClick(e) {
+    if (gameState.animatedId !== null) {
+        return;
+    }
+
     const {x, y} = getCanvasCoordinates(e);
     const index = getBoardIndexFromCoordinates(x, y);
 
@@ -953,6 +1036,10 @@ function handleClick(e) {
 }
 
 function handleMouseMove(e) {
+    if (gameState.animatedId !== null) {
+        return;
+    }
+
     const {x, y} = getCanvasCoordinates(e);
     const index = getBoardIndexFromCoordinates(x, y);
 
@@ -972,6 +1059,10 @@ function handleMouseMove(e) {
 }
 
 function handleMouseLeave() {
+    if (gameState.animatedId !== null) {
+        return;
+    }
+
     if (gameState.hoverList.size > 0) { // Only re-render if there was a hover to clear
         gameState.hoverList.clear();
         gameState.hoverIndex = -1;
