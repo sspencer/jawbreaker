@@ -269,7 +269,7 @@ function drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
 
     let color = getPieceColorCode(piece);
     if (EXTRA_PIECES.includes(getPowerUpType(piece))) {
-        color = darkenColor(color, 30); // Darken background for extra power-ups
+        color = darkenColor(color, 30);
     }
     gradient.addColorStop(0, lightenColor(color, 12));
     gradient.addColorStop(1, darkenColor(color, 6));
@@ -328,7 +328,7 @@ function finalizeShapeDraw(ctx) {
     ctx.strokeStyle = SHAPE_BORDER_COLOR;
     ctx.lineWidth = SHAPE_LINE_WIDTH + SHAPE_BORDER_LINE_WIDTH * 2; // Ensure border is outside main line
     ctx.stroke();
-    // Draw main shape line
+    // Draw the main shape line
     ctx.strokeStyle = SHAPE_STROKE_COLOR;
     ctx.lineWidth = SHAPE_LINE_WIDTH;
     ctx.stroke();
@@ -393,33 +393,12 @@ function drawPowerFill(x, y, size) {
         ctx.fillStyle = COLOR_MAP.get(quadColors[i]);
         ctx.fill();
     }
-    // Center piece
+    // Centerpiece
     ctx.beginPath();
     ctx.rect(x + centerOffset, y + centerOffset, centerSize, centerSize);
     ctx.fillStyle = COLOR_MAP.get(PURPLE);
     ctx.fill();
     ctx.restore();
-}
-
-function drawRotateRight2(x, y, size) {
-    const ctx = prepareShapeContext();
-    const cx = x + size / 2;
-    const cy = y + size / 2;
-    const r = size * 0.3; // Radius of the semi-circle
-    const arrowLength = size * 0.15; // Length of the arrowhead sides
-    const arrowWidth = size * 0.1;  // Half-width of the arrowhead base
-
-    // Draw the top semi-circular arc (clockwise)
-    ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false); // Start left (PI), end right (2PI or 0)
-
-    // Arrowhead at the right end of the arc (pointing right)
-    const tipX = cx + r;
-    const tipY = cy;
-    ctx.moveTo(tipX - arrowLength, tipY - arrowWidth);
-    ctx.lineTo(tipX, tipY);
-    ctx.lineTo(tipX - arrowLength, tipY + arrowWidth);
-
-    finalizeShapeDraw(ctx);
 }
 
 function drawRotateRight(x, y, size) {
@@ -430,7 +409,7 @@ function drawRotateRight(x, y, size) {
     const arrowLength = size * 0.25; // Bigger arrowhead
     const arrowWidth = size * 0.15;
 
-    // Draw the top semi-circular arc (clockwise)
+    // Draw the top semicircular arc (clockwise)
     ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false);
 
     // Arrowhead at the right end of the arc (pointing right)
@@ -452,7 +431,7 @@ function drawRotateLeft(x, y, size) {
     const arrowLength = size * 0.25;
     const arrowWidth = size * 0.15;
 
-    // Draw the top semi-circular arc (counter-clockwise)
+    // Draw the top semicircular arc (counter-clockwise)
     ctx.arc(cx, cy, r, 0, Math.PI, true);
 
     // Arrowhead at the left end of the arc (pointing left)
@@ -574,7 +553,7 @@ function getConnectionsWithDirections(index, targetColor, directions, maxIterati
 
             if (r >= 0 && r < gameState.size && c >= 0 && c < gameState.size) {
                 const currentIndex = r * gameState.size + c;
-                // Power-ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
+                // Power ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
                 const currentPieceBase = getBasePiece(gameState.board[currentIndex]);
                 if (gameState.board[currentIndex] !== WHITE &&
                     (currentPieceBase === targetColor || targetColor === GRAY)) {
@@ -832,23 +811,16 @@ function isGameOver() {
 function processMove(index) {
     const removalResult = removeTargetedPieces(index);
     const n = removalResult.count;
-    const piece = gameState.board[index];
-    const powerUpType = getPowerUpType(piece);
 
     if (n > 0 && !removalResult.isSpecialAction) { // Apply gravity only if pieces were removed by non-special actions
         applyGravityAndShiftColumns();
     }
-    // For special actions like Fill, gravity is handled within their functions or here if needed.
-    if (powerUpType === POWER_FILL && n > 0) { // POWER_FILL already called fill, now apply gravity
-        applyGravityAndShiftColumns();
-    }
-
 
     if (!removalResult.isSpecialAction) { // Score only for non-special actions based on count
         gameState.score += calculateMoveScore(n);
     }
-    // else: Special actions (Fill, Rotations) might have a flat score or no direct score from removal count.
-    // For example: gameState.score += 10; // for using a rotation power-up.
+    // Else: Special actions (Fill, Rotations) might have a flat score or no direct score from the removal count.
+    // For example, gameState.score += 10; // for using a rotation power-up.
 
     const gameOver = isGameOver();
     if (gameOver) {
@@ -872,7 +844,7 @@ function handleClick(e) {
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
         const status = processMove(index);
-        document.getElementById("current-score").innerText = status.score;
+        document.getElementById("current-score").innerText = ""+status.score;
 
         if (status.gameOver) {
             gameState.lastScore = gameState.score; // Update last score before potential best score update
@@ -909,7 +881,7 @@ function handleMouseMove(e) {
     if (index === gameState.hoverIndex) return; // No change if hovering over the same piece
 
     gameState.hoverList.clear();
-    gameState.hoverIndex = index; // Update current hover index
+    gameState.hoverIndex = index;
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
         const piecesToHighlight = getConnectedPieces(index);
@@ -917,7 +889,7 @@ function handleMouseMove(e) {
             piecesToHighlight.forEach(i => gameState.hoverList.add(i));
         }
     }
-    // Always re-render on mouse move to update hover effect or clear it
+    // Always rerender on mouse move to update the hover effect or clear it
     renderBoard();
 }
 
@@ -999,7 +971,7 @@ function initGame(opts) {
     updateCanvasDimensions(); // Set canvas size based on game size and block size
     createNewBoard(); // Initialize the board
 
-    // Load scores from cookie
+    // Load scores from the cookie
     const scoresCookie = getCookie(gameState.cookieName);
     if (scoresCookie) {
         const [last, best] = scoresCookie.split('|');
