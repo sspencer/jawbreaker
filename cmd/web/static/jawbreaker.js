@@ -163,7 +163,11 @@ function createNewBoard() {
     const boardLen = gameState.size * gameState.size;
     let board = [];
     for (let i = 0; i < boardLen; i++) {
-        let color = GAME_PIECES[Math.floor(Math.random() * GAME_PIECES.length)];
+        //let color = GAME_PIECES[Math.floor(Math.random() * GAME_PIECES.length)];
+        let color = RED;
+        if (i < (gameState.size * (gameState.size/2))) {
+            color = BLUE;
+        }
         board.push(color);
     }
 
@@ -401,7 +405,7 @@ function drawPowerFill(x, y, size) {
     ctx.restore();
 }
 
-function drawRotateRight(x, y, size) {
+function drawRotateRight2(x, y, size) {
     const ctx = prepareShapeContext();
     const cx = x + size / 2;
     const cy = y + size / 2;
@@ -422,23 +426,46 @@ function drawRotateRight(x, y, size) {
     finalizeShapeDraw(ctx);
 }
 
+function drawRotateRight(x, y, size) {
+    const ctx = prepareShapeContext();
+    const cx = x + size / 2;
+    const cy = y + size / 2;
+    const r = size * 0.3;
+    const arrowLength = size * 0.25; // Bigger arrowhead
+    const arrowWidth = size * 0.15;
+
+    // Draw the top semi-circular arc (clockwise)
+    ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false);
+
+    // Arrowhead at the right end of the arc (pointing right)
+    const tipX = cx + r + 2;
+    const tipY = cy + 3;
+    ctx.moveTo(tipX - arrowLength, tipY - arrowWidth);
+    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(tipX - arrowLength, tipY + arrowWidth);
+    ctx.closePath();
+
+    finalizeShapeDraw(ctx);
+}
+
 function drawRotateLeft(x, y, size) {
     const ctx = prepareShapeContext();
     const cx = x + size / 2;
     const cy = y + size / 2;
-    const r = size * 0.3; // Radius
-    const arrowLength = size * 0.15;
-    const arrowWidth = size * 0.1;
+    const r = size * 0.3;
+    const arrowLength = size * 0.25;
+    const arrowWidth = size * 0.15;
 
     // Draw the top semi-circular arc (counter-clockwise)
-    ctx.arc(cx, cy, r, 0, Math.PI, true); // Start right (0), end left (PI)
+    ctx.arc(cx, cy, r, 0, Math.PI, true);
 
     // Arrowhead at the left end of the arc (pointing left)
-    const tipX = cx - r;
-    const tipY = cy;
+    const tipX = cx - r - 2;
+    const tipY = cy + 3;
     ctx.moveTo(tipX + arrowLength, tipY - arrowWidth);
     ctx.lineTo(tipX, tipY);
     ctx.lineTo(tipX + arrowLength, tipY + arrowWidth);
+    ctx.closePath();
 
     finalizeShapeDraw(ctx);
 }
@@ -663,30 +690,44 @@ function updateCanvasDimensions() {
     gameState.canvas.height = canvasSize;
 }
 
-function rotateBoardClockwise() { // Rotate Right
-    let boardArray = boardTo2DArray();
-    let rotatedArray = Array.from({length: gameState.size}, () => Array(gameState.size).fill(WHITE));
-    for (let r = 0; r < gameState.size; r++) {
-        for (let c = 0; c < gameState.size; c++) {
-            rotatedArray[c][gameState.size - 1 - r] = boardArray[r][c];
-        }
-    }
-    updateBoardFrom2DArray(rotatedArray);
-    applyGravityAndShiftColumns(); // Apply gravity and shift after rotation
-    // renderBoard(); // renderBoard will be called by processMove or click handler
-}
+function rotateBoard(degrees) {
+    const arr = gameState.board;
+    const n = Math.sqrt(arr.length);
+    if (!Number.isInteger(n))
+        throw new Error("Array length must be a perfect square.");
 
-function rotateBoardCounterClockwise() { // Rotate Left
-    let boardArray = boardTo2DArray();
-    let rotatedArray = Array.from({length: gameState.size}, () => Array(gameState.size).fill(WHITE));
-    for (let r = 0; r < gameState.size; r++) {
-        for (let c = 0; c < gameState.size; c++) {
-            rotatedArray[gameState.size - 1 - c][r] = boardArray[r][c];
-        }
+    // Normalize degrees to 0, 90, 180, or 270
+    let rotation = ((degrees % 360) + 360) % 360;
+
+    // Convert to 2D row-major grid
+    const grid = Array.from({ length: n }, (_, row) =>
+        arr.slice(row * n, row * n + n)
+    );
+
+    let rotated = Array.from({ length: n }, () => Array(n));
+
+    switch (rotation) {
+        case 90:
+            for (let row = 0; row < n; row++) {
+                for (let col = 0; col < n; col++) {
+                    rotated[col][n - 1 - row] = grid[row][col];
+                }
+            }
+            break;
+        case 270:
+            for (let row = 0; row < n; row++) {
+                for (let col = 0; col < n; col++) {
+                    rotated[n - 1 - col][row] = grid[row][col];
+                }
+            }
+            break;
+        default:
+            throw new Error("Rotation must be a multiple of 90 degrees.");
     }
-    updateBoardFrom2DArray(rotatedArray);
-    applyGravityAndShiftColumns(); // Apply gravity and shift after rotation
-    // renderBoard();
+
+    // Flatten 2D grid back to 1D row-major array
+    gameState.board = rotated.flat();
+    applyGravityAndShiftColumns();
 }
 
 function applyGravityAndShiftColumns() {
@@ -745,11 +786,11 @@ function removeTargetedPieces(index) {
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         gameState.board[index] = WHITE;
-        rotateBoardClockwise();
+        rotateBoard(90);
         return {count: 1, isSpecialAction: true};
     } else if (powerUpType === POWER_ROTATE_LEFT) {
         gameState.board[index] = WHITE;
-        rotateBoardCounterClockwise();
+        rotateBoard(-90);
         return {count: 1, isSpecialAction: true};
     }
 
@@ -760,7 +801,6 @@ function removeTargetedPieces(index) {
         // If a non-EXTRA power-up is clicked and finds no connections, it removes itself.
         piecesToRemove = [index];
     }
-
 
     for (const i of piecesToRemove) {
         if (gameState.board[i] !== WHITE) {
