@@ -82,6 +82,8 @@ let gameState = {
     blockSize: 0,
     cookieName: "",
     score: 0,
+    bonus: 0,
+    remainingPieces: 0,
     lastScore: 0,
     bestScore: 0,
     board: [],
@@ -828,7 +830,9 @@ function processMove(index) {
         gameState.board.forEach(p => {
             if (p !== WHITE) remainingPieces++;
         });
-        gameState.score += calculateRemainingPiecesScore(remainingPieces);
+        gameState.bonus = calculateRemainingPiecesScore(remainingPieces);
+        gameState.remainingPieces = remainingPieces;
+        gameState.score += gameState.bonus;
     }
 
     return {
@@ -845,6 +849,13 @@ function handleClick(e) {
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
         const status = processMove(index);
         document.getElementById("current-score").innerText = ""+status.score;
+        document.getElementById("bonus-points").innerText = ""+gameState.bonus;
+        document.getElementById("remaining-pieces").innerText = ""+gameState.remainingPieces;
+        if (gameState.remainingPieces === 1) {
+            document.getElementById("pieces-name").innerText = "piece";
+        } else {
+            document.getElementById("pieces-name").innerText = "pieces";
+        }
 
         if (status.gameOver) {
             gameState.lastScore = gameState.score; // Update last score before potential best score update
@@ -906,6 +917,8 @@ function resetCurrentGame() {
     gameState.hoverList.clear();
     gameState.hoverIndex = -1;
     gameState.score = 0;
+    gameState.bonus = 0;
+    gameState.remainingPieces = 0;
     document.getElementById("current-score").innerText = gameState.score;
     document.getElementById("game-over-overlay").classList.remove("visible");
     renderBoard();
