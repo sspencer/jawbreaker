@@ -15,7 +15,7 @@ const (
 	defBlock   = 40
 	defMSize   = 12
 	defMBlock  = 30
-	cookieName = "jawbreaker"
+	cookieName = "score"
 )
 
 type config struct {

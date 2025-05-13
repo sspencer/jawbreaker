@@ -50,30 +50,30 @@ const SHAPE_BORDER_LINE_WIDTH = 1.5; // Adjusted for potentially more complex sh
 
 const POWER_UP_X_DIRECTIONS = [
     {sr: -1, sc: -1, dr: -1, dc: -1}, // Top-left
-    {sr: -1, sc: 1, dr: -1, dc: 1}, // Top-right
-    {sr: 1, sc: -1, dr: 1, dc: -1}, // Bottom-left
-    {sr: 1, sc: 1, dr: 1, dc: 1}, // Bottom-right
+    {sr: -1, sc:  1, dr: -1, dc:  1}, // Top-right
+    {sr:  1, sc: -1, dr:  1, dc: -1}, // Bottom-left
+    {sr:  1, sc:  1, dr:  1, dc:  1}, // Bottom-right
 ];
 
 const POWER_UP_PLUS_DIRECTIONS = [
-    {sr: -1, sc: 0, dr: -1, dc: 0}, // Up
-    {sr: 1, sc: 0, dr: 1, dc: 0}, // Down
-    {sr: 0, sc: -1, dr: 0, dc: -1}, // Left
-    {sr: 0, sc: 1, dr: 0, dc: 1}, // Right
+    {sr: -1, sc:  0, dr: -1, dc:  0}, // Up
+    {sr:  1, sc:  0, dr:  1, dc:  0}, // Down
+    {sr:  0, sc: -1, dr:  0, dc: -1}, // Left
+    {sr:  0, sc:  1, dr:  0, dc:  1}, // Right
 ];
 
 const POWER_UP_RECT_DIRECTIONS = [
-    {sr: -2, sc: -2, dc: 0, dr: 1},
-    {sr: 2, sc: -2, dc: 1, dr: 0},
-    {sr: 2, sc: 2, dc: 0, dr: -1},
-    {sr: -2, sc: 2, dc: -1, dr: 0},
+    {sr: -2, sc: -2, dc:  0, dr:  1},
+    {sr:  2, sc: -2, dc:  1, dr:  0},
+    {sr:  2, sc:  2, dc:  0, dr: -1},
+    {sr: -2, sc:  2, dc: -1, dr:  0},
 ];
 
 const POWER_UP_CIRCLE_DIRECTIONS = [
-    {sr: -1, sc: -3, dc: 0, dr: 1},
-    {sr: 3, sc: -1, dc: 1, dr: 0},
-    {sr: 1, sc: 3, dc: 0, dr: -1},
-    {sr: -3, sc: 1, dc: -1, dr: 0},
+    {sr: -1, sc: -3, dc:  0, dr:  1},
+    {sr:  3, sc: -1, dc:  1, dr:  0},
+    {sr:  1, sc:  3, dc:  0, dr: -1},
+    {sr: -3, sc:  1, dc: -1, dr: 0},
 ];
 
 // --- Global Game State ---
@@ -163,11 +163,7 @@ function createNewBoard() {
     const boardLen = gameState.size * gameState.size;
     let board = [];
     for (let i = 0; i < boardLen; i++) {
-        //let color = GAME_PIECES[Math.floor(Math.random() * GAME_PIECES.length)];
-        let color = RED;
-        if (i < (gameState.size * (gameState.size/2))) {
-            color = BLUE;
-        }
+        let color = GAME_PIECES[Math.floor(Math.random() * GAME_PIECES.length)];
         board.push(color);
     }
 
@@ -603,15 +599,13 @@ function getPlusConnections(index, targetColor) {
 }
 
 function getRectConnections(index, targetColor) {
-    // Rect/Circle directions are offsets, so maxIterations is 1 for their direct application.
-    // The 'dr'/'dc' in their definitions are for multi-step paths if needed, but here they are direct.
-    return getConnectionsWithDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 1);
+    return getConnectionsWithDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 4);
 }
 
 function getCircularConnections(index, targetColor) {
-    let c1 = getConnectionsWithDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 1); // Inner ring
-    let c2 = getConnectionsWithDirections(index, targetColor, POWER_UP_CIRCLE_DIRECTIONS, 1); // Outer ring
-    return [...new Set([...c1, ...c2])]; // Combine and remove duplicates
+    const c1 = getConnectionsWithDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 1); // Inner ring
+    const c2 = getConnectionsWithDirections(index, targetColor, POWER_UP_CIRCLE_DIRECTIONS, 3); // Outer ring
+    return [...c1, ...c2];
 }
 
 function getConnectedPieces(index) {
@@ -631,8 +625,7 @@ function getConnectedPieces(index) {
     // 2. Handle other POWER_PIECES (X, Plus, Circle, Rect)
     if (POWER_PIECES.includes(powerUpType)) {
         let affectedIndices = getConnectionsForPowerUp(index, baseColorOfClickedPiece, powerUpType);
-        // Always include the power-up piece itself in the list of pieces to be affected/removed.
-        if (!affectedIndices.includes(index)) {
+        if (affectedIndices.length > 0 /*&& !affectedIndices.includes(index)*/) {
             affectedIndices.unshift(index);
         }
         return affectedIndices.filter(i => i >= 0 && i < gameState.board.length && gameState.board[i] !== WHITE);
@@ -659,13 +652,15 @@ function getConnectedPieces(index) {
         for (const neighborIndex of neighbors) {
             if (neighborIndex !== -1 && !visited[neighborIndex] &&
                 gameState.board[neighborIndex] !== WHITE &&
-                getBasePiece(gameState.board[neighborIndex]) === baseColorOfClickedPiece &&
-                getPowerUpType(gameState.board[neighborIndex]) === 0) { // Only connect to normal pieces of same color
+                getBasePiece(gameState.board[neighborIndex]) === baseColorOfClickedPiece /* &&
+                getPowerUpType(gameState.board[neighborIndex]) === 0*/) { // Only connect to normal pieces of same color
                 visited[neighborIndex] = true;
                 stack.push(neighborIndex);
             }
         }
     }
+
+    console.log("connected indices:", connectedIndices);
     // For normal pieces, only return if 2 or more are connected.
     return connectedIndices.length >= 2 ? connectedIndices : [];
 }
@@ -730,7 +725,7 @@ function rotateBoard(degrees) {
     applyGravityAndShiftColumns();
 }
 
-function applyGravityAndShiftColumns() {
+function applyGravityAndShiftColumnsLeft() {
     let boardArray = boardTo2DArray();
 
     // Apply gravity (pieces fall down in each column)
@@ -771,6 +766,49 @@ function applyGravityAndShiftColumns() {
     updateBoardFrom2DArray(boardArray);
 }
 
+function applyGravityAndShiftColumns() {
+    let boardArray = boardTo2DArray();
+    const size = gameState.size;
+
+    // Apply gravity (pieces fall down in each column)
+    for (let c = 0; c < size; c++) {
+        let writeRow = size - 1;
+        for (let r = size - 1; r >= 0; r--) {
+            if (boardArray[r][c] !== WHITE) {
+                if (writeRow !== r) {
+                    boardArray[writeRow][c] = boardArray[r][c];
+                    boardArray[r][c] = WHITE;
+                }
+                writeRow--;
+            }
+        }
+    }
+
+    // Shift columns to the left if a column becomes empty
+    let writeCol = size - 1;
+    for (let c = size - 1; c >= 0; c--) {
+        let isEmpty = true;
+        for (let r = 0; r < size; r++) {
+            if (boardArray[r][c] !== WHITE) {
+                isEmpty = false;
+                break;
+            }
+        }
+
+        if (!isEmpty) {
+            if (writeCol !== c) {
+                for (let row = 0; row < size; row++) {
+                    boardArray[row][writeCol] = boardArray[row][c];
+                    boardArray[row][c] = WHITE;
+                }
+            }
+            writeCol--;
+        }
+    }
+
+    updateBoardFrom2DArray(boardArray);
+}
+
 function removeTargetedPieces(index) {
     // This function handles the removal of pieces based on the clicked piece (normal or power-up)
     const clickedPieceOriginal = gameState.board[index]; // Store before modification
@@ -797,10 +835,10 @@ function removeTargetedPieces(index) {
     // For standard pieces or non-EXTRA power-ups
     piecesToRemove = getConnectedPieces(index); // getConnectedPieces now correctly identifies targets
 
-    if (piecesToRemove.length === 0 && POWER_PIECES.includes(powerUpType)) {
-        // If a non-EXTRA power-up is clicked and finds no connections, it removes itself.
-        piecesToRemove = [index];
-    }
+    // if (piecesToRemove.length > 0 && POWER_PIECES.includes(powerUpType)) {
+    //     // If a non-EXTRA power-up is clicked and finds no connections, it removes itself.
+    //     piecesToRemove = [index];
+    // }
 
     for (const i of piecesToRemove) {
         if (gameState.board[i] !== WHITE) {
@@ -899,6 +937,15 @@ function handleClick(e) {
 
         gameState.hoverList.clear(); // Clear hover after a click
         gameState.hoverIndex = -1;
+        const pieces = getConnectedPieces(index);
+        if (pieces.length > 1) {
+            gameState.hoverIndex = index;
+            for (const i of pieces) {
+                gameState.hoverList.add(i);
+            }
+        }
+
+
         renderBoard(); // Re-render the board after the move
     }
 }
@@ -914,12 +961,9 @@ function handleMouseMove(e) {
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
         const piecesToHighlight = getConnectedPieces(index);
+        console.log("pieces to highlight:", piecesToHighlight);
         if (piecesToHighlight.length > 0) {
             piecesToHighlight.forEach(i => gameState.hoverList.add(i));
-        } else {
-            // If getConnectedPieces returns empty (e.g. single non-powerup piece),
-            // still highlight the piece under the mouse if it's not white.
-            gameState.hoverList.add(index);
         }
     }
     // Always re-render on mouse move to update hover effect or clear it
