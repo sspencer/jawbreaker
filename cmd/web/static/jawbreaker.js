@@ -89,6 +89,7 @@ let gameState = {
     board: [],
     hoverList: new Set(),
     hoverIndex: -1,
+    mobile: false,
     canvas: null,
     ctx: null,
 };
@@ -927,8 +928,13 @@ function resetCurrentGame() {
 function registerGameEvents() {
     if (!gameState.canvas) return;
     gameState.canvas.addEventListener("click", handleClick);
-    gameState.canvas.addEventListener("mousemove", handleMouseMove);
-    gameState.canvas.addEventListener("mouseleave", handleMouseLeave);
+    if (gameState.mobile) {
+        gameState.canvas.addEventListener("touchstart", handleMouseMove);
+        gameState.canvas.addEventListener("touchend", handleMouseLeave);
+    } else {
+        gameState.canvas.addEventListener("mousemove", handleMouseMove);
+        gameState.canvas.addEventListener("mouseleave", handleMouseLeave);
+    }
 
     const newGameBtn = document.querySelector(".new-game-btn");
     if (newGameBtn) {
@@ -972,6 +978,7 @@ function initGame(opts) {
     gameState.size = clamp(opts.size, 8, 20); // Max size 20 for better playability
     gameState.blockSize = opts.blockSize || 36;
     gameState.cookieName = opts.cookieName || "jawbreaker_functional_scores_v3"; // Unique cookie name
+    gameState.mobile = opts.mobile || false;
     gameState.score = 0;
 
     gameState.canvas = document.getElementById("game-canvas");
