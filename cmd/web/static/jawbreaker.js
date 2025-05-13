@@ -889,6 +889,15 @@ function handleClick(e) {
 
         gameState.hoverList.clear(); // Clear hover after a click
         gameState.hoverIndex = -1;
+        const pieces = getConnectedPieces(index);
+        if (pieces.length > 1) {
+            gameState.hoverIndex = index;
+            for (const i of pieces) {
+                gameState.hoverList.add(i);
+            }
+        }
+
+
         renderBoard(); // Re-render the board after the move
     }
 }
@@ -906,10 +915,6 @@ function handleMouseMove(e) {
         const piecesToHighlight = getConnectedPieces(index);
         if (piecesToHighlight.length > 0) {
             piecesToHighlight.forEach(i => gameState.hoverList.add(i));
-        } else {
-            // If getConnectedPieces returns empty (e.g. single non-powerup piece),
-            // still highlight the piece under the mouse if it's not white.
-            gameState.hoverList.add(index);
         }
     }
     // Always re-render on mouse move to update hover effect or clear it
