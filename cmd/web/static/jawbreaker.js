@@ -647,8 +647,6 @@ function doRenderBoardAnimated(timestamp) {
     // console.log(`animate from 0 to ${endPos}, board is size: ${gameState.board.length}`);
     for (let iter = 0; iter < endPos; iter++) {
         const index =gameState.animateIndices[iter];
-        const color = gameState.animateEnd[index];
-        //console.log(`copy index ${index} of color ${color} to board`);
         gameState.board[index] = gameState.animateEnd[index];
     }
     renderBoard();
@@ -917,7 +915,14 @@ async function removeTargetedPieces(index) {
     if (powerUpType === POWER_FILL) {
         gameState.board[index] = WHITE; // Remove the fill piece itself
         applyGravityAndShiftColumns();
+
+        gameState.animateStart = gameState.board.slice();
         fillEmptySpacesOnBoard();
+        gameState.animateEnd = gameState.board.slice();
+        gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
+        await renderBoardAnimated();
+        //renderBoard();
+
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         gameState.board[index] = WHITE;
