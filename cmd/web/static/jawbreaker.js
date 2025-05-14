@@ -1025,24 +1025,22 @@ async function handleClick(e) {
 
         const status = await processMove(index);
         document.getElementById("current-score").innerText = ""+status.score;
-        document.getElementById("bonus-points").innerText = ""+gameState.bonus;
-        document.getElementById("remaining-pieces").innerText = ""+gameState.remainingPieces;
-        if (gameState.remainingPieces === 1) {
-            document.getElementById("pieces-name").innerText = "piece";
-        } else {
-            document.getElementById("pieces-name").innerText = "pieces";
-        }
 
         if (status.gameOver) {
             gameState.lastScore = gameState.score; // Update last score before potential best score update
             if (gameState.score > gameState.bestScore) {
                 gameState.bestScore = gameState.score;
             }
+            
             document.getElementById("game-over-score").innerText = gameState.score;
             document.getElementById("last-score").innerText = gameState.lastScore;
             document.getElementById("best-score").innerText = gameState.bestScore;
-            setCookie(gameState.cookieName, `${gameState.lastScore}|${gameState.bestScore}`);
+            document.getElementById("bonus-points").innerText = ""+gameState.bonus;
+            document.getElementById("remaining-pieces").innerText = ""+gameState.remainingPieces;
+            document.getElementById("pieces-name").innerText =  gameState.remainingPieces === 1 ? "piece" : "pieces";
             document.getElementById("game-over-overlay").classList.add("visible");
+
+            setCookie(gameState.cookieName, `${gameState.lastScore}|${gameState.bestScore}`);
             return; // Stop further processing/rendering
         }
 

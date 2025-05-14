@@ -23,9 +23,11 @@ type Game struct {
 }
 
 type Status struct {
-	Board    Board
-	Score    int
-	GameOver bool
+	Board           Board
+	Score           int
+	Bonus           int
+	RemainingPieces int
+	GameOver        bool
 }
 
 // Piece constants used to represent different colored board in the game.
@@ -144,21 +146,25 @@ func (g *Game) Move(index int) Status {
 	g.applyGravityAndShiftRight()
 	g.score += calculateMoveScore(n)
 	gameOver := g.IsGameOver()
+	bonusScore := 0
+	remainingPieces := 0
 
 	if gameOver {
-		remainingPieces := 0
 		for _, p := range g.board {
 			if p != White {
 				remainingPieces++
 			}
 		}
-		g.score += calculateRemainingPiecesScore(remainingPieces)
+		bonusScore = calculateBonusScore(remainingPieces)
+		g.score += bonusScore
 	}
 
 	return Status{
-		Board:    g.board,
-		Score:    g.score,
-		GameOver: gameOver,
+		Board:           g.board,
+		Bonus:           bonusScore,
+		Score:           g.score,
+		RemainingPieces: remainingPieces,
+		GameOver:        gameOver,
 	}
 }
 
@@ -189,17 +195,16 @@ func calculateMoveScore(piecesRemoved int) int {
 	return piecesRemoved * (piecesRemoved - 1)
 }
 
-// calculateRemainingPiecesScore computes a bonus score at the end of the game
+// calculateBonusScore computes a bonus score at the end of the game
 // based on the number of pieces remaining on the board.
-// If the number of remaining pieces is less than or equal to the threshold (20),
-// a bonus score is awarded. The bonus is calculated as (threshold - remainingPieces)².
-// This rewards players who clear most of the board with an exponentially increasing bonus.
-// If more than the threshold number of pieces remains, no bonus is awarded.
-func calculateRemainingPiecesScore(remainingPieces int) int {
-	const threshold = 20
-	if remainingPieces <= threshold {
-		p := threshold - remainingPieces
-		return p * p
+func calculateBonusScore(remainingPieces int) int {
+	const threshold = 10 // Bonus if 10 or fewer pieces remain
+	if remainingPieces == 0 {
+		// Bonus for clearing the board
+		return 2000
+	} else if remainingPieces <= threshold {
+		// Scaled bonus
+		return (threshold - remainingPieces + 1) * 100
 	}
 
 	return 0

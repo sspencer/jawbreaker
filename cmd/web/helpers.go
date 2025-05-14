@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
-	"regexp"
+	"math"
 	"strconv"
 	"strings"
 
@@ -93,34 +93,31 @@ func deserializeScoreData(s *ScoreData, data string) {
 	s.BestScore = bestScore
 }
 
-func getGameSize(rows, cols, blockSize, gapSize int) string {
-	return fmt.Sprintf(gameSize, cols, blockSize, rows, blockSize, gapSize)
+func perfectSquare(n int) (int, error) {
+	if n < 0 {
+		return 0, errors.New("cannot calculate square root of a negative number")
+	}
+
+	sqrt := int(math.Sqrt(float64(n)))
+
+	// Check if the square of `sqrt` is equal to the original number `n`
+	if sqrt*sqrt == n {
+		return sqrt, nil
+	}
+
+	return 0, errors.New("the given number is not a perfect square")
 }
 
-// isMobile checks if the request is coming from a mobile device
-// by examining the User-Agent header
-func isMobile(r *http.Request) bool {
-	userAgent := r.Header.Get("User-Agent")
-
-	// Common patterns for mobile devices
-	mobilePatterns := []string{
-		"Android",
-		"iPhone",
-		"iPad",
-		"iPod",
-		"BlackBerry",
-		"Windows Phone",
-		"Mobile",
-		"webOS",
-		"Opera Mini",
+func restoreGame(pieces string, score int) (*jawbreaker.Game, error) {
+	size, err := perfectSquare(len(pieces))
+	if err != nil {
+		return nil, err
 	}
 
-	for _, pattern := range mobilePatterns {
-		matched, _ := regexp.MatchString(pattern, userAgent)
-		if matched {
-			return true
-		}
+	game, err := jawbreaker.RestoreGame(pieces, size, size, score)
+	if err != nil {
+		return nil, err
 	}
 
-	return false
+	return game, nil
 }

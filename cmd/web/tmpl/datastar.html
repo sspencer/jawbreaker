@@ -12,7 +12,11 @@
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <link rel="stylesheet" href="{{.StyleCSS}}"/>
     <style>
-        {{.GameSize}}
+        #game {
+            grid-template-columns: repeat({{.Size}}, {{.Block}}px);
+            grid-template-rows: repeat({{.Size}}, {{.Block}}px);
+            gap: 2px;
+        }
     </style>
     <script type="module" src="{{.DatastarJS}}"></script>
 </head>
@@ -22,7 +26,7 @@
     <h1>Jawbreaker</h1>
 </header>
 <div class="container"
-     data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},pieces:'{{.Pieces}}'}"
+     data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},bonusScore:0,remainingPieces:0,piecesText:'pieces',pieces:'{{.Pieces}}'}"
 >
     {{ template "sidebar" . }}
     <main id="game-container"

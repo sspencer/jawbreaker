@@ -14,15 +14,6 @@ var gameCode []byte
 var tmpl *template.Template
 
 func init() {
-	// Parse all embedded templates once at startup
-	//tmpl = template.Must(template.ParseFS(templateFS,
-	//	"tmpl/datastar.html",
-	//	"tmpl/gameover.html",
-	//	"tmpl/help.html",
-	//	"tmpl/index.html",
-	//	"tmpl/one.html",
-	//	"tmpl/sidebar.html",
-	//))
-
+	// Parse all embedded templates during startup
 	tmpl = template.Must(template.ParseFS(templateFS, "tmpl/*.html"))
 }
