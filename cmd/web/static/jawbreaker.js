@@ -91,7 +91,7 @@ let gameState = {
     animateEnd: [], // for animation
     animateIndices: [], // draw (n) animated pieces per frame
     animatePosition: 0,
-    animateFrames: 8, // draw (n) animated pieces per frame
+    animatePieces: 8, // draw (n) animated pieces per frame
     animatedId: null,
     animationResolve: null, // Promise resolve function for animation
     hoverList: new Set(),
@@ -169,11 +169,17 @@ function generateUniqueRandomNums(n, max) {
     return Array.from(randomNumbers);
 }
 
+/**
+ * Creates a new game board filled with random pieces and power-ups
+ * @returns {Array} The newly created board
+ */
 function createNewBoard() {
     const size = gameState.size * gameState.size;
 
+    // Start with an empty board
     let board = Array(size).fill(WHITE);
-    gameState.animateStart = board.slice();
+
+    // Fill with random game pieces
     for (let i = 0; i < size; i++) {
         board[i] = randomItem(GAME_PIECES);
     }
@@ -202,9 +208,28 @@ function createNewBoard() {
         if (uniqIndices.length === 0) break;
     }
 
+    // Set the game board and return it
+    gameState.board = board;
+    return board;
+}
+
+/**
+ * Sets up animation for a new board appearing
+ * @returns {Promise} Resolves when animation completes
+ */
+async function animateNewBoard() {
+    const size = gameState.size * gameState.size;
+
+    // Set up animation from empty board to current board
+    gameState.animateStart =  Array(size).fill(WHITE);
+    gameState.animateEnd = gameState.board.slice();
+
+    // For new board animation, we want to animate all indices in random order
     gameState.animateIndices = createIndexArray(size);
     shuffleArray(gameState.animateIndices);
-    gameState.animateEnd = board;
+
+    // Run the animation
+    return renderBoardAnimated();
 }
 
 function randomItem(arr) {
@@ -275,67 +300,7 @@ function shuffleArray(array) {
     }
 }
 
-function findChangedIndices(array1, array2, startIndex) {
-    const total = array1.length;
-
-    if (total !== array2.length) {
-        throw new Error("Arrays must be of the same length.");
-    }
-
-    const N = Math.sqrt(total);
-    if (!Number.isInteger(N)) {
-        throw new Error("Arrays must represent a square grid.");
-    }
-
-    const startRow = Math.floor(startIndex / N);
-    const startCol = startIndex % N;
-
-    const visited = new Set();
-    const changed = [];
-
-    const enqueue = (r, c) => {
-        if (r < 0 || r >= N || c < 0 || c >= N) return;
-        const idx = r * N + c;
-        if (!visited.has(idx)) {
-            visited.add(idx);
-            if (array1[idx] !== array2[idx]) {
-                changed.push(idx);
-            }
-        }
-    };
-
-    // Spiral logic: expand radius step-by-step
-    let radius = 0;
-    enqueue(startRow, startCol); // center first
-
-    while (visited.size < total) {
-        radius++;
-
-        // Top edge (left to right)
-        for (let dx = -radius + 1; dx <= radius; dx++) {
-            enqueue(startRow - radius, startCol + dx);
-        }
-
-        // Right edge (top to bottom)
-        for (let dy = -radius + 1; dy <= radius; dy++) {
-            enqueue(startRow + dy, startCol + radius);
-        }
-
-        // Bottom edge (right to left)
-        for (let dx = radius - 1; dx >= -radius; dx--) {
-            enqueue(startRow + radius, startCol + dx);
-        }
-
-        // Left edge (bottom to top)
-        for (let dy = radius - 1; dy >= -radius; dy--) {
-            enqueue(startRow + dy, startCol - radius);
-        }
-    }
-
-    return changed;
-}
-
-function findChangedIndicesTopLeft(array1, array2) {
+function findChangedIndices(array1, array2) {
     if (array1.length !== array2.length) {
         throw new Error("Arrays must be of the same length.");
     }
@@ -629,6 +594,34 @@ function renderBoard() {
     }
 }
 
+/**
+ * Sets up animation state and performs a board transformation with animation
+ * @param {Function} transformFn - Function that transforms the board
+ * @param {number} index - Index of the piece that triggered the transformation
+ * @param {number} [frameSpeed] - Optional frame speed override
+ * @returns {Promise} - Resolves when animation completes
+ */
+async function animateTransformation(transformFn) {
+    // Save the starting state
+    const startBoard = gameState.board.slice();
+
+    // Apply the transformation
+    if (typeof transformFn === 'function') {
+        transformFn();
+    }
+
+    // Set up animation state
+    gameState.animateStart = startBoard;
+    gameState.animateEnd = gameState.board.slice();
+    let changes = findChangedIndices(gameState.animateStart, gameState.animateEnd);
+    shuffleArray(changes);
+    gameState.animateIndices = changes;
+
+    // Run the animation
+    await renderBoardAnimated();
+    return gameState.board;
+}
+
 function renderBoardAnimated() {
     gameState.animatePosition = 0;
     return new Promise((resolve) => {
@@ -640,7 +633,7 @@ function renderBoardAnimated() {
 function doRenderBoardAnimated(timestamp) {
     gameState.board = gameState.animateStart.slice();
 
-    const newPos = gameState.animatePosition + gameState.animateFrames;
+    const newPos = gameState.animatePosition + gameState.animatePieces;
     const maxPos = gameState.animateIndices.length;
     const endPos = Math.min(newPos, maxPos);
 
@@ -750,13 +743,14 @@ function getConnectedPieces(index) {
         return [index]; // For hover, highlight the power-up itself.
     }
 
+    let powerUpIndices = [];
     // 2. Handle other POWER_PIECES (X, Plus, Circle, Rect)
     if (POWER_PIECES.includes(powerUpType)) {
-        let affectedIndices = getConnectionsForPowerUp(index, baseColorOfClickedPiece, powerUpType);
-        if (affectedIndices.length > 0) {
-            affectedIndices.unshift(index);
+        powerUpIndices = getConnectionsForPowerUp(index, baseColorOfClickedPiece, powerUpType);
+        if (powerUpIndices.length > 0) {
+            powerUpIndices.unshift(index);
         }
-        return affectedIndices.filter(i => i >= 0 && i < gameState.board.length && gameState.board[i] !== WHITE);
+        //return affectedIndices.filter(i => i >= 0 && i < gameState.board.length && gameState.board[i] !== WHITE);
     }
 
     // 3. Standard Flood Fill for same-colored pieces (no power-up)
@@ -787,8 +781,12 @@ function getConnectedPieces(index) {
         }
     }
 
+    // combineAndRemoveDuplicates
+    const combinedArray = [...powerUpIndices, ...connectedIndices];
+    const uniqueArray = [...new Set(combinedArray)];
+
     // For normal pieces, only return if 2 or more are connected.
-    return connectedIndices.length >= 2 ? connectedIndices : [];
+    return uniqueArray.length >= 2 ? uniqueArray : [];
 }
 
 // --- Game State Manipulation ---
@@ -892,18 +890,7 @@ function applyGravityAndShiftColumns() {
 
     updateBoardFrom2DArray(boardArray);
 }
-async function animateApplyGravityAndShiftColumns(startBoard, index) {
-    gameState.animateStart = startBoard;
-    applyGravityAndShiftColumns();
-    gameState.animateEnd = gameState.board.slice();
-    //const index = gameState.size * gameState.size/2 + gameState.size/2;
-    gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
-    const frames = gameState.animateFrames;
-    gameState.animateFrames = 4;
-    await renderBoardAnimated();
-    gameState.animateFrames = frames;
 
-}
 async function removeTargetedPieces(index) {
     // This function handles the removal of pieces based on the clicked piece (normal or power-up)
     const clickedPieceOriginal = gameState.board[index]; // Store before modification
@@ -915,26 +902,18 @@ async function removeTargetedPieces(index) {
     if (powerUpType === POWER_FILL) {
         gameState.board[index] = WHITE; // Remove the fill piece itself
         applyGravityAndShiftColumns();
-
-        gameState.animateStart = gameState.board.slice();
-        fillEmptySpacesOnBoard();
-        gameState.animateEnd = gameState.board.slice();
-        gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
-        await renderBoardAnimated();
-        //renderBoard();
-
+        // Animate filling empty spaces
+        await animateTransformation(fillEmptySpacesOnBoard);
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         gameState.board[index] = WHITE;
-        const startBoard = gameState.board.slice();
         rotateBoard(90);
-        animateApplyGravityAndShiftColumns(startBoard, index);
+        applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
     } else if (powerUpType === POWER_ROTATE_LEFT) {
         gameState.board[index] = WHITE;
-        const startBoard = gameState.board.slice();
         rotateBoard(-90);
-        animateApplyGravityAndShiftColumns(startBoard, index);
+        applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
     }
 
@@ -979,26 +958,26 @@ function isGameOver() {
 }
 
 async function processMove(index) {
-    gameState.animateStart = gameState.board.slice();
-    const removalResult = await removeTargetedPieces(index);
+    // Save the starting board state for animation
+    const startBoard = gameState.board.slice();
 
+    // Process the piece removal
+    const removalResult = await removeTargetedPieces(index);
     const n = removalResult.count;
 
     if (n > 0 && !removalResult.isSpecialAction) { // Apply gravity only if pieces were removed by non-special actions
+        // First animate the piece removal
+        gameState.animateStart = startBoard;
         gameState.animateEnd = gameState.board.slice();
-        gameState.animateIndices = gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
-        console.log("Animate indices before apply: ", gameState.animateIndices);
-        console.log(`remove frames speed: ${gameState.animateFrames}`)
-        await renderBoardAnimated();
+        gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
 
         applyGravityAndShiftColumns();
+        renderBoard();
     }
 
     if (!removalResult.isSpecialAction) { // Score only for non-special actions based on count
         gameState.score += calculateMoveScore(n);
     }
-    // Else: Special actions (Fill, Rotations) might have a flat score or no direct score from the removal count.
-    // For example, gameState.score += 10; // for using a rotation power-up.
 
     const gameOver = isGameOver();
     if (gameOver) {
@@ -1120,8 +1099,14 @@ function handleMouseLeave() {
     }
 }
 
+/**
+ * Resets the game with a new board and clears game state
+ */
 async function resetCurrentGame() {
-    createNewBoard(); // This now sets gameState.board
+    // Create a new board
+    createNewBoard();
+
+    // Reset game state
     gameState.hoverList.clear();
     gameState.hoverIndex = -1;
     gameState.score = 0;
@@ -1130,8 +1115,8 @@ async function resetCurrentGame() {
     document.getElementById("current-score").innerText = gameState.score;
     document.getElementById("game-over-overlay").classList.remove("visible");
 
-    await renderBoardAnimated();
-
+    // Animate the new board appearing
+    await animateNewBoard();
 }
 
 function registerGameEvents() {
@@ -1141,10 +1126,10 @@ function registerGameEvents() {
     } else {
         gameState.canvas.addEventListener("click", async (e) => {
             console.log("Click start");
-            const frames = gameState.animateFrames;
-            gameState.animateFrames = 1;
+            const frames = gameState.animatePieces;
+            gameState.animatePieces = 1;
             await handleClick(e);
-            gameState.animateFrames = frames;
+            gameState.animatePieces = frames;
             console.log("Click end");
         });
         gameState.canvas.addEventListener("mousemove", handleMouseMove);
@@ -1189,22 +1174,33 @@ function registerGameEvents() {
 }
 
 // --- Initialization ---
+/**
+ * Initializes the game with the given options
+ * @param {Object} opts - Game options
+ * @param {number} opts.size - Board size (number of cells per side)
+ * @param {number} opts.blockSize - Size of each cell in pixels
+ * @param {string} opts.cookieName - Name of the cookie to store scores
+ * @param {boolean} opts.mobile - Whether the game is running on a mobile device
+ */
 async function initGame(opts) {
+    // Initialize game state
     gameState.size = clamp(opts.size, 8, 20); // Max size 20 for better playability
     gameState.blockSize = opts.blockSize || 36;
     gameState.cookieName = opts.cookieName || "jawbreaker_functional_scores_v3"; // Unique cookie name
     gameState.mobile = opts.mobile || false;
     gameState.score = 0;
 
+    // Set up canvas
     gameState.canvas = document.getElementById("game-canvas");
     if (!gameState.canvas) {
         console.error("Canvas element with ID 'game-canvas' not found. Game cannot start.");
         return;
     }
     gameState.ctx = gameState.canvas.getContext("2d");
-
     updateCanvasDimensions(); // Set canvas size based on game size and block size
-    createNewBoard(); // Initialize the board
+
+    // Create the initial game board
+    createNewBoard();
 
     // Load scores from the cookie
     const scoresCookie = getCookie(gameState.cookieName);
@@ -1216,14 +1212,15 @@ async function initGame(opts) {
         gameState.lastScore = 0;
         gameState.bestScore = 0;
     }
+
     // Update score displays
     document.getElementById('current-score').innerText = gameState.score;
     document.getElementById('last-score').innerText = gameState.lastScore;
     document.getElementById('best-score').innerText = gameState.bestScore;
 
-
+    // Register event handlers
     registerGameEvents();
-    console.log("start initial animation");
-    await renderBoardAnimated(); // Initial render of the game board
-    console.log("end initial animation");
+
+    // Animate the initial board appearance
+    await animateNewBoard();
 }
