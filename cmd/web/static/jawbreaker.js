@@ -91,8 +91,9 @@ let gameState = {
     animateEnd: [], // for animation
     animateIndices: [], // draw (n) animated pieces per frame
     animatePosition: 0,
-    animatedFrames: 4, // draw (n) animated pieces per frame
+    animateFrames: 8, // draw (n) animated pieces per frame
     animatedId: null,
+    animationResolve: null, // Promise resolve function for animation
     hoverList: new Set(),
     hoverIndex: -1,
     mobile: false,
@@ -328,6 +329,22 @@ function findChangedIndices(array1, array2, startIndex) {
         // Left edge (bottom to top)
         for (let dy = radius - 1; dy >= -radius; dy--) {
             enqueue(startRow + dy, startCol - radius);
+        }
+    }
+
+    return changed;
+}
+
+function findChangedIndicesTopLeft(array1, array2) {
+    if (array1.length !== array2.length) {
+        throw new Error("Arrays must be of the same length.");
+    }
+
+    const changed = [];
+
+    for (let i = 0; i < array1.length; i++) {
+        if (array1[i] !== array2[i]) {
+            changed.push(i);
         }
     }
 
@@ -581,7 +598,7 @@ function renderBoard() {
             const piece = gameState.board[index];
             const {x, y} = getPiecePositionOnCanvas(row, col);
 
-            if (piece === WHITE || piece === undefined) { // TODO remove undefined condition
+            if (piece === WHITE) {
                 drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize);
             } else {
                 //console.log(`draw piece ${piece} at ${x}, ${y}`);
@@ -614,13 +631,16 @@ function renderBoard() {
 
 function renderBoardAnimated() {
     gameState.animatePosition = 0;
-    gameState.animatedId = requestAnimationFrame(doRenderBoardAnimated);
+    return new Promise((resolve) => {
+        gameState.animationResolve = resolve;
+        gameState.animatedId = requestAnimationFrame(doRenderBoardAnimated);
+    });
 }
 
 function doRenderBoardAnimated(timestamp) {
     gameState.board = gameState.animateStart.slice();
 
-    const newPos = gameState.animatePosition + gameState.animatedFrames;
+    const newPos = gameState.animatePosition + gameState.animateFrames;
     const maxPos = gameState.animateIndices.length;
     const endPos = Math.min(newPos, maxPos);
 
@@ -630,8 +650,8 @@ function doRenderBoardAnimated(timestamp) {
         const color = gameState.animateEnd[index];
         //console.log(`copy index ${index} of color ${color} to board`);
         gameState.board[index] = gameState.animateEnd[index];
-        renderBoard();
     }
+    renderBoard();
 
     gameState.animateStart = gameState.board.slice();
     gameState.animatePosition = endPos;
@@ -645,6 +665,12 @@ function doRenderBoardAnimated(timestamp) {
     gameState.animateEnd = [];
     gameState.animatePosition = 0;
     gameState.animatedId = null;
+
+    // Resolve the Promise if it exists
+    if (gameState.animationResolve) {
+        gameState.animationResolve();
+        gameState.animationResolve = null;
+    }
 }
 
 // --- Connection Logic ---
@@ -824,7 +850,6 @@ function rotateBoard(degrees) {
 
     // Flatten 2D grid back to 1D row-major array
     gameState.board = rotated.flat();
-    applyGravityAndShiftColumns();
 }
 
 function applyGravityAndShiftColumns() {
@@ -869,8 +894,19 @@ function applyGravityAndShiftColumns() {
 
     updateBoardFrom2DArray(boardArray);
 }
+async function animateApplyGravityAndShiftColumns(startBoard, index) {
+    gameState.animateStart = startBoard;
+    applyGravityAndShiftColumns();
+    gameState.animateEnd = gameState.board.slice();
+    //const index = gameState.size * gameState.size/2 + gameState.size/2;
+    gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
+    const frames = gameState.animateFrames;
+    gameState.animateFrames = 4;
+    await renderBoardAnimated();
+    gameState.animateFrames = frames;
 
-function removeTargetedPieces(index) {
+}
+async function removeTargetedPieces(index) {
     // This function handles the removal of pieces based on the clicked piece (normal or power-up)
     const clickedPieceOriginal = gameState.board[index]; // Store before modification
     const powerUpType = getPowerUpType(clickedPieceOriginal);
@@ -882,15 +918,18 @@ function removeTargetedPieces(index) {
         gameState.board[index] = WHITE; // Remove the fill piece itself
         applyGravityAndShiftColumns();
         fillEmptySpacesOnBoard();
-
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         gameState.board[index] = WHITE;
+        const startBoard = gameState.board.slice();
         rotateBoard(90);
+        animateApplyGravityAndShiftColumns(startBoard, index);
         return {count: 1, isSpecialAction: true};
     } else if (powerUpType === POWER_ROTATE_LEFT) {
         gameState.board[index] = WHITE;
+        const startBoard = gameState.board.slice();
         rotateBoard(-90);
+        animateApplyGravityAndShiftColumns(startBoard, index);
         return {count: 1, isSpecialAction: true};
     }
 
@@ -934,16 +973,19 @@ function isGameOver() {
     return true;
 }
 
-function processMove(index) {
+async function processMove(index) {
     gameState.animateStart = gameState.board.slice();
-    const removalResult = removeTargetedPieces(index);
+    const removalResult = await removeTargetedPieces(index);
 
     const n = removalResult.count;
 
     if (n > 0 && !removalResult.isSpecialAction) { // Apply gravity only if pieces were removed by non-special actions
         gameState.animateEnd = gameState.board.slice();
-        const ch = gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
-        console.log("changed indices: ", ch);
+        gameState.animateIndices = gameState.animateIndices = findChangedIndices(gameState.animateStart, gameState.animateEnd, index);
+        console.log("Animate indices before apply: ", gameState.animateIndices);
+        console.log(`remove frames speed: ${gameState.animateFrames}`)
+        await renderBoardAnimated();
+
         applyGravityAndShiftColumns();
     }
 
@@ -987,7 +1029,7 @@ function handleTouch(e) {
 
 
 // --- Event Handlers ---
-function handleClick(e) {
+async function handleClick(e) {
     if (gameState.animatedId !== null) {
         return;
     }
@@ -996,7 +1038,10 @@ function handleClick(e) {
     const index = getBoardIndexFromCoordinates(x, y);
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
-        const status = processMove(index);
+
+        const startBoard = gameState.board.slice();
+
+        const status = await processMove(index);
         document.getElementById("current-score").innerText = ""+status.score;
         document.getElementById("bonus-points").innerText = ""+gameState.bonus;
         document.getElementById("remaining-pieces").innerText = ""+gameState.remainingPieces;
@@ -1070,7 +1115,7 @@ function handleMouseLeave() {
     }
 }
 
-function resetCurrentGame() {
+async function resetCurrentGame() {
     createNewBoard(); // This now sets gameState.board
     gameState.hoverList.clear();
     gameState.hoverIndex = -1;
@@ -1079,7 +1124,9 @@ function resetCurrentGame() {
     gameState.remainingPieces = 0;
     document.getElementById("current-score").innerText = gameState.score;
     document.getElementById("game-over-overlay").classList.remove("visible");
-    renderBoardAnimated();
+
+    await renderBoardAnimated();
+
 }
 
 function registerGameEvents() {
@@ -1087,23 +1134,30 @@ function registerGameEvents() {
     if (gameState.mobile) {
         gameState.canvas.addEventListener("click", handleTouch);
     } else {
-        gameState.canvas.addEventListener("click", handleClick);
+        gameState.canvas.addEventListener("click", async (e) => {
+            console.log("Click start");
+            const frames = gameState.animateFrames;
+            gameState.animateFrames = 1;
+            await handleClick(e);
+            gameState.animateFrames = frames;
+            console.log("Click end");
+        });
         gameState.canvas.addEventListener("mousemove", handleMouseMove);
         gameState.canvas.addEventListener("mouseleave", handleMouseLeave);
     }
 
     const newGameBtn = document.querySelector(".new-game-btn");
     if (newGameBtn) {
-        newGameBtn.addEventListener("click", (e) => {
+        newGameBtn.addEventListener("click", async (e) => {
             e.preventDefault();
-            resetCurrentGame();
+            await resetCurrentGame();
         });
     }
     const gameOverRestartBtn = document.getElementById("restart-btn");
     if (gameOverRestartBtn) {
-        gameOverRestartBtn.addEventListener("click", (e) => {
+        gameOverRestartBtn.addEventListener("click", async (e) => {
             e.preventDefault();
-            resetCurrentGame();
+            await resetCurrentGame();
         });
     }
 
@@ -1130,7 +1184,7 @@ function registerGameEvents() {
 }
 
 // --- Initialization ---
-function initGame(opts) {
+async function initGame(opts) {
     gameState.size = clamp(opts.size, 8, 20); // Max size 20 for better playability
     gameState.blockSize = opts.blockSize || 36;
     gameState.cookieName = opts.cookieName || "jawbreaker_functional_scores_v3"; // Unique cookie name
@@ -1164,6 +1218,7 @@ function initGame(opts) {
 
 
     registerGameEvents();
-    renderBoardAnimated(); // Initial render of the game board
+    console.log("start initial animation");
+    await renderBoardAnimated(); // Initial render of the game board
+    console.log("end initial animation");
 }
-
