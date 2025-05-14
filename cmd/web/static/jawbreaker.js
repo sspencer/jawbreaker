@@ -87,13 +87,13 @@ let gameState = {
     lastScore: 0,
     bestScore: 0,
     board: [],
-    animateStart: [], // for animation
-    animateEnd: [], // for animation
-    animateIndices: [], // draw (n) animated pieces per frame
+    animateStart: [],
+    animateEnd: [],
+    animateIndices: [],
     animatePosition: 0,
     animatePieces: 8, // draw (n) animated pieces per frame
-    animatedId: null,
-    animationResolve: null, // Promise resolve function for animation
+    animateId: null,
+    animateResolve: null, // Promise resolve function for animation
     hoverList: new Set(),
     hoverIndex: -1,
     mobile: false,
@@ -566,7 +566,6 @@ function renderBoard() {
             if (piece === WHITE) {
                 drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize);
             } else {
-                //console.log(`draw piece ${piece} at ${x}, ${y}`);
                 drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glowEffectSize);
             }
         }
@@ -625,8 +624,8 @@ async function animateTransformation(transformFn) {
 function renderBoardAnimated() {
     gameState.animatePosition = 0;
     return new Promise((resolve) => {
-        gameState.animationResolve = resolve;
-        gameState.animatedId = requestAnimationFrame(doRenderBoardAnimated);
+        gameState.animateResolve = resolve;
+        gameState.animateId = requestAnimationFrame(doRenderBoardAnimated);
     });
 }
 
@@ -637,7 +636,6 @@ function doRenderBoardAnimated(timestamp) {
     const maxPos = gameState.animateIndices.length;
     const endPos = Math.min(newPos, maxPos);
 
-    // console.log(`animate from 0 to ${endPos}, board is size: ${gameState.board.length}`);
     for (let iter = 0; iter < endPos; iter++) {
         const index =gameState.animateIndices[iter];
         gameState.board[index] = gameState.animateEnd[index];
@@ -648,19 +646,19 @@ function doRenderBoardAnimated(timestamp) {
     gameState.animatePosition = endPos;
 
     if (gameState.animatePosition < maxPos) {
-        gameState.animatedId = requestAnimationFrame(doRenderBoardAnimated)
+        gameState.animateId = requestAnimationFrame(doRenderBoardAnimated)
         return;
     }
 
     gameState.animateStart = [];
     gameState.animateEnd = [];
     gameState.animatePosition = 0;
-    gameState.animatedId = null;
+    gameState.animateId = null;
 
     // Resolve the Promise if it exists
-    if (gameState.animationResolve) {
-        gameState.animationResolve();
-        gameState.animationResolve = null;
+    if (gameState.animateResolve) {
+        gameState.animateResolve();
+        gameState.animateResolve = null;
     }
 }
 
@@ -900,25 +898,25 @@ async function removeTargetedPieces(index) {
     let piecesRemovedCount = 0;
 
     if (powerUpType === POWER_FILL) {
-        gameState.board[index] = WHITE; // Remove the fill piece itself
+        gameState.board[index] = randomItem(GAME_PIECES);; // Remove the fill piece itself
         applyGravityAndShiftColumns();
         // Animate filling empty spaces
         await animateTransformation(fillEmptySpacesOnBoard);
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
-        gameState.board[index] = WHITE;
+        gameState.board[index] = randomItem(GAME_PIECES);
         rotateBoard(90);
         applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
     } else if (powerUpType === POWER_ROTATE_LEFT) {
-        gameState.board[index] = WHITE;
+        gameState.board[index] = randomItem(GAME_PIECES);
         rotateBoard(-90);
         applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
     }
 
     // For standard pieces or non-EXTRA power-ups
-    piecesToRemove = getConnectedPieces(index); // getConnectedPieces now correctly identifies targets
+    piecesToRemove = getConnectedPieces(index);
 
     for (const i of piecesToRemove) {
         if (gameState.board[i] !== WHITE) {
@@ -997,7 +995,7 @@ async function processMove(index) {
 }
 
 function handleTouch(e) {
-    if (gameState.animatedId !== null) {
+    if (gameState.animateId !== null) {
         return;
     }
 
@@ -1014,7 +1012,7 @@ function handleTouch(e) {
 
 // --- Event Handlers ---
 async function handleClick(e) {
-    if (gameState.animatedId !== null) {
+    if (gameState.animateId !== null) {
         return;
     }
 
@@ -1065,7 +1063,7 @@ async function handleClick(e) {
 }
 
 function handleMouseMove(e) {
-    if (gameState.animatedId !== null) {
+    if (gameState.animateId !== null) {
         return;
     }
 
@@ -1088,7 +1086,7 @@ function handleMouseMove(e) {
 }
 
 function handleMouseLeave() {
-    if (gameState.animatedId !== null) {
+    if (gameState.animateId !== null) {
         return;
     }
 
@@ -1125,12 +1123,7 @@ function registerGameEvents() {
         gameState.canvas.addEventListener("click", handleTouch);
     } else {
         gameState.canvas.addEventListener("click", async (e) => {
-            console.log("Click start");
-            const frames = gameState.animatePieces;
-            gameState.animatePieces = 1;
             await handleClick(e);
-            gameState.animatePieces = frames;
-            console.log("Click end");
         });
         gameState.canvas.addEventListener("mousemove", handleMouseMove);
         gameState.canvas.addEventListener("mouseleave", handleMouseLeave);
