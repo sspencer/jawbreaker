@@ -1,0 +1,21 @@
+func (c Piece) PowerUpName() string {
+	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
+	switch c.PowerUp() {
+	case PowerUpX:
+		return "&#10005;" // "&#9747;" // "╳" // 120143
+	case PowerUpPlus:
+		return "+" // "&#9532;" //box vh, 43, 9547
+	case PowerUpCircle:
+		return "O" // "&#1054;" // 9711 big circle -- also try 9675, ocy 1054, omicron 959
+	case PowerUpRect:
+		return "&#127020;" // "&#9744;" // 9723 empty small square, ballot box 9744
+	case PowerExtraFill:
+		return "&#9734;" //  infinity 8734, sext 10038, star 9734
+	case PowerExtraRotateLeft:
+		return "&#8617;" // 8617 hookleftarrow
+	case PowerExtraRotateRight:
+		return "&#8618;" // was 8631 8618 hookrightarrow
+	default:
+		return ""
+	}
+}

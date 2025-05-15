@@ -1,7 +1,9 @@
 package jawbreaker
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"math/rand/v2"
 )
 
@@ -33,27 +35,29 @@ type Status struct {
 // Piece constants used to represent different colored board in the game.
 // Each color is represented by a single byte character.
 const (
-	White  Piece = 'w' // "empty" or removed piece
-	Purple Piece = 'p' // purple piece
-	Blue   Piece = 'b' // blue piece
-	Green  Piece = 'g' // green piece
-	Red    Piece = 'r' // red piece
-	Yellow Piece = 'y' // yellow piece
+	PieceSpace            = 32
+	White                 = 0 // "empty" or removed piece
+	Purple                = 32
+	Blue                  = 64
+	Green                 = 96
+	Red                   = 128
+	Yellow                = 160
+	PowerUpX              = 1
+	PowerUpPlus           = 2
+	PowerUpCircle         = 3
+	PowerUpRect           = 4
+	PowerExtraFill        = 5
+	PowerExtraRotateRight = 6
+	PowerExtraRotateLeft  = 7
 )
 
 var (
 	// colorPieces is a slice of all available colored board used for random piece generation.
-	colorPieces = []Piece{Purple, Blue, Green, Red, Yellow}
-
-	// colorMap maps color byte values to their string representation for HTML class names.
-	colorMap = map[Piece]string{
-		Purple: "purple",
-		Blue:   "blue",
-		Green:  "green",
-		Red:    "red",
-		Yellow: "yellow",
-		White:  "white",
-	}
+	colorPieces    = []Piece{Purple, Blue, Green, Red, Yellow}
+	allColorPieces = []Piece{White, Purple, Blue, Green, Red, Yellow}
+	powerPieces    = []Piece{PowerUpX, PowerUpPlus, PowerUpCircle, PowerUpRect}
+	extraPieces    = []Piece{PowerExtraFill, PowerExtraRotateRight, PowerExtraRotateLeft}
+	allPowerPieces = append(powerPieces, extraPieces...)
 
 	// ErrGameSize is returned when attempting to restore a game with a board size
 	// that doesn't match the expected dimensions.
@@ -62,65 +66,136 @@ var (
 
 // Color returns each piece as a string representing its color.
 // It returns "white" for any other piece.
-func (c Piece) Color() string {
-	if name, ok := colorMap[c]; ok {
-		return name
-	}
-	return "white"
+func (c Piece) Color() int {
+	return int(c/PieceSpace) * PieceSpace
 }
 
-func fromChar(c rune) Piece {
-	switch c {
-	case 'p':
-		return Purple
-	case 'b':
-		return Blue
-	case 'g':
-		return Green
-	case 'r':
-		return Red
-	case 'y':
-		return Yellow
+func (c Piece) ColorName() string {
+	switch c.Color() {
+	case Purple:
+		return "purple"
+	case Blue:
+		return "blue"
+	case Green:
+		return "green"
+	case Red:
+		return "red"
+	case Yellow:
+		return "yellow"
 	default:
-		return White
+		if c.PowerUp() == 0 {
+			return "white"
+		}
+		return "gray"
 	}
+}
+
+func (c Piece) PowerUp() int {
+	return int(c) % PieceSpace
+}
+
+func (c Piece) PowerUpName() string {
+	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
+	switch c.PowerUp() {
+	case PowerUpX:
+		return "&#10005;"
+	case PowerUpPlus:
+		return "&#43;" //"&#9532;"
+	case PowerUpCircle:
+		return "&#1054;"
+	case PowerUpRect:
+		return "&#127020;"
+	case PowerExtraFill:
+		return "&#9734;"
+	case PowerExtraRotateLeft:
+		return "&#8617;"
+	case PowerExtraRotateRight:
+		return "&#8618;"
+	default:
+		return ""
+	}
+}
+
+func (c Piece) IsExtraPowerUp() bool {
+	powerUp := c.PowerUp()
+	return powerUp == PowerExtraFill || powerUp == PowerExtraRotateRight || powerUp == PowerExtraRotateLeft
 }
 
 // NewGame initializes a new Game instance with the given rows and columns, populating the board with random board.
 func NewGame(rows, cols int) *Game {
-	pieces := make(Board, rows*cols)
+	return NewGameWithOptions(rows, cols, nil)
+}
 
-	for i := 0; i < len(pieces); i++ {
-		pieces[i] = colorPieces[rand.IntN(len(colorPieces))]
+type GameOptions struct {
+	powerUps bool
+}
+
+func (o *GameOptions) PowerUps() *GameOptions {
+	o.powerUps = true
+	return o
+}
+
+// NewGameWithOptions initializes a new Game instance with the given rows and columns, populating the board with random board.
+func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
+	size := rows * cols
+	board := make(Board, size)
+
+	for i := range board {
+		board[i] = colorPieces[rand.IntN(len(colorPieces))]
 	}
 
-	return &Game{board: pieces, rows: rows, cols: cols}
+	// Number of PowerUps to add (current 27) must be less than board size
+	powerUpSize := len(colorPieces)*len(powerPieces) + len(allPowerPieces)
+
+	if opts != nil && opts.powerUps && powerUpSize < size {
+		all := AllIndices(size)
+		Shuffle(all)
+		index := 0
+
+		for a := range allColorPieces {
+			for p := range allPowerPieces {
+				i := all[index]
+				color := allColorPieces[a]
+				powerUp := allPowerPieces[p]
+
+				if powerUp.IsExtraPowerUp() && color != White {
+					continue
+				}
+
+				board[i] = color + powerUp
+				index++
+			}
+		}
+	}
+
+	return &Game{board: board, rows: rows, cols: cols}
 }
 
 // RestoreGame restores a game state based on the given board string, dimensions, and score.
 // It returns a pointer to a Game instance or an error if the board size does not match the expected size.
-func RestoreGame(board string, rows, cols, score int) (*Game, error) {
-	if len(board) != rows*cols {
+func RestoreGame(encodedBoard string, rows, cols, score int) (*Game, error) {
+	b, err := base64ToBytes(encodedBoard)
+	if err != nil {
+		return nil, err
+
+	}
+
+	if len(b) != rows*cols {
 		return nil, ErrGameSize
 	}
 
-	pieces := make(Board, rows*cols)
-	for i, c := range board {
-		pieces[i] = fromChar(c)
-	}
+	board := convertBytesToBoard(b)
 
-	return &Game{board: pieces, rows: rows, cols: cols, score: score}, nil
+	return &Game{board: board, rows: rows, cols: cols, score: score}, nil
 }
 
-// Board returns the current state of the board as a string,
-// where each Piece in the string represents a color.  Pieces
-// are represented as a single character, where 'w' represents
-// an empty space, 'p' represents purple, 'b' represents blue,
-// 'g' represents green, 'r' represents red, and 'y' represents yellow.
-// The slice is returned in row-major order, with the first row
-// at the beginning of the string.
+// Board returns the current state of the board as bytes
 func (g *Game) Board() Board {
 	return g.board
+}
+
+func (b Board) Base64() string {
+	return bytesToBase64(convertBoardToBytes(b))
 }
 
 // Score returns the current score of the game.
@@ -231,7 +306,7 @@ func (g *Game) GetConnectedPieces(index int) []int {
 		i := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
-		if i < 0 || i >= len(g.board) || g.board[i] != target || visited[i] {
+		if i < 0 || i >= len(g.board) || g.board[i].Color() != target.Color() || visited[i] {
 			continue
 		}
 		visited[i] = true
@@ -316,4 +391,80 @@ func (g *Game) applyGravityAndShiftRight() {
 			writeCol--
 		}
 	}
+}
+
+// AllIndices returns all possible indices into the game board for
+// the specified size.
+func AllIndices(size int) []int {
+	slice := make([]int, size)
+	for i := 0; i < size; i++ {
+		slice[i] = i
+	}
+
+	return slice
+}
+
+// Shuffle randomizes the order of elements in a slice of integers
+func Shuffle(slice []int) {
+	for i := len(slice) - 1; i > 0; i-- {
+		j := rand.IntN(i + 1)
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+func base64ToBytes(encoded string) ([]byte, error) {
+	// Try standard decoding first
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err == nil {
+		return decoded, nil
+	}
+
+	// If standard fails, try URL encoding
+	decoded, err = base64.URLEncoding.DecodeString(encoded)
+	if err == nil {
+		return decoded, nil
+	}
+
+	// If both fail, return the error
+	return nil, fmt.Errorf("input is not valid base64 (std or url)")
+}
+
+func bytesToBase64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+// convertBytesToBoard manually converts a []byte to a Board.
+// It creates a new Board and copies elements, converting each byte to a Piece.
+func convertBytesToBoard(byteSlice []byte) Board {
+	if byteSlice == nil {
+		// Depending on desired semantics, you might return Board{} for nil input
+		// but returning nil is often preferred if the input can be nil.
+		return nil
+	}
+
+	// Create a new Board with the same length as the byteSlice.
+	gameBoard := make(Board, len(byteSlice))
+
+	// Iterate over the byteSlice, convert each byte to Piece, and assign to gameBoard.
+	for i, bVal := range byteSlice {
+		gameBoard[i] = Piece(bVal) // Convert byte to Piece
+	}
+	return gameBoard
+}
+
+// convertBoardToBytes manually converts a Board to a []byte.
+// It creates a new []byte and copies elements, converting each Piece to a byte.
+func convertBoardToBytes(gameBoard Board) []byte {
+	if gameBoard == nil {
+		return nil
+	}
+
+	// Create a new []byte with the same length as the gameBoard.
+	byteSlice := make([]byte, len(gameBoard))
+
+	// Iterate over the gameBoard, convert each Piece to byte, and assign to byteSlice.
+	for i, pVal := range gameBoard {
+		byteSlice[i] = byte(pVal) // Convert Piece to byte
+	}
+	return byteSlice
 }

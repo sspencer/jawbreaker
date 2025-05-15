@@ -59,11 +59,13 @@ func gameToHTML(g *jawbreaker.Game, connections []int) string {
 
 		// class="piece red connected"
 		sb.WriteString("\" class=\"piece ")
-		sb.WriteString(p.Color())
+		sb.WriteString(p.ColorName())
 		if connected {
 			sb.WriteString(" connected")
 		}
-		sb.WriteString("\"></div>")
+		sb.WriteString("\">")
+		sb.WriteString(p.PowerUpName())
+		sb.WriteString("</div>")
 	}
 
 	return fmt.Sprintf("<div id=\"game\">%s</div>", sb.String())

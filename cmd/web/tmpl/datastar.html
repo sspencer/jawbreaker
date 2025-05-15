@@ -26,7 +26,18 @@
     <h1>Jawbreaker</h1>
 </header>
 <div class="container"
-     data-signals="{help:false,gameOver:false,currentScore:0,lastScore:{{.LastScore}},bestScore:{{.BestScore}},bonusScore:0,remainingPieces:0,piecesText:'pieces',pieces:'{{.Pieces}}'}"
+     data-signals="{
+     help:false,
+     gameOver:false,
+     currentScore:0,
+     lastScore:{{.LastScore}},
+     bestScore:{{.BestScore}},
+     bonusScore:0,
+     remainingPieces:0,
+     piecesText:'pieces',
+     rows:{{.Size}},
+     cols:{{.Size}},
+     board:'{{.Board}}'}"
 >
     {{ template "sidebar" . }}
     <main id="game-container"

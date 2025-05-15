@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -15,7 +14,9 @@ import (
 )
 
 type Signals struct {
-	Pieces          string `json:"pieces"`
+	Board           string `json:"board"`
+	Rows            int    `json:"rows"`
+	Cols            int    `json:"cols"`
 	PiecesText      string `json:"piecesText"`
 	RemainingPieces int    `json:"remainingPieces"`
 	BonusScore      int    `json:"bonusScore"`
@@ -23,24 +24,6 @@ type Signals struct {
 	LastScore       int    `json:"lastScore"`
 	BestScore       int    `json:"bestScore"`
 	GameOver        bool   `json:"gameOver"`
-}
-
-type IndexData struct {
-	LastScore    int
-	BestScore    int
-	Pieces       string
-	Game         template.HTML
-	GameSize     template.CSS
-	DS           bool
-	DatastarJS   string
-	JawbreakerJS string
-	StyleCSS     string
-	Rows         int
-	Cols         int
-	Block        int
-	Border       int
-	Gap          int
-	CookieName   string
 }
 
 type ScoreData struct {
@@ -61,7 +44,7 @@ type pageData struct {
 	CookieName string
 	GameSize   template.CSS
 	Game       template.HTML
-	Pieces     string
+	Board      string
 	LastScore  int
 	BestScore  int
 }
@@ -117,7 +100,10 @@ func (app *application) oneHandler(w http.ResponseWriter, r *http.Request) {
 func (app *application) datastarHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := app.cfg
 
-	g := jawbreaker.NewGame(cfg.size, cfg.size)
+	//g := jawbreaker.NewGame(cfg.size, cfg.size)
+	opts := jawbreaker.GameOptions{}
+	g := jawbreaker.NewGameWithOptions(cfg.size, cfg.size, opts.PowerUps())
+
 	var scoreData ScoreData
 	if cookie, err := r.Cookie(cookieName); err == nil {
 		deserializeScoreData(&scoreData, cookie.Value)
@@ -129,7 +115,7 @@ func (app *application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 		StyleCSS:   fsys.HashName("static/style.css"),
 		GameSize:   template.CSS(gameSize),
 		Game:       template.HTML(gameToHTML(g, nil)),
-		Pieces:     g.Board().String(),
+		Board:      g.Board().Base64(),
 		Size:       cfg.size,
 		Block:      cfg.block,
 		MSize:      cfg.msize,
@@ -159,25 +145,23 @@ func (app *application) clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := restoreGame(signals.Pieces, signals.CurrentScore)
+	g, err := jawbreaker.RestoreGame(signals.Board, signals.Rows, signals.Cols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	gs := g.Move(index)
+	status := g.Move(index)
 
-	signals.GameOver = gs.GameOver
-	signals.CurrentScore = gs.Score
-	signals.Pieces = string(gs.Board)
+	signals.GameOver = status.GameOver
+	signals.CurrentScore = status.Score
+	signals.Board = status.Board.Base64()
 
-	if gs.GameOver {
-		fmt.Printf("Game over: %+v\n", gs)
-
+	if status.GameOver {
 		signals.LastScore = signals.CurrentScore
-		signals.BonusScore = gs.Bonus
-		signals.RemainingPieces = gs.RemainingPieces
-		if gs.RemainingPieces == 1 {
+		signals.BonusScore = status.Bonus
+		signals.RemainingPieces = status.RemainingPieces
+		if status.RemainingPieces == 1 {
 			signals.PiecesText = "piece"
 		} else {
 			signals.PiecesText = "pieces"
@@ -227,7 +211,7 @@ func (app *application) mouseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := restoreGame(signals.Pieces, signals.CurrentScore)
+	g, err := jawbreaker.RestoreGame(signals.Board, signals.Rows, signals.Cols, signals.CurrentScore)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -257,7 +241,7 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Send updated signals
 	signals := map[string]any{
-		"pieces":       g.Board().String(),
+		"pieces":       g.Board(),
 		"currentScore": 0,
 		"lastScore":    store.LastScore,
 		"bestScore":    store.BestScore,
