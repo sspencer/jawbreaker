@@ -102,7 +102,7 @@ func (app *application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 
 	//g := jawbreaker.NewGame(cfg.size, cfg.size)
 	opts := jawbreaker.GameOptions{}
-	g := jawbreaker.NewGameWithOptions(cfg.size, cfg.size, opts.PowerUps())
+	g := jawbreaker.NewGameWithOptions(cfg.size, cfg.size, opts.StartEmpty())
 
 	var scoreData ScoreData
 	if cookie, err := r.Cookie(cookieName); err == nil {
@@ -235,13 +235,15 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := app.cfg
-	g := jawbreaker.NewGame(cfg.size, cfg.size)
+
+	opts := jawbreaker.GameOptions{}
+	g := jawbreaker.NewGameWithOptions(cfg.size, cfg.size, opts.PowerUps())
 
 	sse := datastar.NewSSE(w, r)
 
 	// Send updated signals
 	signals := map[string]any{
-		"pieces":       g.Board(),
+		"board":        g.Board().Base64(),
 		"currentScore": 0,
 		"lastScore":    store.LastScore,
 		"bestScore":    store.BestScore,

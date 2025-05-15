@@ -142,7 +142,8 @@ body::before {
     position: relative;
     overflow: hidden;
     border: 2px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /*transition: all 0.2s ease-out;*/
+    z-index: 1;
 
     display: flex;
     justify-content: center;

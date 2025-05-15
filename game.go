@@ -125,13 +125,9 @@ func (c Piece) isPowerGlobDirection() bool {
 	return c.Color() == White && (power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
 }
 
-// NewGame initializes a new Game instance with the given rows and columns, populating the board with random board.
-func NewGame(rows, cols int) *Game {
-	return NewGameWithOptions(rows, cols, nil)
-}
-
 type GameOptions struct {
-	powerUps bool
+	powerUps   bool
+	startEmpty bool
 }
 
 func (o *GameOptions) PowerUps() *GameOptions {
@@ -139,10 +135,27 @@ func (o *GameOptions) PowerUps() *GameOptions {
 	return o
 }
 
+func (o *GameOptions) StartEmpty() *GameOptions {
+	o.startEmpty = true
+	return o
+}
+
+// NewGame initializes a new Game instance with the given rows and columns, populating the board with random board.
+func NewGame(rows, cols int) *Game {
+	return NewGameWithOptions(rows, cols, nil)
+}
+
 // NewGameWithOptions initializes a new Game instance with the given rows and columns, populating the board with random board.
 func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
 	size := rows * cols
 	board := make(Board, size)
+	if opts == nil {
+		opts = &GameOptions{}
+	}
+
+	if opts.startEmpty {
+		return &Game{board: board, rows: rows, cols: cols}
+	}
 
 	for i := range board {
 		board[i] = colorPieces[rand.IntN(len(colorPieces))]
@@ -575,11 +588,11 @@ func PartiallyApplyValues(goal []int, indices []int, numValues int) ([]int, erro
 	return result, nil
 }
 
-func RotateRight(data []int, rows, cols int) ([]int, error) {
+func rotateRight(data []int, rows, cols int) ([]int, error) {
 	return rotateSlice(data, rows, cols, 90)
 }
 
-func RotateLeft(data []int, rows, cols int) ([]int, error) {
+func rotateLeft(data []int, rows, cols int) ([]int, error) {
 	return rotateSlice(data, rows, cols, -90)
 }
 

@@ -14,8 +14,8 @@
             <div id="best-score" class="score-value"  {{ if .DS }} data-text="$bestScore" {{ end }}>0</div>
         </div>
     </div>
-    <button id="restart-btn" class="btn">Restart</button>
-    <button id="undo-btn" class="btn">Undo</button>
+    <button id="restart-btn" class="btn" {{ if .DS }} data-on-click="@post('new')" {{ end }}>Restart</button>
+    <button id="undo-btn" class="btn" style="display:none">Undo</button>
     <button id="help-btn" class="help-btn"  {{ if .DS }} data-on-click="$help=true" {{ end }}>Help</button>
 </div>
 {{ end }}
