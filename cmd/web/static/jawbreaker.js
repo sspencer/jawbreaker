@@ -708,7 +708,8 @@ function getConnectionsWithDirections(index, targetColor, directions, maxIterati
 }
 
 function getXConnections(index, targetColor) {
-    const maxIters = gameState.size; // Iterate up to board size
+    const s2 = Math.pow(gameState.size, 2);
+    const maxIters = Math.ceil(Math.sqrt(s2 + s2));
     return getConnectionsWithDirections(index, targetColor, POWER_UP_X_DIRECTIONS, maxIters);
 }
 

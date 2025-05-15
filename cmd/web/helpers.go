@@ -59,16 +59,58 @@ func gameToHTML(g *jawbreaker.Game, connections []int) string {
 
 		// class="piece red connected"
 		sb.WriteString("\" class=\"piece ")
-		sb.WriteString(p.ColorName())
+		sb.WriteString(pieceColor(p))
 		if connected {
 			sb.WriteString(" connected")
 		}
 		sb.WriteString("\">")
-		sb.WriteString(p.PowerUpName())
+		sb.WriteString(pieceIcon(p))
 		sb.WriteString("</div>")
 	}
 
 	return fmt.Sprintf("<div id=\"game\">%s</div>", sb.String())
+}
+
+func pieceColor(c jawbreaker.Piece) string {
+	switch c.Color() {
+	case jawbreaker.Purple:
+		return "purple"
+	case jawbreaker.Blue:
+		return "blue"
+	case jawbreaker.Green:
+		return "green"
+	case jawbreaker.Red:
+		return "red"
+	case jawbreaker.Yellow:
+		return "yellow"
+	default:
+		if c.Power() == 0 {
+			return "white"
+		}
+		return "gray"
+	}
+}
+
+func pieceIcon(c jawbreaker.Piece) string {
+	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
+	switch c.Power() {
+	case jawbreaker.PowerX:
+		return "&#10005;"
+	case jawbreaker.PowerPlus:
+		return "&#43;" //"&#9532;"
+	case jawbreaker.PowerCircle:
+		return "&#1054;"
+	case jawbreaker.PowerRect:
+		return "&#127020;"
+	case jawbreaker.PowerFill:
+		return "&#9734;"
+	case jawbreaker.PowerRotateLeft:
+		return "&#8617;"
+	case jawbreaker.PowerRotateRight:
+		return "&#8618;"
+	default:
+		return ""
+	}
 }
 
 func (s ScoreData) serialize() string {

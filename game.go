@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 )
 
@@ -32,31 +33,66 @@ type Status struct {
 	GameOver        bool
 }
 
+type direction struct {
+	sr int // start row
+	sc int // start column
+	dc int // direction column
+	dr int // direction row
+}
+
+var xDirection = []direction{
+	{sr: -1, sc: -1, dr: -1, dc: -1},
+	{sr: -1, sc: 1, dr: -1, dc: 1},
+	{sr: 1, sc: -1, dr: 1, dc: -1},
+	{sr: 1, sc: 1, dr: 1, dc: 1},
+}
+
+var plusDirection = []direction{
+	{sr: -1, sc: 0, dr: -1, dc: 0},
+	{sr: 1, sc: 0, dr: 1, dc: 0},
+	{sr: 0, sc: -1, dr: 0, dc: -1},
+	{sr: 0, sc: 1, dr: 0, dc: 1},
+}
+
+var rectDirection = []direction{
+	{sr: -2, sc: -2, dc: 0, dr: 1},
+	{sr: 2, sc: -2, dc: 1, dr: 0},
+	{sr: 2, sc: 2, dc: 0, dr: -1},
+	{sr: -2, sc: 2, dc: -1, dr: 0},
+}
+
+var circleDirection = []direction{
+	{sr: -1, sc: -3, dc: 0, dr: 1},
+	{sr: 3, sc: -1, dc: 1, dr: 0},
+	{sr: 1, sc: 3, dc: 0, dr: -1},
+	{sr: -3, sc: 1, dc: -1, dr: 0},
+}
+
 // Piece constants used to represent different colored board in the game.
 // Each color is represented by a single byte character.
 const (
-	PieceSpace            = 32
-	White                 = 0 // "empty" or removed piece
-	Purple                = 32
-	Blue                  = 64
-	Green                 = 96
-	Red                   = 128
-	Yellow                = 160
-	PowerUpX              = 1
-	PowerUpPlus           = 2
-	PowerUpCircle         = 3
-	PowerUpRect           = 4
-	PowerExtraFill        = 5
-	PowerExtraRotateRight = 6
-	PowerExtraRotateLeft  = 7
+	PieceSpace       = 32
+	White            = 0 // "empty" or removed piece
+	Purple           = 32
+	Blue             = 64
+	Green            = 96
+	Red              = 128
+	Yellow           = 160
+	PowerX           = 1
+	PowerPlus        = 2
+	PowerCircle      = 3
+	PowerRect        = 4
+	PowerFill        = 5
+	PowerRotateRight = 6
+	PowerRotateLeft  = 7
 )
 
 var (
 	// colorPieces is a slice of all available colored board used for random piece generation.
 	colorPieces    = []Piece{Purple, Blue, Green, Red, Yellow}
 	allColorPieces = []Piece{White, Purple, Blue, Green, Red, Yellow}
-	powerPieces    = []Piece{PowerUpX, PowerUpPlus, PowerUpCircle, PowerUpRect}
-	extraPieces    = []Piece{PowerExtraFill, PowerExtraRotateRight, PowerExtraRotateLeft}
+	powerPieces    = []Piece{PowerX, PowerPlus, PowerCircle, PowerRect}
+	extraPieces    = []Piece{PowerFill, PowerRotateRight, PowerRotateLeft}
 	allPowerPieces = append(powerPieces, extraPieces...)
 
 	// ErrGameSize is returned when attempting to restore a game with a board size
@@ -70,55 +106,23 @@ func (c Piece) Color() int {
 	return int(c/PieceSpace) * PieceSpace
 }
 
-func (c Piece) ColorName() string {
-	switch c.Color() {
-	case Purple:
-		return "purple"
-	case Blue:
-		return "blue"
-	case Green:
-		return "green"
-	case Red:
-		return "red"
-	case Yellow:
-		return "yellow"
-	default:
-		if c.PowerUp() == 0 {
-			return "white"
-		}
-		return "gray"
-	}
-}
-
-func (c Piece) PowerUp() int {
+func (c Piece) Power() int {
 	return int(c) % PieceSpace
 }
 
-func (c Piece) PowerUpName() string {
-	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
-	switch c.PowerUp() {
-	case PowerUpX:
-		return "&#10005;"
-	case PowerUpPlus:
-		return "&#43;" //"&#9532;"
-	case PowerUpCircle:
-		return "&#1054;"
-	case PowerUpRect:
-		return "&#127020;"
-	case PowerExtraFill:
-		return "&#9734;"
-	case PowerExtraRotateLeft:
-		return "&#8617;"
-	case PowerExtraRotateRight:
-		return "&#8618;"
-	default:
-		return ""
-	}
+func (c Piece) isPowerExtra() bool {
+	power := c.Power()
+	return power == PowerFill || power == PowerRotateRight || power == PowerRotateLeft
 }
 
-func (c Piece) IsExtraPowerUp() bool {
-	powerUp := c.PowerUp()
-	return powerUp == PowerExtraFill || powerUp == PowerExtraRotateRight || powerUp == PowerExtraRotateLeft
+func (c Piece) isPowerDirection() bool {
+	power := c.Power()
+	return power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect
+}
+
+func (c Piece) isPowerGlobDirection() bool {
+	power := c.Power()
+	return c.Color() == White && (power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
 }
 
 // NewGame initializes a new Game instance with the given rows and columns, populating the board with random board.
@@ -144,12 +148,11 @@ func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
 		board[i] = colorPieces[rand.IntN(len(colorPieces))]
 	}
 
-	// Number of PowerUps to add (current 27) must be less than board size
+	// The number of PowerUps to add (currently 27) must be lower than board size
 	powerUpSize := len(colorPieces)*len(powerPieces) + len(allPowerPieces)
 
 	if opts != nil && opts.powerUps && powerUpSize < size {
-		all := AllIndices(size)
-		Shuffle(all)
+		all := ShuffledIndices(size)
 		index := 0
 
 		for a := range allColorPieces {
@@ -158,7 +161,7 @@ func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
 				color := allColorPieces[a]
 				powerUp := allPowerPieces[p]
 
-				if powerUp.IsExtraPowerUp() && color != White {
+				if powerUp.isPowerExtra() && color != White {
 					continue
 				}
 
@@ -297,7 +300,8 @@ func (g *Game) GetConnectedPieces(index int) []int {
 		return nil
 	}
 
-	var connectedIndices []int
+	connectedIndices := g.getPowerUpConnections(index)
+
 	stack := []int{index}
 	// Pre-allocate the visited map with a reasonable capacity
 	visited := make([]bool, g.rows*g.cols)
@@ -306,11 +310,11 @@ func (g *Game) GetConnectedPieces(index int) []int {
 		i := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
-		if i < 0 || i >= len(g.board) || g.board[i].Color() != target.Color() || visited[i] {
+		if i < 0 || i >= len(g.board) || g.board[i].Color() != target.Color() || visited[i] || g.board[i] == White {
 			continue
 		}
 		visited[i] = true
-		connectedIndices = append(connectedIndices, i)
+		connectedIndices[i] = true
 
 		row, col := i/g.cols, i%g.cols
 		// Check all four adjacent positions (up, down, left, right)
@@ -332,7 +336,81 @@ func (g *Game) GetConnectedPieces(index int) []int {
 		return nil
 	}
 
+	indices := make([]int, 0, len(connectedIndices))
+	for i := range connectedIndices {
+		indices = append(indices, i)
+	}
+
+	return indices
+}
+
+func (g *Game) getPowerUpConnections(index int) map[int]bool {
+	connectedIndices := make(map[int]bool)
+	powerUp := g.board[index].Power()
+	switch powerUp {
+	case PowerX:
+		return g.getXConnections(index)
+	case PowerPlus:
+		return g.getPlusConnections(index)
+	case PowerRect:
+		return g.getRectConnections(index)
+	case PowerCircle:
+		return g.getCircularConnections(index)
+	default:
+		return connectedIndices
+	}
+}
+
+func (g *Game) getXConnections(index int) map[int]bool {
+	maxIters := int(math.Ceil(math.Sqrt(float64(g.rows*g.rows + g.cols*g.cols))))
+	return g.getConnectionsWithDirections(index, xDirection, maxIters)
+}
+
+func (g *Game) getPlusConnections(index int) map[int]bool {
+	maxIters := max(g.rows, g.cols)
+	return g.getConnectionsWithDirections(index, plusDirection, maxIters)
+}
+
+func (g *Game) getRectConnections(index int) map[int]bool {
+	return g.getConnectionsWithDirections(index, rectDirection, 4)
+}
+
+func (g *Game) getCircularConnections(index int) map[int]bool {
+	c1 := g.getConnectionsWithDirections(index, rectDirection, 1)
+	c2 := g.getConnectionsWithDirections(index, circleDirection, 3)
+	for k, v := range c1 {
+		c2[k] = v
+	}
+	return c2
+}
+
+func (g *Game) getConnectionsWithDirections(index int, directions []direction, maxIters int) map[int]bool {
+	target := g.board[index]
+	connectedIndices := make(map[int]bool)
+	startRow, startCol := g.pointFromIndex(index)
+	for iter := 0; iter < maxIters; iter++ {
+		for _, dir := range directions {
+			r := startRow + dir.sr + dir.dr*iter
+			c := startCol + dir.sc + dir.dc*iter
+			if r >= 0 && r < g.rows && c >= 0 && c < g.cols {
+				currentIndex := r*g.rows + c
+				piece := g.board[currentIndex]
+				color := piece.Color()
+				if color != White && (color == target.Color() || target.isPowerGlobDirection()) {
+					connectedIndices[currentIndex] = true
+				}
+			}
+		}
+	}
+
 	return connectedIndices
+}
+
+func (g *Game) pointFromIndex(index int) (int, int) {
+	col := index % g.rows
+	row := index / g.rows
+
+	return row, col
 }
 
 // floodFill performs a flood-fill operation starting at the given index,
@@ -393,8 +471,12 @@ func (g *Game) applyGravityAndShiftRight() {
 	}
 }
 
-// AllIndices returns all possible indices into the game board for
-// the specified size.
+func ShuffledIndices(size int) []int {
+	all := AllIndices(size)
+	shuffle(all)
+	return all
+}
+
 func AllIndices(size int) []int {
 	slice := make([]int, size)
 	for i := 0; i < size; i++ {
@@ -405,7 +487,7 @@ func AllIndices(size int) []int {
 }
 
 // Shuffle randomizes the order of elements in a slice of integers
-func Shuffle(slice []int) {
+func shuffle(slice []int) {
 	for i := len(slice) - 1; i > 0; i-- {
 		j := rand.IntN(i + 1)
 		slice[i], slice[j] = slice[j], slice[i]
@@ -419,7 +501,7 @@ func base64ToBytes(encoded string) ([]byte, error) {
 		return decoded, nil
 	}
 
-	// If standard fails, try URL encoding
+	// If the standard fails, try URL encoding
 	decoded, err = base64.URLEncoding.DecodeString(encoded)
 	if err == nil {
 		return decoded, nil
@@ -437,7 +519,7 @@ func bytesToBase64(b []byte) string {
 // It creates a new Board and copies elements, converting each byte to a Piece.
 func convertBytesToBoard(byteSlice []byte) Board {
 	if byteSlice == nil {
-		// Depending on desired semantics, you might return Board{} for nil input
+		// Depending on desired semantics, you might return Board{} for nil input,
 		// but returning nil is often preferred if the input can be nil.
 		return nil
 	}
@@ -467,4 +549,67 @@ func convertBoardToBytes(gameBoard Board) []byte {
 		byteSlice[i] = byte(pVal) // Convert Piece to byte
 	}
 	return byteSlice
+}
+
+// PartiallyApplyValues applies up to numValues from goal at given indices into a new slice.
+// Both goal and indices must have the same length.
+func PartiallyApplyValues(goal []int, indices []int, numValues int) ([]int, error) {
+	n := len(goal)
+	if len(indices) != n {
+		return nil, errors.New("goal and indices slices must have the same length")
+	}
+
+	// Create a zero-initialized result slice
+	result := make([]int, n)
+
+	// Apply up to numValues from goal using indices
+	count := 0
+	for i := 0; i < n && count < numValues; i++ {
+		idx := indices[i]
+		if idx >= 0 && idx < n {
+			result[idx] = goal[idx]
+			count++
+		}
+	}
+
+	return result, nil
+}
+
+func RotateRight(data []int, rows, cols int) ([]int, error) {
+	return rotateSlice(data, rows, cols, 90)
+}
+
+func RotateLeft(data []int, rows, cols int) ([]int, error) {
+	return rotateSlice(data, rows, cols, -90)
+}
+
+// RotateSlice rotates a 1D slice (row-major) by 90 or -90 degrees.
+// `rows` and `cols` are the dimensions of the input matrix.
+// Positive degree means clockwise, negative means counter-clockwise.
+func rotateSlice(data []int, rows, cols, degree int) ([]int, error) {
+	if len(data) != rows*cols {
+		return nil, errors.New("invalid dimensions for the given slice length")
+	}
+
+	result := make([]int, len(data))
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			val := data[r*cols+c]
+			if degree > 0 {
+				// 90 degrees
+				// New row becomes the column index from the bottom
+				newRow := c
+				newCol := rows - 1 - r
+				result[newRow*rows+newCol] = val
+			} else {
+				// -90 degrees
+				newRow := cols - 1 - c
+				newCol := r
+				result[newRow*rows+newCol] = val
+			}
+		}
+	}
+
+	// New dimensions are transposed
+	return result, nil
 }
