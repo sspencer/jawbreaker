@@ -10,7 +10,7 @@ const GRAY = 6000;
 const BLACK = 7000;
 
 const GAP = 1;
-const BORDER_WIDTH = 8;
+const BORDER_WIDTH = 4;
 
 // standard game pieces
 const GAME_PIECES = [PURPLE, BLUE, GREEN, RED, YELLOW];
@@ -24,6 +24,15 @@ const COLOR_MAP = new Map([
     [GRAY, "#888888"],
     [BLACK, "#333333"],
     [WHITE, "#ffffff"],
+]);
+
+const GRADIENT_MAP = new Map([
+    [PURPLE, ["#d442ff", "#8a2be2"]],
+    [BLUE, ["#00f0ff", "#0070ff"]],
+    [GREEN,["#00ff99", "#00cc66"]],
+    [RED, ["#ff5500", "#dd0000"]],
+    [YELLOW, ["#ffee00", "#ff8800"]],
+    [GRAY, ["#777777", "#cccccc"]],
 ]);
 
 const POWER_X = 1;
@@ -46,7 +55,7 @@ const EXTRA_PIECES = [POWER_FILL, POWER_ROTATE_RIGHT, POWER_ROTATE_LEFT];
 const SHAPE_STROKE_COLOR = "white";
 const SHAPE_BORDER_COLOR = "black";
 const SHAPE_LINE_WIDTH = 3; // Adjusted for potentially more complex shapes
-const SHAPE_BORDER_LINE_WIDTH = 1.5; // Adjusted for potentially more complex shapes
+const SHAPE_BORDER_LINE_WIDTH = 1; // Adjusted for potentially more complex shapes
 
 const POWER_UP_X_DIRECTIONS = [
     {sr: -1, sc: -1, dr: -1, dc: -1}, // Top-left
@@ -270,11 +279,15 @@ function getPointFromIndex(index) {
     return {col, row};
 }
 
-function getPieceColorCode(piece) {
-    return COLOR_MAP.get(getBasePiece(piece));
+function getPieceColor(piece) {
+    return COLOR_MAP.get(getPieceBase(piece));
 }
 
-function getBasePiece(piece) {
+function getPieceGradient(piece) {
+    return GRADIENT_MAP.get(getPieceBase(piece));
+}
+
+function getPieceBase(piece) {
     return Math.floor(piece / TOKEN_SPACE) * TOKEN_SPACE;
 }
 
@@ -333,35 +346,35 @@ function drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
     const ctx = gameState.ctx;
     ctx.save();
 
-    const gradient = ctx.createLinearGradient(
-        x + gameState.blockSize * 0.7, y + gameState.blockSize * 0.7,
-        x + gameState.blockSize * 0.2, y + gameState.blockSize * 0.2,
-    );
+    const size = gameState.blockSize;
 
-    let color = getPieceColorCode(piece);
+    const angle = 225 * Math.PI / 180;
+    const diagonal = Math.sqrt(size * size + size * size);
 
-    if (EXTRA_PIECES.includes(getPowerUpType(piece))) {
-        color = darkenColor(color, 30);
-    }
-    gradient.addColorStop(0, lightenColor(color, 12));
-    gradient.addColorStop(1, darkenColor(color, 6));
-    ctx.fillStyle = gradient;
+    const startX = x + size / 2 + (Math.cos(angle) * diagonal) / 2;
+    const startY = y + size / 2 + (Math.sin(angle) * diagonal) / 2;
+    const endX = x + size / 2 - (Math.cos(angle) * diagonal) / 2;
+    const endY = y + size / 2 - (Math.sin(angle) * diagonal) / 2;
 
+    const gradBody = ctx.createLinearGradient(startX, startY, endX, endY);
+    const gradHighlight = ctx.createLinearGradient(x, y, x + size, y + size);
+    //const gradHighlight = ctx.createLinearGradient(startX, startY, endX, endY);
+    const color = getPieceGradient(piece);
+
+    // highlight
     ctx.beginPath();
+    gradHighlight.addColorStop(0, color[1]);
+    gradHighlight.addColorStop(1, lightenColor(color[0], 5));
+    ctx.fillStyle = gradHighlight;
     ctx.roundRect(x, y, pieceSize, pieceSize, cornerRadius);
     ctx.fill();
 
-    // Highlights and shadows for 3D effect
+    // inner fill
     ctx.beginPath();
-    ctx.rect(x + cornerRadius, y, pieceSize - (2 * cornerRadius), glow);
-    ctx.rect(x, y + cornerRadius, glow, pieceSize - (2 * cornerRadius));
-    ctx.fillStyle = lightenColor(color, 20);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.rect(x + pieceSize - glow, y + cornerRadius, glow, pieceSize - (2 * cornerRadius));
-    ctx.rect(x + cornerRadius, y + pieceSize - glow, pieceSize - (2 * cornerRadius), glow);
-    ctx.fillStyle = darkenColor(color, 20);
+    gradBody.addColorStop(0, darkenColor(color[0], 4));
+    gradBody.addColorStop(1, lightenColor(color[1], 8));
+    ctx.fillStyle = gradBody;
+    ctx.roundRect(x+2, y+2, pieceSize-4, pieceSize-4, cornerRadius);
     ctx.fill();
 
     ctx.restore();
@@ -585,7 +598,7 @@ function renderBoard() {
                     drawPowerUp(x, y, pieceSize, powerUpType);
                 }
                 if (gameState.hoverList.has(index)) {
-                    const color = getPieceColorCode(piece);
+                    const color = getPieceColor(piece);
                     const isExtra = EXTRA_PIECES.includes(powerUpType);
                     drawHoverEffect(x, y, pieceSize, color, cornerRadius, isExtra);
                 }
@@ -695,7 +708,7 @@ function getConnectionsWithDirections(index, targetColor, directions, maxIterati
             if (r >= 0 && r < gameState.size && c >= 0 && c < gameState.size) {
                 const currentIndex = r * gameState.size + c;
                 // Power ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
-                const currentPieceBase = getBasePiece(gameState.board[currentIndex]);
+                const currentPieceBase = getPieceBase(gameState.board[currentIndex]);
                 if (gameState.board[currentIndex] !== WHITE &&
                     (currentPieceBase === targetColor || targetColor === GRAY)) {
                     if (!connectedIndices.includes(currentIndex)) {
@@ -734,7 +747,7 @@ function getConnectedPieces(index) {
     if (index < 0 || index >= gameState.board.length || gameState.board[index] === WHITE) return [];
 
     const clickedPiece = gameState.board[index];
-    const baseColorOfClickedPiece = getBasePiece(clickedPiece);
+    const baseColorOfClickedPiece = getPieceBase(clickedPiece);
     const powerUpType = getPowerUpType(clickedPiece);
 
     // 1. Handle EXTRA_PIECES (Fill, Rotations) - for hover, they usually highlight themselves.
@@ -774,7 +787,7 @@ function getConnectedPieces(index) {
         for (const neighborIndex of neighbors) {
             if (neighborIndex !== -1 && !visited[neighborIndex] &&
                 gameState.board[neighborIndex] !== WHITE &&
-                getBasePiece(gameState.board[neighborIndex]) === baseColorOfClickedPiece) {
+                getPieceBase(gameState.board[neighborIndex]) === baseColorOfClickedPiece) {
                 visited[neighborIndex] = true;
                 stack.push(neighborIndex);
             }
@@ -1129,6 +1142,8 @@ async function resetCurrentGame() {
     gameState.score = 0;
     gameState.bonus = 0;
     gameState.remainingPieces = 0;
+    gameState.undo = null;
+    document.getElementById('undo-btn').disabled = true;
     document.getElementById("current-score").innerText = gameState.score;
     document.getElementById("game-over-overlay").classList.remove("visible");
 

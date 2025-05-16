@@ -120,16 +120,19 @@ body::before {
 }
 
 .btn:disabled {
-    background: #ccc;         /* duller background */
-    color: #666;              /* grayed-out text */
-    box-shadow: none;         /* no shadow */
-    cursor: not-allowed;      /* show not-allowed cursor */
-    transform: none !important; /* prevent transform from lingering */
+    background: #ccc;
+    color: #666;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none !important;
 }
 
-/* Override hover for disabled buttons */
 .btn:disabled:hover, .help-btn:disabled:hover {
     transform: none;
+}
+
+#new-game-btn {
+    width: 50%;
 }
 
 #game-container {
@@ -201,7 +204,7 @@ body::before {
 }
 
 .piece.purple {
-    background: linear-gradient(135deg, #8a2be2, #d442ff);
+    background: linear-gradient(135deg, #d442ff, #8a2be2);
     box-shadow: inset 0 0 15px rgba(160, 32, 240, 0.7), 0 4px 8px rgba(0, 0, 0, 0.3);
     opacity: 0.9;
 }
