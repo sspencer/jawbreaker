@@ -38,8 +38,8 @@ func extractNumberFromPieceId(input string) int {
 	return num
 }
 
-// gameToHTML generates the HTML fragment for the game board with the click handler.
-func gameToHTML(g *jawbreaker.Game, connections []int) string {
+// boardToHTML generates the HTML fragment for the game board with the click handler.
+func boardToHTML(board jawbreaker.Board, connections []int) string {
 	var sb strings.Builder
 
 	set := make(map[int]bool)
@@ -49,7 +49,7 @@ func gameToHTML(g *jawbreaker.Game, connections []int) string {
 		}
 	}
 
-	for i, p := range g.Board() {
+	for i, p := range board {
 		connected := set[i]
 
 		// id="piece123"

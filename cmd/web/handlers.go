@@ -114,7 +114,7 @@ func (app *application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 		DatastarJS: fsys.HashName("static/datastar.js"),
 		StyleCSS:   fsys.HashName("static/style.css"),
 		GameSize:   template.CSS(gameSize),
-		Game:       template.HTML(gameToHTML(g, nil)),
+		Game:       template.HTML(boardToHTML(g.Board(), nil)),
 		Board:      g.Board().Base64(),
 		Size:       cfg.size,
 		Block:      cfg.block,
@@ -195,7 +195,7 @@ func (app *application) clickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = sse.MergeFragments(gameToHTML(g, g.GetConnectedPieces(index)))
+	err = sse.MergeFragments(boardToHTML(g.Board(), g.GetConnectedPieces(index)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -219,7 +219,7 @@ func (app *application) mouseHandler(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 
-	err = sse.MergeFragments(gameToHTML(g, g.GetConnectedPieces(index)))
+	err = sse.MergeFragments(boardToHTML(g.Board(), g.GetConnectedPieces(index)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -241,6 +241,37 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 
+	// Update g fragment
+
+	if app.cfg.animate {
+		size := len(g.Board())
+		piecesPerIter := 6
+		maxIters := (size / piecesPerIter) + 1
+		indices := jawbreaker.ShuffledIndices(size)
+		for n := 0; n < maxIters; n++ {
+			piecesToShow := (n + 1) * piecesPerIter
+			board, err := g.AnimateBoard(indices, piecesToShow)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			err = sse.MergeFragments(boardToHTML(board, nil))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			time.Sleep(17 * time.Millisecond)
+		}
+	} else {
+		err := sse.MergeFragments(boardToHTML(g.Board(), nil))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	// Send updated signals
 	signals := map[string]any{
 		"board":        g.Board().Base64(),
@@ -256,10 +287,4 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update g fragment
-	err = sse.MergeFragments(gameToHTML(g, nil))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }

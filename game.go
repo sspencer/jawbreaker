@@ -162,21 +162,21 @@ func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
 	}
 
 	// The number of PowerUps to add (currently 27) must be lower than board size
-	powerUpSize := len(colorPieces)*len(powerPieces) + len(allPowerPieces)
+	powerUpSize := len(colorPieces)*len(powerPieces) + len(powerPieces) // len(allPowerPieces)
 
-	if opts != nil && opts.powerUps && powerUpSize < size {
+	if opts.powerUps && powerUpSize < size {
 		all := ShuffledIndices(size)
 		index := 0
 
 		for a := range allColorPieces {
-			for p := range allPowerPieces {
+			for p := range powerPieces { // allPowerPieces {
 				i := all[index]
 				color := allColorPieces[a]
 				powerUp := allPowerPieces[p]
 
-				if powerUp.isPowerExtra() && color != White {
-					continue
-				}
+				//if powerUp.isPowerExtra() && color != White {
+				//	continue
+				//}
 
 				board[i] = color + powerUp
 				index++
@@ -564,23 +564,23 @@ func convertBoardToBytes(gameBoard Board) []byte {
 	return byteSlice
 }
 
-// PartiallyApplyValues applies up to numValues from goal at given indices into a new slice.
-// Both goal and indices must have the same length.
-func PartiallyApplyValues(goal []int, indices []int, numValues int) ([]int, error) {
-	n := len(goal)
-	if len(indices) != n {
+// AnimateBoard applies up to numValues from the game board at given indices into a new slice.
+// Both the game board and indices must have the same length.
+func (g *Game) AnimateBoard(indices []int, numValues int) (Board, error) {
+	size := len(g.board)
+	if len(indices) != size {
 		return nil, errors.New("goal and indices slices must have the same length")
 	}
 
 	// Create a zero-initialized result slice
-	result := make([]int, n)
+	result := make(Board, size)
 
 	// Apply up to numValues from goal using indices
 	count := 0
-	for i := 0; i < n && count < numValues; i++ {
+	for i := 0; i < size && count < numValues; i++ {
 		idx := indices[i]
-		if idx >= 0 && idx < n {
-			result[idx] = goal[idx]
+		if idx >= 0 && idx < size {
+			result[idx] = g.board[idx]
 			count++
 		}
 	}

@@ -19,11 +19,12 @@ const (
 )
 
 type config struct {
-	port   int
-	size   int
-	block  int
-	mblock int
-	msize  int
+	port    int
+	size    int
+	block   int
+	mblock  int
+	msize   int
+	animate bool
 }
 type application struct {
 	envFile string
@@ -45,6 +46,7 @@ func main() {
 	}
 
 	app.loadConfig()
+	app.cfg.animate = true
 
 	port := app.cfg.port
 	slog.Info("Starting server", "port", port)

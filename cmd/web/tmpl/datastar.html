@@ -21,24 +21,25 @@
     <script type="module" src="{{.DatastarJS}}"></script>
 </head>
 <body>
-<header id="page-header" class="page-header"
+<header id="page-header"
+        class="page-header"
         data-on-load__delay.2s="document.getElementById('page-header').classList.add('fade-out')">
     <h1>Jawbreaker</h1>
 </header>
 <div class="container"
-     data-on-load__delay.500ms="@post('new');"
+     data-on-load__delay.250ms="@post('new');"
      data-signals="{
-     help:false,
-     gameOver:false,
-     currentScore:0,
-     lastScore:{{.LastScore}},
-     bestScore:{{.BestScore}},
-     bonusScore:0,
-     remainingPieces:0,
-     piecesText:'pieces',
      rows:{{.Size}},
      cols:{{.Size}},
-     board:'{{.Board}}'}"
+     board:'{{.Board}}',
+     bonusScore:0,
+     currentScore:0,
+     bestScore:{{.BestScore}},
+     lastScore:{{.LastScore}},
+     remainingPieces:0,
+     piecesText:'pieces',
+     help:false,
+     gameOver:false}"
 >
     {{ template "sidebar" . }}
     <main id="game-container"
