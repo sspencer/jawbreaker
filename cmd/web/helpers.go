@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
@@ -135,33 +133,4 @@ func deserializeScoreData(s *ScoreData, data string) {
 
 	s.LastScore = lastScore
 	s.BestScore = bestScore
-}
-
-func perfectSquare(n int) (int, error) {
-	if n < 0 {
-		return 0, errors.New("cannot calculate square root of a negative number")
-	}
-
-	sqrt := int(math.Sqrt(float64(n)))
-
-	// Check if the square of `sqrt` is equal to the original number `n`
-	if sqrt*sqrt == n {
-		return sqrt, nil
-	}
-
-	return 0, errors.New("the given number is not a perfect square")
-}
-
-func restoreGame(pieces string, score int) (*jawbreaker.Game, error) {
-	size, err := perfectSquare(len(pieces))
-	if err != nil {
-		return nil, err
-	}
-
-	game, err := jawbreaker.RestoreGame(pieces, size, size, score)
-	if err != nil {
-		return nil, err
-	}
-
-	return game, nil
 }
