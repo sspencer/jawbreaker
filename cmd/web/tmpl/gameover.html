@@ -11,7 +11,7 @@
             <span id="pieces-text" {{ if .DS }} data-text="$piecesText" {{ end }}>pieces</span>
             on the board.
         </p>
-        <button class="new-game-btn" {{ if .DS }} data-on-click="@post('new');" {{ end }}>
+        <button id="new-game-btn" {{ if .DS }} data-on-click="@post('new');" {{ end }}>
             New Game
         </button>
     </article>

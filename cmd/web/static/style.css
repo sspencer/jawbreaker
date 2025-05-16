@@ -101,7 +101,7 @@ body::before {
     text-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
 }
 
-.btn, .help-btn {
+.btn {
     background: #19a;
     color: white;
     border: none;
@@ -115,8 +115,21 @@ body::before {
     margin-top: 10px;
 }
 
-.btn:hover, .help-btn:hover {
+.btn:hover {
     transform: translateY(-3px) scale(1.05);
+}
+
+.btn:disabled {
+    background: #ccc;         /* duller background */
+    color: #666;              /* grayed-out text */
+    box-shadow: none;         /* no shadow */
+    cursor: not-allowed;      /* show not-allowed cursor */
+    transform: none !important; /* prevent transform from lingering */
+}
+
+/* Override hover for disabled buttons */
+.btn:disabled:hover, .help-btn:disabled:hover {
+    transform: none;
 }
 
 #game-container {

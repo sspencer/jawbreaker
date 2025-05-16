@@ -15,7 +15,7 @@
         </div>
     </div>
     <button id="restart-btn" class="btn" {{ if .DS }} data-on-click="@post('new')" {{ end }}>Restart</button>
-    <button id="undo-btn" class="btn" style="display:none">Undo</button>
-    <button id="help-btn" class="help-btn"  {{ if .DS }} data-on-click="$help=true" {{ end }}>Help</button>
+    <button id="undo-btn" class="btn" {{ if .DS }} style="display:none" {{ end }}>Undo</button>
+    <button id="help-btn" class="btn"  {{ if .DS }} data-on-click="$help=true" {{ end }}>Help</button>
 </div>
 {{ end }}

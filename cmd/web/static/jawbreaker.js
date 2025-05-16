@@ -99,6 +99,7 @@ let gameState = {
     mobile: false,
     canvas: null,
     ctx: null,
+    undo: null,
 };
 
 function clamp(value, min, max) {
@@ -995,6 +996,18 @@ async function processMove(index) {
     };
 }
 
+function undoMove() {
+    if (gameState.undo === null) return;
+    const {board, score} = gameState.undo;
+    gameState.board = board.slice();
+    gameState.score = score;
+    gameState.undo = null;
+    document.getElementById('undo-btn').disabled = true;
+    document.getElementById("current-score").innerText = ""+score;
+
+    renderBoard();
+}
+
 function handleTouch(e) {
     if (gameState.animateId !== null) {
         return;
@@ -1003,7 +1016,7 @@ function handleTouch(e) {
     const {x, y} = getCanvasCoordinates(e);
     const index = getBoardIndexFromCoordinates(x, y);
     if (index === gameState.hoverIndex) {
-        handleClick(e);
+        handleClick(e).then(r => {});
         return
     }
 
@@ -1022,12 +1035,19 @@ async function handleClick(e) {
 
     if (index >= 0 && index < gameState.board.length && gameState.board[index] !== WHITE) {
 
-        const startBoard = gameState.board.slice();
+
+        gameState.undo = {
+            board: gameState.board.slice(),
+            score: gameState.score,
+        };
+        document.getElementById('undo-btn').disabled = false;
+
 
         const status = await processMove(index);
         document.getElementById("current-score").innerText = ""+status.score;
 
         if (status.gameOver) {
+            gameState.undo = null;
             gameState.lastScore = gameState.score; // Update last score before potential best score update
             if (gameState.score > gameState.bestScore) {
                 gameState.bestScore = gameState.score;
@@ -1128,7 +1148,7 @@ function registerGameEvents() {
         gameState.canvas.addEventListener("mouseleave", handleMouseLeave);
     }
 
-    const newGameBtn = document.querySelector(".new-game-btn");
+    const newGameBtn = document.getElementById("new-game-btn");
     if (newGameBtn) {
         newGameBtn.addEventListener("click", async (e) => {
             e.preventDefault();
@@ -1140,6 +1160,18 @@ function registerGameEvents() {
         gameOverRestartBtn.addEventListener("click", async (e) => {
             e.preventDefault();
             await resetCurrentGame();
+        });
+    }
+
+    const undoBtn = document.getElementById("undo-btn");
+    if (undoBtn) {
+        console.log("undoBtn", undoBtn, "disable", undoBtn.disabled);
+        undoBtn.disabled = true;
+        console.log("undoBtn", undoBtn, "disable", undoBtn.disabled);
+        undoBtn.addEventListener("click", async (e) => {
+            console.log("undo button pressed");
+            e.preventDefault();
+            undoMove()
         });
     }
 
