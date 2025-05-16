@@ -7,14 +7,19 @@ this new version (basically same html/css) with the game logic residing in a Go
 server.  The Javscript interaction comes from triggering the Datastar library with 
 `data-*` tags. 
 
+After writing the initial Datastar version, decided to write a new Javascript version so that animation and power-ups could be added.  Discovered the Datastar version is just as capable serving up power-ups and animation, so that has been updated too.
+
 ### Starting Jawbreaker
 
 To run Jawbreaker, [Go SDK](https://go.dev/) is required.  Running the server is
 as simple as downloading Go and issuing the following command:
 
-    $ go run .
+    $ go run ./cmd/web
 
-Play on any browser by following this link: [http://localhost:8000/](http://localhost:8000/).
+Play on any browser by following the following links (depending on tech used for game)
+1. Javascript: [http://localhost:8000/](http://localhost:8000/)
+2. Javascript for development: [http://localhost:8000/one](http://localhost:8000/one) -- Javascript is served inline in the HTML file to make development easier without worrying about browser cache
+3. Datastar ("no" JS): [http://localhost:8000/datastar](http://localhost:8000/datastar) -- game logic is written in Go and the entire game board (256 divs) is served for every "animation" or action via SSE using [Datastar](https://data-star.dev/)
 
 ![Jawbreaker 2025 Screenshot](docs/jawbreaker.png "Jawbreaker")
 
