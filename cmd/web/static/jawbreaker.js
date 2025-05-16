@@ -1032,13 +1032,13 @@ async function handleClick(e) {
             if (gameState.score > gameState.bestScore) {
                 gameState.bestScore = gameState.score;
             }
-            
+
             document.getElementById("game-over-score").innerText = gameState.score;
             document.getElementById("last-score").innerText = gameState.lastScore;
             document.getElementById("best-score").innerText = gameState.bestScore;
             document.getElementById("bonus-points").innerText = ""+gameState.bonus;
             document.getElementById("remaining-pieces").innerText = ""+gameState.remainingPieces;
-            document.getElementById("pieces-name").innerText =  gameState.remainingPieces === 1 ? "piece" : "pieces";
+            document.getElementById("pieces-text").innerText =  gameState.remainingPieces === 1 ? "piece" : "pieces";
             document.getElementById("game-over-overlay").classList.add("visible");
 
             setCookie(gameState.cookieName, `${gameState.lastScore}|${gameState.bestScore}`);
