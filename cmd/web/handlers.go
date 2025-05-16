@@ -245,7 +245,7 @@ func (app *application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 
 	if app.cfg.animate {
 		size := len(g.Board())
-		piecesPerIter := 6
+		piecesPerIter := 12
 		maxIters := (size / piecesPerIter) + 1
 		indices := jawbreaker.ShuffledIndices(size)
 		for n := 0; n < maxIters; n++ {
