@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
+	"log/slog"
 	"math"
 	"math/rand/v2"
 )
@@ -147,44 +149,46 @@ func NewGame(rows, cols int) *Game {
 
 // NewGameWithOptions initializes a new Game instance with the given rows and columns, populating the board with random board.
 func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
+	rows = max(rows, 6)
+	cols = max(cols, 6)
+
 	size := rows * cols
 	board := make(Board, size)
 	if opts == nil {
 		opts = &GameOptions{}
 	}
 
+	game := &Game{board: board, rows: rows, cols: cols}
 	if opts.startEmpty {
-		return &Game{board: board, rows: rows, cols: cols}
+		return game
 	}
 
-	for i := range board {
-		board[i] = colorPieces[rand.IntN(len(colorPieces))]
-	}
+	// fill game board with random pieces
+	game.fillEmpties()
 
-	// The number of PowerUps to add (currently 27) must be lower than board size
-	powerUpSize := len(colorPieces)*len(powerPieces) + len(powerPieces) // len(allPowerPieces)
-
-	if opts.powerUps && powerUpSize < size {
+	// fill the game board with random power-ups
+	if opts.powerUps {
 		all := ShuffledIndices(size)
 		index := 0
 
+		// there are 27 power ups (20 for the colors + 7 specials)
 		for a := range allColorPieces {
-			for p := range powerPieces { // allPowerPieces {
+			for p := range allPowerPieces {
 				i := all[index]
 				color := allColorPieces[a]
 				powerUp := allPowerPieces[p]
 
-				//if powerUp.isPowerExtra() && color != White {
-				//	continue
-				//}
+				if powerUp.isPowerExtra() && color != White {
+					continue
+				}
 
-				board[i] = color + powerUp
+				game.board[i] = color + powerUp
 				index++
 			}
 		}
 	}
 
-	return &Game{board: board, rows: rows, cols: cols}
+	return game
 }
 
 // RestoreGame restores a game state based on the given board string, dimensions, and score.
@@ -219,12 +223,41 @@ func (g *Game) Score() int {
 	return g.score
 }
 
+func (g *Game) powerMove(index int) Status {
+	powerUp := g.board[index].Power()
+
+	g.board[index] = White
+
+	switch powerUp {
+	case PowerFill:
+		g.fillEmpties()
+	case PowerRotateLeft:
+		g.rotateLeft()
+	case PowerRotateRight:
+		g.rotateRight()
+	default:
+		log.Fatalf("Unknown power move: %d\n", powerUp)
+	}
+
+	g.applyGravityAndShiftRight()
+
+	return Status{
+		Board:    g.board,
+		Score:    g.score,
+		GameOver: g.IsGameOver(),
+	}
+}
+
 // Move removes connected pieces of the same color from the board and updates the score.
 // It takes the index of the clicked piece and removes all connected pieces of the same color.
 // If less than 2 connected pieces are found, no pieces are removed and the score remains unchanged.
 // After removing board, gravity is applied to make pieces fall down, and empty columns are shifted right.
 // If the game is over after the move, a bonus score is added based on the number of remaining pieces.
 func (g *Game) Move(index int) Status {
+	if g.board[index].isPowerExtra() {
+		return g.powerMove(index)
+	}
+
 	n := g.floodFill(index)
 	if n < 2 {
 		return Status{
@@ -346,7 +379,9 @@ func (g *Game) GetConnectedPieces(index int) []int {
 	}
 
 	if len(connectedIndices) < 2 {
-		return nil
+		if !(len(connectedIndices) == 1 && connectedIndices[index] && g.board[index].isPowerExtra()) {
+			return nil
+		}
 	}
 
 	indices := make([]int, 0, len(connectedIndices))
@@ -369,6 +404,9 @@ func (g *Game) getPowerUpConnections(index int) map[int]bool {
 		return g.getRectConnections(index)
 	case PowerCircle:
 		return g.getCircularConnections(index)
+	case PowerFill, PowerRotateRight, PowerRotateLeft:
+		connectedIndices[index] = true
+		return connectedIndices
 	default:
 		return connectedIndices
 	}
@@ -588,23 +626,43 @@ func (g *Game) AnimateBoard(indices []int, numValues int) (Board, error) {
 	return result, nil
 }
 
-func rotateRight(data []int, rows, cols int) ([]int, error) {
-	return rotateSlice(data, rows, cols, 90)
+func (g *Game) fillEmpties() {
+	for i := range g.board {
+		if g.board[i] == White {
+			g.board[i] = colorPieces[rand.IntN(len(colorPieces))]
+		}
+	}
 }
 
-func rotateLeft(data []int, rows, cols int) ([]int, error) {
-	return rotateSlice(data, rows, cols, -90)
+func (g *Game) rotateRight() {
+	board, err := rotateSlice(g.board, g.rows, g.cols, -90)
+	if err != nil {
+		slog.Error("rotateRight", "error", err.Error())
+		return
+	}
+
+	g.board = board
+}
+
+func (g *Game) rotateLeft() {
+	board, err := rotateSlice(g.board, g.rows, g.cols, 90)
+	if err != nil {
+		slog.Error("rotateLeft", "error", err.Error())
+		return
+	}
+
+	g.board = board
 }
 
 // RotateSlice rotates a 1D slice (row-major) by 90 or -90 degrees.
 // `rows` and `cols` are the dimensions of the input matrix.
 // Positive degree means clockwise, negative means counter-clockwise.
-func rotateSlice(data []int, rows, cols, degree int) ([]int, error) {
+func rotateSlice(data Board, rows, cols, degree int) (Board, error) {
 	if len(data) != rows*cols {
 		return nil, errors.New("invalid dimensions for the given slice length")
 	}
 
-	result := make([]int, len(data))
+	result := make(Board, len(data))
 	for r := 0; r < rows; r++ {
 		for c := 0; c < cols; c++ {
 			val := data[r*cols+c]

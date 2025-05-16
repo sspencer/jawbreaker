@@ -43,11 +43,11 @@ func boardToHTML(board jawbreaker.Board, connections []int) string {
 	var sb strings.Builder
 
 	set := make(map[int]bool)
-	if len(connections) > 1 {
-		for _, c := range connections {
-			set[c] = true
-		}
+	//if len(connections) > 1 {
+	for _, c := range connections {
+		set[c] = true
 	}
+	//}
 
 	for i, p := range board {
 		connected := set[i]
