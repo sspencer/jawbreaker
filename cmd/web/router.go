@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"time"
 
 	"github.com/benbjohnson/hashfs"
 	"github.com/go-chi/chi/v5"
@@ -18,7 +17,6 @@ func (app *application) routes() *chi.Mux {
 
 	mux.Use(middleware.RequestID)
 	mux.Use(middleware.RealIP)
-	mux.Use(middleware.Timeout(30 * time.Second))
 	mux.Use(slogMiddleware)
 	mux.Use(recoverMiddleware)
 	compressionMiddleware(mux)
