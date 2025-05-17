@@ -3,15 +3,15 @@
     <div class="score-container">
         <div class="score-box">
             <div class="score-label">Current</div>
-            <div id="current-score" class="score-value" {{ if .DS }} data-text="$currentScore" {{ end }}>0</div>
+            <div id="current-score" class="score-value" {{ if .DS }} data-text="$score" {{ end }}>0</div>
         </div>
         <div class="score-box">
             <div class="score-label">Last</div>
-            <div id="last-score" class="score-value"  {{ if .DS }} data-text="$lastScore" {{ end }}>0</div>
+            <div id="last-score" class="score-value"  {{ if .DS }} data-text="$last" {{ end }}>0</div>
         </div>
         <div class="score-box">
             <div class="score-label">Best</div>
-            <div id="best-score" class="score-value"  {{ if .DS }} data-text="$bestScore" {{ end }}>0</div>
+            <div id="best-score" class="score-value"  {{ if .DS }} data-text="$best" {{ end }}>0</div>
         </div>
     </div>
     <button id="restart-btn" class="btn" {{ if .DS }} data-on-click="@post('new')" {{ end }}>Restart</button>

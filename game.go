@@ -32,13 +32,17 @@ type Game struct {
 }
 
 type Status struct {
-	Board           Board
-	Score           int
-	Bonus           int
-	LastScore       int
-	BestScore       int
-	RemainingPieces int
-	GameOver        bool
+	Board     Board
+	Score     int
+	Bonus     int
+	Last      int
+	Best      int
+	Remaining int
+	GameOver  bool
+}
+
+func (s Status) String() string {
+	return fmt.Sprintf("Score: %d, Bonus: %d, Last: %d, Best: %d, Remaining: %d, GameOver: %t", s.Score, s.Bonus, s.Last, s.Best, s.Remaining, s.GameOver)
 }
 
 type direction struct {
@@ -236,6 +240,21 @@ func (g *Game) Board() Board {
 	return g.board
 }
 
+// BoardWithConnections returns the board with the selected piece and all of its
+// connections highlighted.
+func (g *Game) BoardWithConnections(index int) Board {
+	connected := g.GetConnectedPieces(index)
+
+	board := make(Board, len(g.board))
+	copy(board, g.board)
+
+	for _, idx := range connected {
+		board[idx] += PieceSelected
+	}
+
+	return board
+}
+
 func (b Board) Base64() string {
 	return bytesToBase64(convertBoardToBytes(b))
 }
@@ -243,6 +262,14 @@ func (b Board) Base64() string {
 // Score returns the current score of the game.
 func (g *Game) Score() int {
 	return g.score
+}
+
+func (g *Game) SetLastScore(score int) {
+	g.lastScore = score
+}
+
+func (g *Game) SetBestScore(score int) {
+	g.bestScore = score
 }
 
 func (g *Game) powerMove(index int) Status {
@@ -310,13 +337,13 @@ func (g *Game) Move(index int) Status {
 	}
 
 	return Status{
-		Board:           g.board,
-		Bonus:           g.bonus,
-		Score:           g.score,
-		LastScore:       g.lastScore,
-		BestScore:       g.bestScore,
-		RemainingPieces: g.remainingPieces,
-		GameOver:        gameOver,
+		Board:     g.board,
+		Bonus:     g.bonus,
+		Score:     g.score,
+		Last:      g.lastScore,
+		Best:      g.bestScore,
+		Remaining: g.remainingPieces,
+		GameOver:  gameOver,
 	}
 }
 

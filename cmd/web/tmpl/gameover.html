@@ -3,12 +3,12 @@
     <article class="game-over-content">
         <h2>Game Over!</h2>
         <p>You scored
-            <span id="game-over-score" {{ if .DS }} data-text="$currentScore" {{ end }}>0</span>
+            <span id="game-over-score" {{ if .DS }} data-text="$score" {{ end }}>0</span>
             points, which includes a bonus of
-            <span id="bonus-points" {{ if .DS }} data-text="$bonusScore" {{ end }}>0</span>
+            <span id="bonus-points" {{ if .DS }} data-text="$bonus" {{ end }}>0</span>
             for leaving
-            <span id="remaining-pieces" {{ if .DS }} data-text="$remainingPieces" {{ end }}>0</span>
-            <span id="pieces-text" {{ if .DS }} data-text="$piecesText" {{ end }}>pieces</span>
+            <span id="remaining-pieces" {{ if .DS }} data-text="$remaining" {{ end }}>0</span>
+            <span id="pieces-text" {{ if .DS }} data-text="$pieces" {{ end }}>pieces</span>
             on the board.
         </p>
         <button id="new-game-btn" class="btn" {{ if .DS }} data-on-click="@post('new');" {{ end }}>

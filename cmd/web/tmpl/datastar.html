@@ -11,13 +11,7 @@
     <meta name="rating" content="Safe For Kids"/>
     <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <link rel="stylesheet" href="{{.StyleCSS}}"/>
-    <style>
-        #game {
-            grid-template-columns: repeat({{.Size}}, {{.Block}}px);
-            grid-template-rows: repeat({{.Size}}, {{.Block}}px);
-            gap: 2px;
-        }
-    </style>
+    <style>{{.GameStyle}}</style>
     <script type="module" src="{{.DatastarJS}}"></script>
 </head>
 <body>
@@ -30,13 +24,14 @@
      data-on-load="@post('new');"
      data-signals="{
      board:'',
-     session: '{{.SessionID}}',
-     bonusScore:0,
-     currentScore:0,
-     bestScore:{{.BestScore}},
-     lastScore:{{.LastScore}},
-     remainingPieces:0,
-     piecesText:'pieces',
+     session: '{{.Session}}',
+     size:{{.Size}},
+     score:0,
+     best:{{.BestScore}},
+     last:{{.LastScore}},
+     bonus:0,
+     remaining:0,
+     pieces:'pieces',
      help:false,
      gameOver:false}"
 >
@@ -45,8 +40,9 @@
           data-on-click="@post('click/'+evt.target.id)"
           data-on-mouseover="@post('mouse/'+evt.target.id)"
           data-on-mouseleave="@post('mouse/exit')"
-          data-on-signal-change-board="renderBoard($board)"
-        >
+          data-on-signal-change-board="renderBoard(ctx);"
+          data-on-signal-change-game-over="gameOver($score, $best)"
+    >
         <div id="game"></div>
         {{ template "gameover" . }}
     </main>
@@ -55,21 +51,49 @@
 {{ template "help" . }}
 
 <script>
-    const PieceSpace =       parseInt('{{.GameMechanics.PieceSpace}}')
-    const White =            parseInt('{{.GameMechanics.White}}');
-    const Purple =           parseInt('{{.GameMechanics.Purple}}');
-    const Blue =             parseInt('{{.GameMechanics.Blue}}');
-    const Green =            parseInt('{{.GameMechanics.Green}}');
-    const Red =              parseInt('{{.GameMechanics.Red}}');
-    const Yellow =           parseInt('{{.GameMechanics.Yellow}}');
-    const PowerX =           parseInt('{{.GameMechanics.PowerX}}');
-    const PowerPlus =        parseInt('{{.GameMechanics.PowerPlus}}');
-    const PowerCircle =      parseInt('{{.GameMechanics.PowerCircle}}');
-    const PowerRect =        parseInt('{{.GameMechanics.PowerRect}}');
-    const PowerFill =        parseInt('{{.GameMechanics.PowerFill}}');
+    const PieceSpace = parseInt('{{.GameMechanics.PieceSpace}}')
+    const White = parseInt('{{.GameMechanics.White}}');
+    const Purple = parseInt('{{.GameMechanics.Purple}}');
+    const Blue = parseInt('{{.GameMechanics.Blue}}');
+    const Green = parseInt('{{.GameMechanics.Green}}');
+    const Red = parseInt('{{.GameMechanics.Red}}');
+    const Yellow = parseInt('{{.GameMechanics.Yellow}}');
+    const PowerX = parseInt('{{.GameMechanics.PowerX}}');
+    const PowerPlus = parseInt('{{.GameMechanics.PowerPlus}}');
+    const PowerCircle = parseInt('{{.GameMechanics.PowerCircle}}');
+    const PowerRect = parseInt('{{.GameMechanics.PowerRect}}');
+    const PowerFill = parseInt('{{.GameMechanics.PowerFill}}');
     const PowerRotateRight = parseInt('{{.GameMechanics.PowerRotateRight}}');
-    const PowerRotateLeft =  parseInt('{{.GameMechanics.PowerRotateLeft}}');
-    const PieceSelected =    parseInt('{{.GameMechanics.PieceSelected}}');
+    const PowerRotateLeft = parseInt('{{.GameMechanics.PowerRotateLeft}}');
+    const PieceSelected = parseInt('{{.GameMechanics.PieceSelected}}');
+
+    const PieceIcons = new Map([
+        [PowerX, "&#10005;"],
+        [PowerPlus, "&#43;"],
+        [PowerCircle, "&#1054;"],
+        [PowerRect, "&#127020;"],
+        [PowerFill, "&#9734;"],
+        [PowerRotateLeft, "&#8617;"],
+        [PowerRotateRight, "&#8618;"],
+    ]);
+
+    const PieceColors = new Map([
+        [Purple, "purple"],
+        [Blue, "blue"],
+        [Green, "green"],
+        [Red, "red"],
+        [Yellow, "yellow"],
+    ]);
+
+    function gameOver(score, best) {
+        setCookie("{{.CookieName}}", `${score}|${score > best ? score : best}`);
+    }
+
+    function setCookie(name, value, days = 365) {
+        const date = new Date();
+        date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+        document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+    }
 
     function decodeBase64(base64String) {
         const binaryString = atob(base64String);
@@ -81,34 +105,28 @@
         return byteArray;
     }
 
-    function renderBoard(encodedBytes) {
-        const board = decodeBase64(encodedBytes);
+    function renderBoard(ctx) {
+        const board = decodeBase64(ctx.signals.signal('board').value);
 
         let str = ""
         for (let i = 0; i < board.length; i++) {
             let p = board[i];
-            str += `<div id="piece${i}" class="piece ${pieceColor(p)} ${isSelected(p) ? "connected" : ""}">${pieceIcon(p)}</div>`;
+            const s = `<div id="piece${i}" class="piece ${pieceColor(p)} ${isSelected(p) ? "connected" : ""}">${pieceIcon(p)}</div>`;
+            str += s;
         }
 
         document.getElementById("game").innerHTML = str;
+
+        // minimize traffic back to server
+        ctx.signals.signal('board').value = '';
     }
 
-     function pieceColor(piece) {
+    function pieceColor(piece) {
         const color = Math.floor(piece / PieceSpace) * PieceSpace
-        switch (color) {
-            case Purple:
-                return "purple"
-            case Blue:
-                return "blue"
-            case Green:
-                return "green"
-            case Red:
-                return "red"
-            case Yellow:
-                return "yellow"
-            default:
-                return piece % PieceSpace === White ? "white" : "gray";
-        }
+
+        let name = PieceColors.get(color);
+
+        return name ? name : (piece % PieceSpace === White ? "white" : "gray");
     }
 
     function pieceIcon(piece) {
@@ -116,24 +134,8 @@
         if (power >= PieceSelected) {
             power = power - PieceSelected;
         }
-        switch (power) {
-            case PowerX:
-                return "&#10005;"
-            case PowerPlus:
-                return "&#43;"
-            case PowerCircle:
-                return "&#1054;"
-            case PowerRect:
-                return "&#127020;"
-            case PowerFill:
-                return "&#9734;"
-            case PowerRotateLeft:
-                return "&#8617;"
-            case PowerRotateRight:
-                return "&#8618;"
-            default:
-                return ""
-        }
+
+        return PieceIcons.get(power) || "";
     }
 
     function isSelected(piece) {

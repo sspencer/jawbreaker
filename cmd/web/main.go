@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/sspencer/jawbreaker"
 )
 
 const (
@@ -19,7 +21,7 @@ const (
 	cookieName = "score"
 )
 
-type config struct {
+type Config struct {
 	port    int
 	size    int
 	block   int
@@ -27,11 +29,25 @@ type config struct {
 	msize   int
 	animate bool
 }
-type application struct {
+type Action struct {
+	Action  string
+	Index   int
+	Session string
+	Board   string
+}
+
+func (a Action) String() string {
+	return fmt.Sprintf("%s[%d] session=%s board-len=%d",
+		a.Action, a.Index, a.Session, len(a.Board))
+}
+
+type Application struct {
 	envFile    string
-	cfg        config
-	clients    map[string]chan string
+	cfg        Config
+	clients    map[string]chan Action
 	clientsMux sync.Mutex
+	games      map[string]*jawbreaker.Game
+	gamesMux   sync.Mutex
 }
 
 func main() {
@@ -43,10 +59,11 @@ func main() {
 	flag.Parse()
 
 	fn, _ := filepath.Abs(".env")
-	app := application{
+	app := Application{
 		envFile: fn,
-		cfg:     config{},
-		clients: make(map[string]chan string),
+		cfg:     Config{},
+		clients: make(map[string]chan Action),
+		games:   make(map[string]*jawbreaker.Game),
 	}
 
 	app.loadConfig()

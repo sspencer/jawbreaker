@@ -12,7 +12,7 @@ import (
 var staticFiles embed.FS
 var fsys = hashfs.NewFS(staticFiles)
 
-func (app *application) routes() *chi.Mux {
+func (app *Application) routes() *chi.Mux {
 	mux := chi.NewRouter()
 
 	mux.Use(middleware.RequestID)

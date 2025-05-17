@@ -22,7 +22,7 @@ func envInt(key string, defValue int) int {
 	return n
 }
 
-func (app *application) loadConfig() {
+func (app *Application) loadConfig() {
 	err := godotenv.Load(app.envFile)
 
 	if err == nil {
