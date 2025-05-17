@@ -29,9 +29,8 @@
 <div class="container"
      data-on-load="@post('new');"
      data-signals="{
-     rows:{{.Size}},
-     cols:{{.Size}},
-     board:'{{.Board}}',
+     board:'',
+     session: '{{.SessionID}}',
      bonusScore:0,
      currentScore:0,
      bestScore:{{.BestScore}},
@@ -45,14 +44,102 @@
     <main id="game-container"
           data-on-click="@post('click/'+evt.target.id)"
           data-on-mouseover="@post('mouse/'+evt.target.id)"
-          data-on-mouseleave="@post('mouse/exit')">
-        {{.Game}}
+          data-on-mouseleave="@post('mouse/exit')"
+          data-on-signal-change-board="renderBoard($board)"
+        >
+        <div id="game"></div>
         {{ template "gameover" . }}
     </main>
 </div>
 
 {{ template "help" . }}
 
+<script>
+    const PieceSpace =       parseInt('{{.GameMechanics.PieceSpace}}')
+    const White =            parseInt('{{.GameMechanics.White}}');
+    const Purple =           parseInt('{{.GameMechanics.Purple}}');
+    const Blue =             parseInt('{{.GameMechanics.Blue}}');
+    const Green =            parseInt('{{.GameMechanics.Green}}');
+    const Red =              parseInt('{{.GameMechanics.Red}}');
+    const Yellow =           parseInt('{{.GameMechanics.Yellow}}');
+    const PowerX =           parseInt('{{.GameMechanics.PowerX}}');
+    const PowerPlus =        parseInt('{{.GameMechanics.PowerPlus}}');
+    const PowerCircle =      parseInt('{{.GameMechanics.PowerCircle}}');
+    const PowerRect =        parseInt('{{.GameMechanics.PowerRect}}');
+    const PowerFill =        parseInt('{{.GameMechanics.PowerFill}}');
+    const PowerRotateRight = parseInt('{{.GameMechanics.PowerRotateRight}}');
+    const PowerRotateLeft =  parseInt('{{.GameMechanics.PowerRotateLeft}}');
+    const PieceSelected =    parseInt('{{.GameMechanics.PieceSelected}}');
+
+    function decodeBase64(base64String) {
+        const binaryString = atob(base64String);
+        const byteArray = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            byteArray[i] = binaryString.charCodeAt(i);
+        }
+
+        return byteArray;
+    }
+
+    function renderBoard(encodedBytes) {
+        const board = decodeBase64(encodedBytes);
+
+        let str = ""
+        for (let i = 0; i < board.length; i++) {
+            let p = board[i];
+            str += `<div id="piece${i}" class="piece ${pieceColor(p)} ${isSelected(p) ? "connected" : ""}">${pieceIcon(p)}</div>`;
+        }
+
+        document.getElementById("game").innerHTML = str;
+    }
+
+     function pieceColor(piece) {
+        const color = Math.floor(piece / PieceSpace) * PieceSpace
+        switch (color) {
+            case Purple:
+                return "purple"
+            case Blue:
+                return "blue"
+            case Green:
+                return "green"
+            case Red:
+                return "red"
+            case Yellow:
+                return "yellow"
+            default:
+                return piece % PieceSpace === White ? "white" : "gray";
+        }
+    }
+
+    function pieceIcon(piece) {
+        let power = piece % PieceSpace
+        if (power >= PieceSelected) {
+            power = power - PieceSelected;
+        }
+        switch (power) {
+            case PowerX:
+                return "&#10005;"
+            case PowerPlus:
+                return "&#43;"
+            case PowerCircle:
+                return "&#1054;"
+            case PowerRect:
+                return "&#127020;"
+            case PowerFill:
+                return "&#9734;"
+            case PowerRotateLeft:
+                return "&#8617;"
+            case PowerRotateRight:
+                return "&#8618;"
+            default:
+                return ""
+        }
+    }
+
+    function isSelected(piece) {
+        return piece % PieceSpace >= PieceSelected;
+    }
+</script>
 </body>
 </html>
 {{ end }}

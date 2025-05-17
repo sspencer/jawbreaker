@@ -21,16 +21,22 @@ func (b Board) String() string {
 // Game represents the state of a Jawbreaker game.
 // It contains the game board, dimensions, and current score.
 type Game struct {
-	board Board // board represents the game board as a flat array of color bytes
-	rows  int   // number of rows in the game board
-	cols  int   // number of columns in the game board
-	score int   // current score of the game
+	board           Board // board represents the game board as a flat array of color bytes
+	rows            int   // number of rows in the game board
+	cols            int   // number of columns in the game board
+	score           int   // current score of the game
+	lastScore       int   // stored for convenience
+	bestScore       int   // stored for convenience
+	bonus           int
+	remainingPieces int
 }
 
 type Status struct {
 	Board           Board
 	Score           int
 	Bonus           int
+	LastScore       int
+	BestScore       int
 	RemainingPieces int
 	GameOver        bool
 }
@@ -87,6 +93,7 @@ const (
 	PowerFill        = 5
 	PowerRotateRight = 6
 	PowerRotateLeft  = 7
+	PieceSelected    = 16
 )
 
 var (
@@ -109,7 +116,17 @@ func (c Piece) Color() int {
 }
 
 func (c Piece) Power() int {
-	return int(c) % PieceSpace
+	power := c % PieceSpace
+	if power >= PieceSelected {
+		return int(power - PieceSelected)
+	}
+
+	return int(power)
+}
+
+func (c Piece) isSelected() bool {
+	power := c % PieceSpace
+	return power >= PieceSelected
 }
 
 func (c Piece) isPowerExtra() bool {
@@ -205,6 +222,11 @@ func RestoreGame(encodedBoard string, rows, cols, score int) (*Game, error) {
 	}
 
 	board := convertBytesToBoard(b)
+	for i, p := range board {
+		if p.isSelected() {
+			board[i] -= PieceSelected
+		}
+	}
 
 	return &Game{board: board, rows: rows, cols: cols, score: score}, nil
 }
@@ -270,24 +292,30 @@ func (g *Game) Move(index int) Status {
 	g.applyGravityAndShiftRight()
 	g.score += calculateMoveScore(n)
 	gameOver := g.IsGameOver()
-	bonusScore := 0
-	remainingPieces := 0
+	g.bonus = 0
+	g.remainingPieces = 0
 
 	if gameOver {
 		for _, p := range g.board {
 			if p != White {
-				remainingPieces++
+				g.remainingPieces++
 			}
 		}
-		bonusScore = calculateBonusScore(remainingPieces)
-		g.score += bonusScore
+		g.bonus = calculateBonusScore(g.remainingPieces)
+		g.score += g.bonus
+		g.lastScore = g.score
+		if g.score > g.bestScore {
+			g.bestScore = g.score
+		}
 	}
 
 	return Status{
 		Board:           g.board,
-		Bonus:           bonusScore,
+		Bonus:           g.bonus,
 		Score:           g.score,
-		RemainingPieces: remainingPieces,
+		LastScore:       g.lastScore,
+		BestScore:       g.bestScore,
+		RemainingPieces: g.remainingPieces,
 		GameOver:        gameOver,
 	}
 }

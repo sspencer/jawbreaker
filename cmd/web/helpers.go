@@ -1,11 +1,12 @@
 package main
 
 import (
+	crand "crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
-
-	"github.com/sspencer/jawbreaker"
 )
 
 const (
@@ -36,86 +37,11 @@ func extractNumberFromPieceId(input string) int {
 	return num
 }
 
-// boardToHTML generates the HTML fragment for the game board with the click handler.
-func boardToHTML(board jawbreaker.Board, connections []int) string {
-	var sb strings.Builder
-
-	set := make(map[int]bool)
-	//if len(connections) > 1 {
-	for _, c := range connections {
-		set[c] = true
-	}
-	//}
-
-	for i, p := range board {
-		connected := set[i]
-
-		// id="piece123"
-		sb.WriteString("<div id=\"")
-		sb.WriteString(piecePrefix)
-		sb.WriteString(strconv.Itoa(i))
-
-		// class="piece red connected"
-		sb.WriteString("\" class=\"piece ")
-		sb.WriteString(pieceColor(p))
-		if connected {
-			sb.WriteString(" connected")
-		}
-		sb.WriteString("\">")
-		sb.WriteString(pieceIcon(p))
-		sb.WriteString("</div>")
-	}
-
-	return fmt.Sprintf("<div id=\"game\">%s</div>", sb.String())
-}
-
-func pieceColor(c jawbreaker.Piece) string {
-	switch c.Color() {
-	case jawbreaker.Purple:
-		return "purple"
-	case jawbreaker.Blue:
-		return "blue"
-	case jawbreaker.Green:
-		return "green"
-	case jawbreaker.Red:
-		return "red"
-	case jawbreaker.Yellow:
-		return "yellow"
-	default:
-		if c.Power() == 0 {
-			return "white"
-		}
-		return "gray"
-	}
-}
-
-func pieceIcon(c jawbreaker.Piece) string {
-	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
-	switch c.Power() {
-	case jawbreaker.PowerX:
-		return "&#10005;"
-	case jawbreaker.PowerPlus:
-		return "&#43;" //"&#9532;"
-	case jawbreaker.PowerCircle:
-		return "&#1054;"
-	case jawbreaker.PowerRect:
-		return "&#127020;"
-	case jawbreaker.PowerFill:
-		return "&#9734;"
-	case jawbreaker.PowerRotateLeft:
-		return "&#8617;"
-	case jawbreaker.PowerRotateRight:
-		return "&#8618;"
-	default:
-		return ""
-	}
-}
-
-func (s ScoreData) serialize() string {
+func (s ScoreData) serializeScoreCookie() string {
 	return fmt.Sprintf("%d|%d", s.LastScore, s.BestScore)
 }
 
-func deserializeScoreData(s *ScoreData, data string) {
+func deserializeScoreCookie(s *ScoreData, data string) {
 	parts := strings.Split(data, "|")
 	if len(parts) != 2 {
 		return
@@ -133,4 +59,101 @@ func deserializeScoreData(s *ScoreData, data string) {
 
 	s.LastScore = lastScore
 	s.BestScore = bestScore
+}
+
+type Action struct {
+	Action string
+	Index  int
+	Score  int
+	Board  string
+}
+
+func serializeAction(action string, index, score int, board string) string {
+	return fmt.Sprintf("%s|%d|%d|%s", action, index, score, board)
+}
+
+func deserializeAction(data string) *Action {
+	parts := strings.Split(data, "|")
+	if len(parts) != 4 {
+		return nil
+	}
+
+	index, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil
+	}
+
+	score, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return nil
+	}
+
+	return &Action{
+		Action: parts[0],
+		Index:  index,
+		Score:  score,
+		Board:  parts[3],
+	}
+}
+
+func generateSessionID() (string, error) {
+	b := make([]byte, 42)
+	_, err := crand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+//func perfectSquare(n int) (int, error) {
+//	if n < 0 {
+//		return 0, errors.New("cannot calculate square root of a negative number")
+//	}
+//
+//	sqrt := int(math.Sqrt(float64(n)))
+//
+//	// Check if the square of `sqrt` is equal to the original number `n`
+//	if sqrt*sqrt == n {
+//		return sqrt, nil
+//	}
+//
+//	return 0, errors.New("the given number is not a perfect square")
+//}
+//
+//func restoreGame(pieces string, score int) (*jawbreaker.Game, error) {
+//	board := base64ToBytes(pieces)
+//	size, err := perfectSquare(len(pieces))
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	game, err := jawbreaker.RestoreGame(pieces, size, size, score)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return game, nil
+//}
+
+// registerClient adds a new client channel with a name
+func (app *application) registerClient(name string) chan string {
+	slog.Info("Registering client", "name", name)
+	app.clientsMux.Lock()
+	defer app.clientsMux.Unlock()
+
+	clientChan := make(chan string)
+	app.clients[name] = clientChan
+	return clientChan
+}
+
+// unregisterClient removes a client channel
+func (app *application) unregisterClient(name string) {
+	slog.Info("Unregistering client", "name", name)
+	app.clientsMux.Lock()
+	defer app.clientsMux.Unlock()
+
+	if clientChan, ok := app.clients[name]; ok {
+		close(clientChan)
+		delete(app.clients, name)
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 const (
@@ -27,8 +28,10 @@ type config struct {
 	animate bool
 }
 type application struct {
-	envFile string
-	cfg     config
+	envFile    string
+	cfg        config
+	clients    map[string]chan string
+	clientsMux sync.Mutex
 }
 
 func main() {
@@ -43,6 +46,7 @@ func main() {
 	app := application{
 		envFile: fn,
 		cfg:     config{},
+		clients: make(map[string]chan string),
 	}
 
 	app.loadConfig()
