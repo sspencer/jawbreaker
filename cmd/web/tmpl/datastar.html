@@ -40,7 +40,7 @@
           data-on-click="@post('click/'+evt.target.id)"
           data-on-mouseover="@post('mouse/'+evt.target.id)"
           data-on-mouseleave="@post('mouse/exit')"
-          data-on-signal-change-board="renderBoard(ctx);"
+          data-on-signal-change-board="renderBoard($board)"
           data-on-signal-change-game-over="gameOver($score, $best)"
     >
         <div id="game"></div>
@@ -105,20 +105,16 @@
         return byteArray;
     }
 
-    function renderBoard(ctx) {
-        const board = decodeBase64(ctx.signals.signal('board').value);
+    function renderBoard(encodedBytes) {
+        const board = decodeBase64(encodedBytes);
 
         let str = ""
         for (let i = 0; i < board.length; i++) {
             let p = board[i];
-            const s = `<div id="piece${i}" class="piece ${pieceColor(p)} ${isSelected(p) ? "connected" : ""}">${pieceIcon(p)}</div>`;
-            str += s;
+            str += `<div id="piece${i}" class="piece ${pieceColor(p)} ${isSelected(p) ? "connected" : ""}">${pieceIcon(p)}</div>`;
         }
 
         document.getElementById("game").innerHTML = str;
-
-        // minimize traffic back to server
-        ctx.signals.signal('board').value = '';
     }
 
     function pieceColor(piece) {
