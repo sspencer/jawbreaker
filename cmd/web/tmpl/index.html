@@ -38,10 +38,12 @@
             return isTouchCapable && isSmallScreen;
         }
 
-        const size = isMobileDevice() ? parseInt('{{ .MSize }}') : parseInt('{{ .Size }}');
+        const rows = isMobileDevice() ? parseInt('{{ .MRows }}') : parseInt('{{ .Rows }}');
+        const cols = isMobileDevice() ? parseInt('{{ .MCols }}') : parseInt('{{ .Cols }}');
         const block = isMobileDevice() ? parseInt('{{ .MBlock }}') : parseInt('{{ .Block }}');
         const opts = {
-            size: size,
+            rows: rows,
+            cols: cols,
             blockSize: block,
             cookieName: '{{ .CookieName }}',
             mobile: isMobileDevice(),

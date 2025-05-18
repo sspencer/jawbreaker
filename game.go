@@ -102,11 +102,12 @@ const (
 
 var (
 	// colorPieces is a slice of all available colored board used for random piece generation.
-	colorPieces    = []Piece{Purple, Blue, Green, Red, Yellow}
-	allColorPieces = []Piece{White, Purple, Blue, Green, Red, Yellow}
-	powerPieces    = []Piece{PowerX, PowerPlus, PowerCircle, PowerRect}
-	extraPieces    = []Piece{PowerFill, PowerRotateRight, PowerRotateLeft}
-	allPowerPieces = append(powerPieces, extraPieces...)
+	colorPieces       = []Piece{Purple, Blue, Green, Red, Yellow}
+	allColorPieces    = []Piece{White, Purple, Blue, Green, Red, Yellow}
+	powerPieces       = []Piece{PowerX, PowerPlus, PowerCircle, PowerRect}
+	extraPieces       = []Piece{PowerFill, PowerRotateRight, PowerRotateLeft}
+	squarePowerPieces = append(powerPieces, extraPieces...)
+	rectPowerPieces   = append(powerPieces, PowerFill)
 
 	// ErrGameSize is returned when attempting to restore a game with a board size
 	// that doesn't match the expected dimensions.
@@ -140,12 +141,12 @@ func (c Piece) isPowerExtra() bool {
 
 func (c Piece) isPowerDirection() bool {
 	power := c.Power()
-	return power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect
+	return c.Color() == White && (power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
 }
 
-func (c Piece) isPowerGlobDirection() bool {
+func (c Piece) isPowerUp() bool {
 	power := c.Power()
-	return c.Color() == White && (power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
+	return c.Color() == White && power > 0 //(power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
 }
 
 type GameOptions struct {
@@ -193,11 +194,18 @@ func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
 		index := 0
 
 		// there are 27 power ups (20 for the colors + 7 specials)
+		var extras []Piece
+		if rows == cols {
+			extras = squarePowerPieces
+		} else {
+			extras = rectPowerPieces
+		}
+
 		for a := range allColorPieces {
-			for p := range allPowerPieces {
+			for p := range extras {
 				i := all[index]
 				color := allColorPieces[a]
-				powerUp := allPowerPieces[p]
+				powerUp := extras[p]
 
 				if powerUp.isPowerExtra() && color != White {
 					continue
@@ -218,7 +226,6 @@ func RestoreGame(encodedBoard string, rows, cols, score int) (*Game, error) {
 	b, err := base64ToBytes(encodedBoard)
 	if err != nil {
 		return nil, err
-
 	}
 
 	if len(b) != rows*cols {
@@ -264,12 +271,12 @@ func (g *Game) Score() int {
 	return g.score
 }
 
-func (g *Game) SetLastScore(score int) {
-	g.lastScore = score
+func (g *Game) Rows() int {
+	return g.rows
 }
 
-func (g *Game) SetBestScore(score int) {
-	g.bestScore = score
+func (g *Game) Cols() int {
+	return g.cols
 }
 
 func (g *Game) powerMove(index int) Status {
@@ -303,6 +310,14 @@ func (g *Game) powerMove(index int) Status {
 // After removing board, gravity is applied to make pieces fall down, and empty columns are shifted right.
 // If the game is over after the move, a bonus score is added based on the number of remaining pieces.
 func (g *Game) Move(index int) Status {
+	if index < 0 || index >= len(g.board) {
+		return Status{
+			Board:    g.board,
+			Score:    g.score,
+			GameOver: g.IsGameOver(),
+		}
+	}
+
 	if g.board[index].isPowerExtra() {
 		return g.powerMove(index)
 	}
@@ -411,7 +426,7 @@ func (g *Game) GetConnectedPieces(index int) []int {
 		i := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
-		if i < 0 || i >= len(g.board) || g.board[i].Color() != target.Color() || visited[i] || g.board[i] == White {
+		if i < 0 || i >= len(g.board) || g.board[i].Color() != target.Color() || visited[i] || g.board[i] == White || g.board[i].isPowerUp() {
 			continue
 		}
 		visited[i] = true
@@ -499,10 +514,10 @@ func (g *Game) getConnectionsWithDirections(index int, directions []direction, m
 			r := startRow + dir.sr + dir.dr*iter
 			c := startCol + dir.sc + dir.dc*iter
 			if r >= 0 && r < g.rows && c >= 0 && c < g.cols {
-				currentIndex := r*g.rows + c
+				currentIndex := r*g.cols + c
 				piece := g.board[currentIndex]
 				color := piece.Color()
-				if color != White && (color == target.Color() || target.isPowerGlobDirection()) {
+				if color != White && (color == target.Color() || target.isPowerDirection()) {
 					connectedIndices[currentIndex] = true
 				}
 			}
@@ -513,8 +528,8 @@ func (g *Game) getConnectionsWithDirections(index int, directions []direction, m
 }
 
 func (g *Game) pointFromIndex(index int) (int, int) {
-	col := index % g.rows
-	row := index / g.rows
+	row := index / g.cols
+	col := index % g.cols
 
 	return row, col
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 const (
 	clickAction = "click"
 	mouseAction = "mouse"
+	newAction   = "new"
 )
 
 type ScoreData struct {
@@ -44,13 +44,14 @@ type GameMechanics struct {
 type pageData struct {
 	DS         bool
 	DatastarJS string
-	Session    string
 	GameCode   template.JS
 	GameSrc    string
 	StyleCSS   string
-	Size       int
+	Rows       int
+	Cols       int
 	Block      int
-	MSize      int
+	MRows      int
+	MCols      int
 	MBlock     int
 	CookieName string
 	GameStyle  template.CSS
@@ -60,30 +61,19 @@ type pageData struct {
 	GameMechanics
 }
 
-type Signals struct {
-	Session   string `json:"session"`
-	Board     string `json:"board"`
-	Size      int    `json:"size"`
-	Score     int    `json:"score"`
-	Bonus     int    `json:"bonus"`
-	Last      int    `json:"last"`
-	Best      int    `json:"best"`
-	Remaining int    `json:"remaining"`
-	Pieces    string `json:"pieces"`
-	GameOver  bool   `json:"gameOver"`
-}
-
 func (app *Application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := app.cfg
 
 	data := pageData{
 		GameSrc:    fsys.HashName("static/jawbreaker.js"),
 		StyleCSS:   fsys.HashName("static/style.css"),
-		Size:       cfg.size,
+		Rows:       cfg.rows,
+		Cols:       cfg.cols,
 		Block:      cfg.block,
-		MSize:      cfg.msize,
+		MRows:      cfg.mrows,
+		MCols:      cfg.mcols,
 		MBlock:     cfg.mblock,
-		CookieName: cookieName,
+		CookieName: app.getCookieName(),
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -106,11 +96,13 @@ func (app *Application) oneHandler(w http.ResponseWriter, r *http.Request) {
 	data := pageData{
 		GameCode:   template.JS(gameBytes),
 		StyleCSS:   fsys.HashName("static/style.css"),
-		Size:       cfg.size,
+		Rows:       cfg.rows,
+		Cols:       cfg.cols,
 		Block:      cfg.block,
-		MSize:      cfg.msize,
+		MRows:      cfg.mrows,
+		MCols:      cfg.mcols,
 		MBlock:     cfg.mblock,
-		CookieName: cookieName,
+		CookieName: app.getCookieName(),
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -125,25 +117,21 @@ func (app *Application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 	cfg := app.cfg
 
 	var scoreData ScoreData
-	if cookie, err := r.Cookie(cookieName); err == nil {
+	if cookie, err := r.Cookie(app.getCookieName()); err == nil {
 		deserializeCookie(&scoreData, cookie.Value)
-	}
-	session, err := generateSessionID()
-	if err != nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
 	}
 
 	data := pageData{
 		DS:         true,
 		DatastarJS: fsys.HashName("static/datastar.js"),
 		StyleCSS:   fsys.HashName("static/style.css"),
-		GameStyle:  template.CSS(gameSizeCSS(cfg.size, cfg.block)),
-		CookieName: cookieName,
-		Session:    session,
-		Size:       cfg.size,
+		GameStyle:  template.CSS(app.gameSizeCSS()),
+		CookieName: app.getCookieName(),
+		Rows:       cfg.rows,
+		Cols:       cfg.cols,
 		Block:      cfg.block,
-		MSize:      cfg.msize,
+		MRows:      cfg.mrows,
+		MCols:      cfg.mcols,
 		MBlock:     cfg.mblock,
 		LastScore:  scoreData.LastScore,
 		BestScore:  scoreData.BestScore,
@@ -167,171 +155,109 @@ func (app *Application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	err = tmpl.ExecuteTemplate(w, "datastar", data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, "datastar", data); err != nil {
 		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-type SessionSignal struct {
-	Session string `json:"session"`
-	Board   string `json:"board"`
-	Size    int    `json:"size"`
-	Score   int    `json:"score"`
-	Last    int    `json:"last"`
-	Best    int    `json:"best"`
+func (app *Application) newGameHandler(w http.ResponseWriter, r *http.Request) {
+	app.handleAction(w, r, newAction)
 }
 
 func (app *Application) clickHandler(w http.ResponseWriter, r *http.Request) {
 	app.handleAction(w, r, clickAction)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func (app *Application) mouseHandler(w http.ResponseWriter, r *http.Request) {
 	app.handleAction(w, r, mouseAction)
-	w.WriteHeader(http.StatusNoContent)
+}
+
+type Signals struct {
+	Board string `json:"board"`
+	Rows  int    `json:"rows"`
+	Cols  int    `json:"cols"`
+	Score int    `json:"score"`
+	Last  int    `json:"last"`
+	Best  int    `json:"best"`
+}
+
+func createGame(actionName string, s *Signals) (*jawbreaker.Game, error) {
+	if actionName == newAction {
+		opts := jawbreaker.GameOptions{}
+		g := jawbreaker.NewGameWithOptions(s.Rows, s.Cols, opts.PowerUps())
+		return g, nil
+	}
+
+	return jawbreaker.RestoreGame(s.Board, s.Rows, s.Cols, s.Score)
 }
 
 func (app *Application) handleAction(w http.ResponseWriter, r *http.Request, actionName string) {
 	index := extractNumberFromPieceId(chi.URLParam(r, "id"))
-	if index < 0 && actionName == clickAction {
-		return
-	}
 
-	signal := &SessionSignal{}
-	if err := datastar.ReadSignals(r, signal); err != nil {
-		slog.Error("Error reading signal", "error", err)
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	//slog.Info("Read signal", "signal", signal)
-
-	app.clientsMux.Lock()
-	defer app.clientsMux.Unlock()
-
-	clientChan, ok := app.clients[signal.Session]
-	if !ok {
-		slog.Error("Client not found", "session", signal.Session)
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	action := Action{
-		Action:  actionName,
-		Index:   index,
-		Session: signal.Session,
-		Board:   signal.Board,
-	}
-
-	select {
-	case clientChan <- action:
-		//slog.Info("Sent action", "action", action)
-		return
-	default:
-		// Channel blocked, skip
-		//slog.Info("BLOCK action", "action", action)
-		return
-	}
-}
-
-func (app *Application) newGameHandler(w http.ResponseWriter, r *http.Request) {
-	// Read the current store to preserve the best score
-	signal := &SessionSignal{}
+	signal := &Signals{}
 	if err := datastar.ReadSignals(r, signal); err != nil {
 		slog.Error("Error reading signals", "error", err)
-		http.Error(w, "Error reading signals", http.StatusInternalServerError)
+		//w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	// Create a client channel
-	clientChan := app.registerClient(signal.Session)
-	defer app.unregisterClient(signal.Session)
-
-	opts := jawbreaker.GameOptions{}
-	g := jawbreaker.NewGameWithOptions(signal.Size, signal.Size, opts.PowerUps())
-	app.gamesMux.Lock()
-	app.games[signal.Session] = g
-	app.gamesMux.Unlock()
+	g, err := createGame(actionName, signal)
+	if err != nil {
+		slog.Error("Error restoring game in click", "error", err)
+		return
+	}
 
 	sse := datastar.NewSSE(w, r)
+	switch actionName {
+	case newAction:
+		sendGameStartSignals(sse, g, signal.Last, signal.Best)
 
-	err := sendGameStartSignals(sse, g.Board(), signal.Last, signal.Best)
-	if err != nil {
-		slog.Error("Error sending new game signals", "error", err)
-		http.Error(w, "Error sending new game signals", http.StatusInternalServerError)
-		return
-	}
-
-	// Keep connection alive and send events
-	for {
-		select {
-		case action := <-clientChan:
-			err := app.processAction(sse, &action)
-			if err != nil {
-				slog.Error("Error processing action", "error", err)
+	case clickAction:
+		if index >= 0 && index < len(g.Board()) {
+			status := g.Move(index)
+			if status.GameOver {
+				sendGameOverSignals(sse, status)
+			} else {
+				sendGamePlaySignals(sse, status.Board, status.Score)
 			}
-
-		case <-r.Context().Done():
-			slog.Debug("Client disconnected", "session", signal.Session)
-			return
 		}
+
+	case mouseAction:
+		board := g.BoardWithConnections(index)
+		sendGamePlaySignals(sse, board, g.Score())
 	}
 }
 
-func (app *Application) processAction(sse *datastar.ServerSentEventGenerator, action *Action) error {
-
-	app.gamesMux.Lock()
-	g := app.games[action.Session]
-	app.gamesMux.Unlock()
-
-	if g == nil {
-		return errors.New("Game not found")
-	}
-
-	if action.Action == clickAction {
-		status := g.Move(action.Index)
-		if status.GameOver {
-			if err := sendGameOverSignals(sse, status); err != nil {
-				return err
-			}
-		} else {
-			if err := sendGamePlaySignals(sse, status.Board, status.Score); err != nil {
-				return err
-			}
-		}
-	} else if action.Action == mouseAction {
-		board := g.BoardWithConnections(action.Index)
-		if err := sendGamePlaySignals(sse, board, g.Score()); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func sendGameStartSignals(sse *datastar.ServerSentEventGenerator, board jawbreaker.Board, lastScore, bestScore int) error {
+func sendGameStartSignals(sse *datastar.ServerSentEventGenerator, game *jawbreaker.Game, lastScore, bestScore int) {
 	signals := map[string]any{
-		"board":    board.Base64(),
-		"score":    0,
-		"last":     lastScore,
-		"best":     bestScore,
-		"gameOver": false,
+		"board":     game.Board().Base64(),
+		"score":     0,
+		"rows":      game.Rows(), // always square
+		"cols":      game.Cols(), // always square
+		"last":      lastScore,
+		"best":      bestScore,
+		"remaining": 0,
+		"gameOver":  false,
 	}
 
-	return sse.MarshalAndMergeSignals(signals)
+	if err := sse.MarshalAndMergeSignals(signals); err != nil {
+		slog.Error("Error sending game start signals", "error", err)
+	}
 }
 
-func sendGamePlaySignals(sse *datastar.ServerSentEventGenerator, board jawbreaker.Board, score int) error {
+func sendGamePlaySignals(sse *datastar.ServerSentEventGenerator, board jawbreaker.Board, score int) {
 	signals := map[string]any{
 		"board": board.Base64(),
 		"score": score,
 	}
 
-	return sse.MarshalAndMergeSignals(signals)
+	if err := sse.MarshalAndMergeSignals(signals); err != nil {
+		slog.Error("Error sending game play signals", "error", err)
+	}
 }
 
-func sendGameOverSignals(sse *datastar.ServerSentEventGenerator, status jawbreaker.Status) error {
+func sendGameOverSignals(sse *datastar.ServerSentEventGenerator, status jawbreaker.Status) {
 	pieceText := "pieces"
 	if status.Remaining == 1 {
 		pieceText = "piece"
@@ -348,5 +274,7 @@ func sendGameOverSignals(sse *datastar.ServerSentEventGenerator, status jawbreak
 		"gameOver":  true,
 	}
 
-	return sse.MarshalAndMergeSignals(signals)
+	if err := sse.MarshalAndMergeSignals(signals); err != nil {
+		slog.Error("Error sending game over signals", "error", err)
+	}
 }

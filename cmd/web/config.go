@@ -32,18 +32,22 @@ func (app *Application) loadConfig() {
 	}
 
 	app.cfg.port = envInt("PORT", defPort)
-	app.cfg.size = envInt("SIZE", defSize)
+	app.cfg.rows = envInt("ROWS", defRows)
+	app.cfg.cols = envInt("COLS", defCols)
 	app.cfg.block = envInt("BLOCK", defBlock)
-	app.cfg.msize = envInt("MSIZE", defMSize)
+	app.cfg.mrows = envInt("MROWS", defMRows)
+	app.cfg.mcols = envInt("MCOLS", defMCols)
 	app.cfg.mblock = envInt("MBLOCK", defMBlock)
 
 	// Log all configuration values as structured data
 	slog.Info("Configuration values",
 		"port", app.cfg.port,
 		"block", app.cfg.block,
-		"size", app.cfg.size,
+		"rows", app.cfg.rows,
+		"cols", app.cfg.cols,
 		"mblock", app.cfg.mblock,
-		"msize", app.cfg.msize,
+		"mrows", app.cfg.mrows,
+		"mcols", app.cfg.mcols,
 	)
 
 }

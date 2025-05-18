@@ -1,10 +1,7 @@
 package main
 
 import (
-	crand "crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -12,13 +9,17 @@ import (
 const (
 	piecePrefix = "piece"
 	gameSize    = `#game {
-    grid-template-columns: repeat(%d, %dpx);
     grid-template-rows: repeat(%d, %dpx);
+    grid-template-columns: repeat(%d, %dpx);
     gap: 2px;}`
 )
 
-func gameSizeCSS(size, block int) string {
-	return fmt.Sprintf(gameSize, size, block, size, block)
+func (app *Application) gameSizeCSS() string {
+	return fmt.Sprintf(gameSize, app.cfg.rows, app.cfg.block, app.cfg.cols, app.cfg.block)
+}
+
+func (app *Application) getCookieName() string {
+	return fmt.Sprintf("%s_%dx%d", cookieName, app.cfg.rows, app.cfg.cols)
 }
 
 // extractNumberFromPieceId checks if a string starts with "piece" followed by
@@ -63,42 +64,4 @@ func deserializeCookie(s *ScoreData, data string) {
 
 	s.LastScore = lastScore
 	s.BestScore = bestScore
-}
-
-func generateSessionID() (string, error) {
-	b := make([]byte, 24)
-	_, err := crand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-// registerClient adds a new client channel with a name
-func (app *Application) registerClient(name string) chan Action {
-	slog.Info("Registering client", "name", name)
-	app.clientsMux.Lock()
-	defer app.clientsMux.Unlock()
-
-	clientChan := make(chan Action)
-	app.clients[name] = clientChan
-	return clientChan
-}
-
-// unregisterClient removes a client channel
-func (app *Application) unregisterClient(name string) {
-	slog.Info("Unregistering client", "name", name)
-	app.clientsMux.Lock()
-	defer app.clientsMux.Unlock()
-	app.gamesMux.Lock()
-	defer app.gamesMux.Unlock()
-
-	if clientChan, ok := app.clients[name]; ok {
-		close(clientChan)
-		delete(app.clients, name)
-	}
-
-	if _, ok := app.games[name]; ok {
-		delete(app.games, name)
-	}
 }

@@ -87,7 +87,8 @@ const POWER_UP_CIRCLE_DIRECTIONS = [
 
 // --- Global Game State ---
 let gameState = {
-    size: 0,
+    rows: 0,
+    cols: 0,
     blockSize: 0,
     cookieName: "",
     score: 0,
@@ -184,7 +185,7 @@ function generateUniqueRandomNums(n, max) {
  * @returns {Array} The newly created board
  */
 function createNewBoard() {
-    const size = gameState.size * gameState.size;
+    const size = gameState.rows * gameState.cols;
 
     // Start with an empty board
     let board = Array(size).fill(WHITE);
@@ -228,7 +229,7 @@ function createNewBoard() {
  * @returns {Promise} Resolves when animation completes
  */
 async function animateNewBoard() {
-    const size = gameState.size * gameState.size;
+    const size = gameState.rows * gameState.cols;
 
     // Set up animation from empty board to current board
     gameState.animateStart =  Array(size).fill(WHITE);
@@ -267,15 +268,15 @@ function getBoardIndexFromCoordinates(x, y) {
     const col = Math.floor(adjustedX / (gameState.blockSize + GAP));
     const row = Math.floor(adjustedY / (gameState.blockSize + GAP));
 
-    if (col < 0 || col >= gameState.size || row < 0 || row >= gameState.size) {
+    if (col < 0 || col >= gameState.cols || row < 0 || row >= gameState.cols) {
         return -1;
     }
-    return row * gameState.size + col;
+    return row * gameState.cols + col;
 }
 
 function getPointFromIndex(index) {
-    const col = index % gameState.size;
-    const row = Math.floor(index / gameState.size);
+    const col = index % gameState.cols;
+    const row = Math.floor(index / gameState.cols);
     return {col, row};
 }
 
@@ -571,9 +572,9 @@ function renderBoard() {
     const glowEffectSize = 1.5; // Slightly larger glow
 
     // First pass: Draw all pieces
-    for (let row = 0; row < gameState.size; row++) {
-        for (let col = 0; col < gameState.size; col++) {
-            const index = row * gameState.size + col;
+    for (let row = 0; row < gameState.rows; row++) {
+        for (let col = 0; col < gameState.cols; col++) {
+            const index = row * gameState.cols + col;
             const piece = gameState.board[index];
             const {x, y} = getPiecePositionOnCanvas(row, col);
 
@@ -586,9 +587,9 @@ function renderBoard() {
     }
 
     // Second pass: Draw power-ups and hover effects (to ensure they are on top)
-    for (let row = 0; row < gameState.size; row++) {
-        for (let col = 0; col < gameState.size; col++) {
-            const index = row * gameState.size + col;
+    for (let row = 0; row < gameState.rows; row++) {
+        for (let col = 0; col < gameState.cols; col++) {
+            const index = row * gameState.cols + col;
             const piece = gameState.board[index];
 
             if (piece !== WHITE) {
@@ -705,8 +706,8 @@ function getConnectionsWithDirections(index, targetColor, directions, maxIterati
             const r = startRow + dir.sr + dir.dr * iter;
             const c = startCol + dir.sc + dir.dc * iter;
 
-            if (r >= 0 && r < gameState.size && c >= 0 && c < gameState.size) {
-                const currentIndex = r * gameState.size + c;
+            if (r >= 0 && r < gameState.rows && c >= 0 && c < gameState.cols) {
+                const currentIndex = r * gameState.cols + c;
                 // Power ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
                 const currentPieceBase = getPieceBase(gameState.board[currentIndex]);
                 if (gameState.board[currentIndex] !== WHITE &&
@@ -722,13 +723,12 @@ function getConnectionsWithDirections(index, targetColor, directions, maxIterati
 }
 
 function getXConnections(index, targetColor) {
-    const s2 = Math.pow(gameState.size, 2);
-    const maxIters = Math.ceil(Math.sqrt(s2 + s2));
+    const maxIters = Math.ceil(Math.sqrt(Math.pow(gameState.rows, 2) + Math.pow(gameState.cols, 2)));
     return getConnectionsWithDirections(index, targetColor, POWER_UP_X_DIRECTIONS, maxIters);
 }
 
 function getPlusConnections(index, targetColor) {
-    const maxIters = gameState.size;
+    const maxIters = Math.max(gameState.rows, gameState.cols);
     return getConnectionsWithDirections(index, targetColor, POWER_UP_PLUS_DIRECTIONS, maxIters);
 }
 
@@ -778,10 +778,10 @@ function getConnectedPieces(index) {
 
         const {row, col} = getPointFromIndex(currentIndex);
         const neighbors = [
-            (row > 0) ? currentIndex - gameState.size : -1,             // Up
-            (row < gameState.size - 1) ? currentIndex + gameState.size : -1, // Down
+            (row > 0) ? currentIndex - gameState.cols : -1,             // Up
+            (row < gameState.cols - 1) ? currentIndex + gameState.cols : -1, // Down
             (col > 0) ? currentIndex - 1 : -1,                          // Left
-            (col < gameState.size - 1) ? currentIndex + 1 : -1,         // Right
+            (col < gameState.cols - 1) ? currentIndex + 1 : -1,         // Right
         ];
 
         for (const neighborIndex of neighbors) {
@@ -805,8 +805,8 @@ function getConnectedPieces(index) {
 // --- Game State Manipulation ---
 function boardTo2DArray() {
     let boardArray = [];
-    for (let r = 0; r < gameState.size; r++) {
-        boardArray.push(gameState.board.slice(r * gameState.size, (r + 1) * gameState.size));
+    for (let r = 0; r < gameState.rows; r++) {
+        boardArray.push(gameState.board.slice(r * gameState.cols, (r + 1) * gameState.cols));
     }
     return boardArray;
 }
@@ -816,10 +816,8 @@ function updateBoardFrom2DArray(boardArray) {
 }
 
 function updateCanvasDimensions() {
-    const canvasSize = gameState.size * gameState.blockSize +
-        (gameState.size - 1) * GAP + 2 * BORDER_WIDTH;
-    gameState.canvas.width = canvasSize;
-    gameState.canvas.height = canvasSize;
+    gameState.canvas.width = gameState.cols * gameState.blockSize + (gameState.cols - 1) * GAP + 2 * BORDER_WIDTH
+    gameState.canvas.height = gameState.rows * gameState.blockSize + (gameState.rows - 1) * GAP + 2 * BORDER_WIDTH;
 }
 
 function rotateBoard(degrees) {
@@ -863,12 +861,11 @@ function rotateBoard(degrees) {
 
 function applyGravityAndShiftColumns() {
     let boardArray = boardTo2DArray();
-    const size = gameState.size;
 
     // Apply gravity (pieces fall down in each column)
-    for (let c = 0; c < size; c++) {
-        let writeRow = size - 1;
-        for (let r = size - 1; r >= 0; r--) {
+    for (let c = 0; c < gameState.cols; c++) {
+        let writeRow = gameState.rows - 1;
+        for (let r = gameState.rows - 1; r >= 0; r--) {
             if (boardArray[r][c] !== WHITE) {
                 if (writeRow !== r) {
                     boardArray[writeRow][c] = boardArray[r][c];
@@ -880,10 +877,10 @@ function applyGravityAndShiftColumns() {
     }
 
     // Shift columns to the left if a column becomes empty
-    let writeCol = size - 1;
-    for (let c = size - 1; c >= 0; c--) {
+    let writeCol = gameState.cols - 1;
+    for (let c = gameState.cols - 1; c >= 0; c--) {
         let isEmpty = true;
-        for (let r = 0; r < size; r++) {
+        for (let r = 0; r < gameState.rows; r++) {
             if (boardArray[r][c] !== WHITE) {
                 isEmpty = false;
                 break;
@@ -892,7 +889,7 @@ function applyGravityAndShiftColumns() {
 
         if (!isEmpty) {
             if (writeCol !== c) {
-                for (let row = 0; row < size; row++) {
+                for (let row = 0; row < gameState.rows; row++) {
                     boardArray[row][writeCol] = boardArray[row][c];
                     boardArray[row][c] = WHITE;
                 }
@@ -1223,7 +1220,8 @@ function registerGameEvents() {
  */
 async function initGame(opts) {
     // Initialize game state
-    gameState.size = clamp(opts.size, 8, 20); // Max size 20 for better playability
+    gameState.rows = clamp(opts.rows, 8, 20); // Max size 20 for better playability
+    gameState.cols = clamp(opts.cols, 8, 20); // Max size 20 for better playability
     gameState.blockSize = opts.blockSize || 36;
     gameState.cookieName = opts.cookieName || "jawbreaker_functional_scores_v3"; // Unique cookie name
     gameState.mobile = opts.mobile || false;
