@@ -218,7 +218,7 @@ function createNewBoard() {
     let indices = createShuffledIndexArray(size);
 
     POWER.forEach((opts, power)  => {
-        let colors = [];
+        let colors;
         if (opts.multi) {
             colors = [...GAME_PIECES, GRAY];
         } else {
@@ -446,7 +446,7 @@ function drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize) {
     ctx.restore();
 }
 
-function drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
+function drawColoredPiece(x, y, pieceSize, piece, cornerRadius) {
     const ctx = state.ctx;
     ctx.save();
 
@@ -462,7 +462,6 @@ function drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glow) {
 
     const gradBody = ctx.createLinearGradient(startX, startY, endX, endY);
     const gradHighlight = ctx.createLinearGradient(x, y, x + size, y + size);
-    //const gradHighlight = ctx.createLinearGradient(startX, startY, endX, endY);
     const color = getGradient(piece);
 
     // highlight
@@ -790,7 +789,6 @@ function renderBoard() {
     const pieceSize = state.blockSize - GAP;
     const outlineGap = 2;
     const outlineSize = pieceSize - (2 * outlineGap);
-    const glowEffectSize = 1.5; // Slightly larger glow
 
     // First pass: Draw all pieces
     for (let row = 0; row < state.rows; row++) {
@@ -802,7 +800,7 @@ function renderBoard() {
             if (piece === WHITE) {
                 drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize);
             } else {
-                drawColoredPiece(x, y, pieceSize, piece, cornerRadius, glowEffectSize);
+                drawColoredPiece(x, y, pieceSize, piece, cornerRadius);
             }
         }
     }
@@ -861,7 +859,7 @@ function renderBoardAnimated(piecesToAnimate = 8) {
     });
 }
 
-function doRenderBoardAnimated(timestamp) {
+function doRenderBoardAnimated() {
     state.board = state.animateStart.slice();
 
     const newPos = state.animatePosition + state.animatePieces;
@@ -1274,7 +1272,6 @@ function handleTouch(e) {
     handleMouseMove(e);
 }
 
-
 // --- Event Handlers ---
 async function handleClick(e) {
     if (state.animateId !== null) {
@@ -1285,14 +1282,11 @@ async function handleClick(e) {
     const index = getBoardIndexFromCoordinates(x, y);
 
     if (index >= 0 && index < state.board.length && state.board[index] !== WHITE) {
-
-
         state.undo = {
             board: state.board.slice(),
             score: state.score,
         };
         document.getElementById('undo-btn').disabled = false;
-
 
         const status = await processMove(index);
         document.getElementById("current-score").innerText = ""+status.score;
