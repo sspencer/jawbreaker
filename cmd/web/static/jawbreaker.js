@@ -42,6 +42,8 @@ const POWER_RECT = 4;
 const POWER_FILL = 5;
 const POWER_ROTATE_RIGHT = 6;
 const POWER_ROTATE_LEFT = 7;
+const POWER_BUBBLE = 8;
+const POWER_DISC = 9; // filled circle
 
 const POWER_PIECES = [
     POWER_X,
@@ -50,7 +52,16 @@ const POWER_PIECES = [
     POWER_RECT,
 ];
 
-const EXTRA_PIECES = [POWER_FILL, POWER_ROTATE_RIGHT, POWER_ROTATE_LEFT];
+const CONNECTION_PIECES = [...POWER_PIECES, POWER_DISC];
+
+const EXTRA_PIECES = [
+    POWER_FILL,
+    POWER_ROTATE_RIGHT,
+    POWER_ROTATE_LEFT,
+];
+
+const SPECIAL_PIECES= [ POWER_DISC ];
+
 
 const SHAPE_STROKE_COLOR = "white";
 const SHAPE_BORDER_COLOR = "black";
@@ -84,6 +95,19 @@ const POWER_UP_CIRCLE_DIRECTIONS = [
     {sr:  1, sc:  3, dc:  0, dr: -1},
     {sr: -3, sc:  1, dc: -1, dr: 0},
 ];
+const POWER_UP_DISC1_DIRECTIONS = [
+    {sr: -1, sc: -2, dc:  0, dr:  1},
+    {sr:  2, sc: -1, dc:  1, dr:  0},
+    {sr:  1, sc:  2, dc:  0, dr: -1},
+    {sr: -2, sc:  1, dc: -1, dr: 0},
+];
+
+const POWER_UP_DISC2_DIRECTIONS = [
+    {sr: -1, sc: -1, dc:  0, dr:  1},
+    {sr:  1, sc: -1, dc:  1, dr:  0},
+    {sr:  1, sc:  1, dc:  0, dr: -1},
+    {sr: -1, sc:  1, dc: -1, dr: 0},
+];
 
 // --- Global Game State ---
 let gameState = {
@@ -110,6 +134,7 @@ let gameState = {
     canvas: null,
     ctx: null,
     undo: null,
+    weightedFills: true,
 };
 
 function clamp(value, min, max) {
@@ -198,16 +223,21 @@ function createNewBoard() {
     const colors = [...GAME_PIECES, GRAY]; // Colors that power-ups can be on
     const ppLen = POWER_PIECES.length;
     const exLen = EXTRA_PIECES.length;
+    const spLen = SPECIAL_PIECES.length;
     // Max number of unique spots needed for power-ups.
     // Each of ppLen can be on any of 'colors' length. Each of exLen is typically on GRAY.
-    const numPowerUpSlotsToGenerate = Math.min(size, (ppLen * colors.length) + exLen);
+    const numPowerUpSlotsToGenerate = Math.min(size, (ppLen * colors.length) + exLen + spLen);
 
     const uniqIndices = generateUniqueRandomNums(numPowerUpSlotsToGenerate, size - 1);
 
-    // Place EXTRA_PIECES (typically on GRAY)
     for (let i = 0; i < EXTRA_PIECES.length; i++) {
         if (uniqIndices.length === 0) break;
         board[uniqIndices.shift()] = GRAY + EXTRA_PIECES[i];
+    }
+
+    for (let i = 0; i < SPECIAL_PIECES.length; i++) {
+        if (uniqIndices.length === 0) break;
+        board[uniqIndices.shift()] = GRAY + SPECIAL_PIECES[i];
     }
 
     // Place standard POWER_PIECES on various colors
@@ -240,20 +270,59 @@ async function animateNewBoard() {
     shuffleArray(gameState.animateIndices);
 
     // Run the animation
-    return renderBoardAnimated();
+    return renderBoardAnimated(8);
 }
 
 function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function fillEmptySpacesOnBoard() {
-    for (let i = 0; i < gameState.board.length; i++) {
-        if (gameState.board[i] === WHITE) {
-            gameState.board[i] = randomItem(GAME_PIECES);
+function fillSpaces(connections) {
+    if (connections === undefined) {
+        connections = [];
+        for (let i = 0; i < gameState.board.length; i++) {
+            if (gameState.board[i] === WHITE) {
+                connections.push(i);
+            }
         }
     }
+
+    if (gameState.weightedFills) {
+        // Use an object to count occurrences
+        const counts = {};
+        for (const item of gameState.board) {
+            const piece = getPieceBase(item);
+            if (piece === WHITE || piece === GRAY) continue;
+            counts[piece] = (counts[piece] || 0) + 1;
+        }
+
+        const choices = Object.entries(counts).map(([value, count]) => ({value, count}));
+
+        for (let c in connections) {
+            gameState.board[connections[c]] = weightedRandom(choices); // randomItem(GAME_PIECES);
+        }
+    } else {
+        for (let c in connections) {
+            gameState.board[connections[c]] = randomItem(GAME_PIECES);
+        }
+
+    }
 }
+
+function weightedRandom(choices) {
+    // Sum up all counts
+    const total = choices.reduce((sum, obj) => sum + obj.count, 0);
+    // Get a random number in [0, total)
+    let r = Math.random() * total;
+    // Walk through array, subtracting counts, find where it lands
+    for (let i = 0; i < choices.length; i++) {
+        if (r < choices[i].count) {
+            return choices[i].value;
+        }
+        r -= choices[i].count;
+    }
+}
+
 
 function getCanvasCoordinates(e) {
     const rect = gameState.canvas.getBoundingClientRect();
@@ -409,13 +478,17 @@ function prepareShapeContext() {
     return ctx;
 }
 
-function finalizeShapeDraw(ctx) {
+function finalizeShapeDraw(ctx, opts) {
     // Draw border first
     ctx.strokeStyle = SHAPE_BORDER_COLOR;
     ctx.lineWidth = SHAPE_LINE_WIDTH + SHAPE_BORDER_LINE_WIDTH * 2; // Ensure border is outside main line
     ctx.stroke();
     // Draw the main shape line
-    ctx.strokeStyle = SHAPE_STROKE_COLOR;
+    if (opts) {
+        ctx.strokeStyle = SHAPE_BORDER_COLOR;
+    } else {
+        ctx.strokeStyle = SHAPE_STROKE_COLOR;
+    }
     ctx.lineWidth = SHAPE_LINE_WIDTH;
     ctx.stroke();
     ctx.restore();
@@ -449,12 +522,74 @@ function drawCircle(x, y, size) {
     finalizeShapeDraw(ctx);
 }
 
-function drawRect(x, y, size) {
+function drawDisc(x, y, size) {
+    const ctx = prepareShapeContext();
+    const radius = size * 0.3; // Adjust this value as needed
+    const cx = x + size / 2;
+    const cy = y + size / 2;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = SHAPE_STROKE_COLOR
+    ctx.fill();
+    ctx.strokeStyle = SHAPE_BORDER_COLOR;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    finalizeShapeDraw(ctx);
+}
+
+function drawSpike(x, y, size) {
+    const ctx = prepareShapeContext();
+    const padding = size * 0.2;
+    const left = x + padding;
+    const right = x + size - padding;
+    const centerY = y + size / 2;
+    const spikeHeight = size * 0.2;
+
+    // Main horizontal line (with spike up and down at 1/3 and 2/3 points)
+    ctx.beginPath();
+    ctx.moveTo(left, centerY);
+
+    // 1st segment
+    const spike1x = left + (right - left) / 3;
+    ctx.lineTo(spike1x, centerY);
+
+    // Spike up
+    ctx.lineTo(spike1x + (right - left) * 0.05, centerY - spikeHeight);
+    ctx.lineTo(spike1x + (right - left) * 0.10, centerY);
+
+    // 2nd segment
+    const spike2x = left + 2 * (right - left) / 3;
+    ctx.lineTo(spike2x, centerY);
+
+    // Spike down
+    ctx.lineTo(spike2x + (right - left) * 0.05, centerY + spikeHeight);
+    ctx.lineTo(spike2x + (right - left) * 0.10, centerY);
+
+    // Last segment
+    ctx.lineTo(right, centerY);
+
+    ctx.strokeStyle = SHAPE_STROKE_COLOR;
+    ctx.lineWidth = SHAPE_LINE_WIDTH;
+    ctx.stroke();
+
+    // Border line (draw over main line for higher-line border effect)
+    ctx.save();
+    ctx.strokeStyle = SHAPE_BORDER_COLOR;
+    ctx.lineWidth = SHAPE_BORDER_LINE_WIDTH;
+    ctx.stroke();
+    ctx.restore();
+
+    finalizeShapeDraw(ctx);
+}
+
+function drawRect(x, y, size, opts) {
     const ctx = prepareShapeContext();
     const padding = size * 0.2; // Adjusted padding
     const rectInnerSize = size - 2 * padding;
     ctx.rect(x + padding, y + padding, rectInnerSize, rectInnerSize);
-    finalizeShapeDraw(ctx);
+    finalizeShapeDraw(ctx, opts);
 }
 
 function drawPowerFill(x, y, size) {
@@ -485,7 +620,54 @@ function drawPowerFill(x, y, size) {
     ctx.fillStyle = COLOR_MAP.get(PURPLE);
     ctx.fill();
     ctx.restore();
+
+    drawRect(x-8, y-8, size+16, "reverse");
 }
+
+function drawPowerBubble(x, y, size) {
+    const ctx = gameState.ctx;
+    ctx.save();
+
+    // Main circle for clipping and outline
+    const centerX = x + size / 2;
+    const centerY = y + size / 2;
+    const radius = size * 0.3;
+
+    // Clip to circle, so color doesn't bleed out
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Draw colored pie slices inside clip region
+    const quadColors = [BLUE, GREEN, RED, YELLOW];
+    for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(
+            centerX,
+            centerY,
+            radius,
+            (Math.PI / 2) * i,
+            (Math.PI / 2) * (i + 1)
+        );
+        ctx.closePath();
+        ctx.fillStyle = COLOR_MAP.get(quadColors[i]);
+        ctx.fill();
+    }
+
+    // Optional highlight
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - radius / 2, radius / 3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fill();
+
+    ctx.restore();
+
+    const f = gameState.blockSize / 9;
+    drawCircle(x-f, y-f, size+f*2);
+
+}
+
 
 function drawRotateRight(x, y, size) {
     const ctx = prepareShapeContext();
@@ -550,13 +732,18 @@ function drawPowerUp(x, y, size, powerUpType) {
         case POWER_FILL:
             drawPowerFill(shapeX, shapeY, shapeSize);
             break;
+        case POWER_BUBBLE:
+            drawPowerBubble(shapeX, shapeY, shapeSize);
+            break;
         case POWER_ROTATE_RIGHT:
             drawRotateRight(shapeX, shapeY, shapeSize);
             break;
         case POWER_ROTATE_LEFT:
             drawRotateLeft(shapeX, shapeY, shapeSize);
             break;
-        case POWER_CIRCLE: // Fallthrough if POWER_CIRCLE is still desired, or handle explicitly
+        case POWER_DISC:
+            drawDisc(shapeX, shapeY, shapeSize);
+            break;
         default:
             drawCircle(shapeX, shapeY, shapeSize);
             break; // Default to circle
@@ -608,20 +795,13 @@ function renderBoard() {
     }
 }
 
-/**
- * Sets up animation state and performs a board transformation with animation
- * @param {Function} transformFn - Function that transforms the board
- * @param {number} index - Index of the piece that triggered the transformation
- * @param {number} [frameSpeed] - Optional frame speed override
- * @returns {Promise} - Resolves when animation completes
- */
-async function animateTransformation(transformFn) {
+async function animateTransformation(transformFn, transformOpts) {
     // Save the starting state
     const startBoard = gameState.board.slice();
 
     // Apply the transformation
     if (typeof transformFn === 'function') {
-        transformFn();
+        transformFn(transformOpts);
     }
 
     // Set up animation state
@@ -630,13 +810,14 @@ async function animateTransformation(transformFn) {
     let changes = findChangedIndices(gameState.animateStart, gameState.animateEnd);
     shuffleArray(changes);
     gameState.animateIndices = changes;
-
     // Run the animation
-    await renderBoardAnimated();
+    await renderBoardAnimated(1);
     return gameState.board;
 }
 
-function renderBoardAnimated() {
+function renderBoardAnimated(piecesToAnimate = 8) {
+    console.log("renderBoardAnimated:", piecesToAnimate);
+    gameState.animatePieces = piecesToAnimate;
     gameState.animatePosition = 0;
     return new Promise((resolve) => {
         gameState.animateResolve = resolve;
@@ -677,6 +858,67 @@ function doRenderBoardAnimated(timestamp) {
     }
 }
 
+function getConnectedPieces(index) {
+    // This function is crucial. It determines which pieces are connected for removal or hover.
+    if (index < 0 || index >= gameState.board.length || gameState.board[index] === WHITE) return [];
+
+    const clickedPiece = gameState.board[index];
+    const baseColorOfClickedPiece = getPieceBase(clickedPiece);
+    const powerUpType = getPowerUpType(clickedPiece);
+
+    // 1. Handle EXTRA_PIECES (Fill, Rotations) - for hover, they usually highlight themselves.
+    // Their actual "connection" for removal is handled by their specific logic.
+    if (EXTRA_PIECES.includes(powerUpType)) {
+        return [index]; // For hover, highlight the power-up itself.
+    }
+
+    let powerUpIndices = [];
+    // 2. Handle other POWER_PIECES (X, Plus, Circle, Rect)
+
+    if (CONNECTION_PIECES.includes(powerUpType)) {
+        powerUpIndices = getConnectionsForPowerUp(index, baseColorOfClickedPiece, powerUpType);
+        if (powerUpIndices.length > 0) {
+            powerUpIndices.unshift(index);
+        }
+        //return affectedIndices.filter(i => i >= 0 && i < gameState.board.length && gameState.board[i] !== WHITE);
+    }
+
+    // 3. Standard Flood Fill for same-colored pieces (no power-up)
+    const connectedIndices = [];
+    const stack = [index];
+    const visited = new Array(gameState.board.length).fill(false);
+    visited[index] = true;
+
+    while (stack.length > 0) {
+        const currentIndex = stack.pop();
+        connectedIndices.push(currentIndex);
+
+        const {row, col} = getPointFromIndex(currentIndex);
+        const neighbors = [
+            (row > 0) ? currentIndex - gameState.cols : -1,             // Up
+            (row < gameState.cols - 1) ? currentIndex + gameState.cols : -1, // Down
+            (col > 0) ? currentIndex - 1 : -1,                          // Left
+            (col < gameState.cols - 1) ? currentIndex + 1 : -1,         // Right
+        ];
+
+        for (const neighborIndex of neighbors) {
+            if (neighborIndex !== -1 && !visited[neighborIndex] &&
+                gameState.board[neighborIndex] !== WHITE &&
+                getPieceBase(gameState.board[neighborIndex]) === baseColorOfClickedPiece) {
+                visited[neighborIndex] = true;
+                stack.push(neighborIndex);
+            }
+        }
+    }
+
+    // combineAndRemoveDuplicates
+    const combinedArray = [...powerUpIndices, ...connectedIndices];
+    const uniqueArray = [...new Set(combinedArray)];
+
+    // For normal pieces, only return if 2 or more are connected.
+    return uniqueArray.length >= 2 ? uniqueArray : [];
+}
+
 // --- Connection Logic ---
 function getConnectionsForPowerUp(index, targetColor, powerUpType) {
     // This function determines the area of effect for non-EXTRA power-ups like X, Plus.
@@ -690,6 +932,8 @@ function getConnectionsForPowerUp(index, targetColor, powerUpType) {
             return getRectConnections(index, targetColor);
         case POWER_CIRCLE:
             return getCircularConnections(index, targetColor);
+        case POWER_DISC:
+            return getDiscConnections(index, targetColor);
         default:
             return [];
     }
@@ -737,70 +981,17 @@ function getRectConnections(index, targetColor) {
 }
 
 function getCircularConnections(index, targetColor) {
-    const c1 = getConnectionsWithDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 1); // Inner ring
-    const c2 = getConnectionsWithDirections(index, targetColor, POWER_UP_CIRCLE_DIRECTIONS, 3); // Outer ring
+     const c1 = getConnectionsWithDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 1); // Inner ring
+     const c2 = getConnectionsWithDirections(index, targetColor, POWER_UP_CIRCLE_DIRECTIONS, 3); // Outer ring
+     return [...c1, ...c2];
+}
+
+function getDiscConnections(index, targetColor) {
+    const c1 = getConnectionsWithDirections(index, targetColor, POWER_UP_DISC1_DIRECTIONS, 3);
+    const c2 = getConnectionsWithDirections(index, targetColor, POWER_UP_DISC2_DIRECTIONS, 2);
     return [...c1, ...c2];
 }
 
-function getConnectedPieces(index) {
-    // This function is crucial. It determines which pieces are connected for removal or hover.
-    if (index < 0 || index >= gameState.board.length || gameState.board[index] === WHITE) return [];
-
-    const clickedPiece = gameState.board[index];
-    const baseColorOfClickedPiece = getPieceBase(clickedPiece);
-    const powerUpType = getPowerUpType(clickedPiece);
-
-    // 1. Handle EXTRA_PIECES (Fill, Rotations) - for hover, they usually highlight themselves.
-    // Their actual "connection" for removal is handled by their specific logic.
-    if (EXTRA_PIECES.includes(powerUpType)) {
-        return [index]; // For hover, highlight the power-up itself.
-    }
-
-    let powerUpIndices = [];
-    // 2. Handle other POWER_PIECES (X, Plus, Circle, Rect)
-    if (POWER_PIECES.includes(powerUpType)) {
-        powerUpIndices = getConnectionsForPowerUp(index, baseColorOfClickedPiece, powerUpType);
-        if (powerUpIndices.length > 0) {
-            powerUpIndices.unshift(index);
-        }
-        //return affectedIndices.filter(i => i >= 0 && i < gameState.board.length && gameState.board[i] !== WHITE);
-    }
-
-    // 3. Standard Flood Fill for same-colored pieces (no power-up)
-    const connectedIndices = [];
-    const stack = [index];
-    const visited = new Array(gameState.board.length).fill(false);
-    visited[index] = true;
-
-    while (stack.length > 0) {
-        const currentIndex = stack.pop();
-        connectedIndices.push(currentIndex);
-
-        const {row, col} = getPointFromIndex(currentIndex);
-        const neighbors = [
-            (row > 0) ? currentIndex - gameState.cols : -1,             // Up
-            (row < gameState.cols - 1) ? currentIndex + gameState.cols : -1, // Down
-            (col > 0) ? currentIndex - 1 : -1,                          // Left
-            (col < gameState.cols - 1) ? currentIndex + 1 : -1,         // Right
-        ];
-
-        for (const neighborIndex of neighbors) {
-            if (neighborIndex !== -1 && !visited[neighborIndex] &&
-                gameState.board[neighborIndex] !== WHITE &&
-                getPieceBase(gameState.board[neighborIndex]) === baseColorOfClickedPiece) {
-                visited[neighborIndex] = true;
-                stack.push(neighborIndex);
-            }
-        }
-    }
-
-    // combineAndRemoveDuplicates
-    const combinedArray = [...powerUpIndices, ...connectedIndices];
-    const uniqueArray = [...new Set(combinedArray)];
-
-    // For normal pieces, only return if 2 or more are connected.
-    return uniqueArray.length >= 2 ? uniqueArray : [];
-}
 
 // --- Game State Manipulation ---
 function boardTo2DArray() {
@@ -910,22 +1101,27 @@ async function removeTargetedPieces(index) {
     let piecesRemovedCount = 0;
 
     if (powerUpType === POWER_FILL) {
-        gameState.board[index] = randomItem(GAME_PIECES);; // Remove the fill piece itself
+        gameState.board[index] = WHITE; // randomItem(GAME_PIECES); // Remove the fill piece itself
         applyGravityAndShiftColumns();
         // Animate filling empty spaces
-        await animateTransformation(fillEmptySpacesOnBoard);
+        await animateTransformation(fillSpaces);
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
-        gameState.board[index] = randomItem(GAME_PIECES);
+        gameState.board[index] = WHITE; //randomItem(GAME_PIECES);
         rotateBoard(90);
         applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
     } else if (powerUpType === POWER_ROTATE_LEFT) {
-        gameState.board[index] = randomItem(GAME_PIECES);
+        gameState.board[index] = WHITE; // randomItem(GAME_PIECES);
         rotateBoard(-90);
         applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
-    }
+    } /*else if (powerUpType === POWER_BUBBLE) {
+        getConnectionsForPowerUp(index, getPieceBase(gameState.board[index]), POWER_BUBBLE);
+        applyGravityAndShiftColumns();
+        await animateTransformation(fillSpaces, getConnectedPieces(index));
+        return {count: 1, isSpecialAction: true};
+    }*/
 
     // For standard pieces or non-EXTRA power-ups
     piecesToRemove = getConnectedPieces(index);
@@ -1177,9 +1373,7 @@ function registerGameEvents() {
 
     const undoBtn = document.getElementById("undo-btn");
     if (undoBtn) {
-        console.log("undoBtn", undoBtn, "disable", undoBtn.disabled);
         undoBtn.disabled = true;
-        console.log("undoBtn", undoBtn, "disable", undoBtn.disabled);
         undoBtn.addEventListener("click", async (e) => {
             console.log("undo button pressed");
             e.preventDefault();
