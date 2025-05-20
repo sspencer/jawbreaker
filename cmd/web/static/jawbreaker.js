@@ -623,45 +623,6 @@ function drawExchange(x, y, size) {
     ctx.restore();
 }
 
-function drawSpike2(x, y, size) {
-    const ctx = prepareShapeContext();
-    const padding = 3; //size * 0.2;
-    const left = x + padding;
-    const right = x + size - padding;
-    const centerX = x + size / 2;
-    const topArrowY = y + size * 0.35; // Top arrow position
-    const bottomArrowY = y + size * 0.65; // Bottom arrow position
-    const arrowHeadSize = size * 0.15; // Size of arrow head
-
-    // Offset values for the arrows
-    const topArrowOffset = size * 0.2; // Offset to the right for top arrow
-    const bottomArrowOffset = size * 0.2; // Offset to the left for bottom arrow
-
-    // Draw top arrow (pointing right)
-    ctx.moveTo(left + topArrowOffset, topArrowY);
-    // Arrow shaft to a point before the right edge
-    ctx.lineTo(right - arrowHeadSize, topArrowY);
-    // Arrow head
-    ctx.lineTo(right - arrowHeadSize, topArrowY - arrowHeadSize);
-    ctx.lineTo(right, topArrowY);
-    ctx.lineTo(right - arrowHeadSize, topArrowY + arrowHeadSize);
-    ctx.lineTo(right - arrowHeadSize, topArrowY);
-
-    // Move to bottom arrow starting point (without drawing)
-    ctx.moveTo(right - bottomArrowOffset, bottomArrowY);
-    // Arrow shaft to a point before the left edge
-    ctx.lineTo(left + arrowHeadSize, bottomArrowY);
-    // Arrow head
-    ctx.lineTo(left + arrowHeadSize, bottomArrowY - arrowHeadSize);
-    ctx.lineTo(left, bottomArrowY);
-    ctx.lineTo(left + arrowHeadSize, bottomArrowY + arrowHeadSize);
-    ctx.lineTo(left + arrowHeadSize, bottomArrowY);
-
-    // Let finalizeShapeDraw handle the styling and drawing
-    ctx.restore();
-    finalizeShapeDraw(ctx);
-}
-
 function drawRect(x, y, size, opts) {
     const ctx = prepareShapeContext();
     const padding = size * 0.2; // Adjusted padding
