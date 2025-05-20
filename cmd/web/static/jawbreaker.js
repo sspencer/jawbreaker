@@ -40,19 +40,21 @@ const POWER_PLUS = 2;
 const POWER_CIRCLE = 3;
 const POWER_RECT = 4;
 const POWER_FILL = 5;
-const POWER_ROTATE_RIGHT = 6;
-const POWER_ROTATE_LEFT = 7;
-const POWER_DISC = 8; // filled circle
+const POWER_RIGHT = 6; // rotate right
+const POWER_LEFT = 7;
+const POWER_DISC = 8;
+const POWER_EXCHANGE = 9;
 
 const POWER = new Map([
-    [POWER_X,            {connections: true,  multi: true}],
-    [POWER_PLUS,         {connections: true,  multi: true}],
-    [POWER_CIRCLE,       {connections: true,  multi: true}],
-    [POWER_RECT,         {connections: true,  multi: true}],
-    [POWER_DISC,         {connections: true,  multi: false}],
-    [POWER_FILL,         {connections: false, multi: false}],
-    [POWER_ROTATE_RIGHT, {connections: false, multi: false}],
-    [POWER_ROTATE_LEFT,  {connections: false, multi: false}],
+    [POWER_X,      {connections: true,  multi: true}],
+    [POWER_PLUS,   {connections: true,  multi: true}],
+    [POWER_CIRCLE, {connections: true,  multi: true}],
+    [POWER_RECT,   {connections: true,  multi: true}],
+    [POWER_DISC,   {connections: true,  multi: false}],
+    [POWER_FILL,   {connections: false, multi: false}],
+    [POWER_RIGHT,  {connections: false, multi: false}],
+    [POWER_LEFT,   {connections: false, multi: false}],
+    [POWER_EXCHANGE,  {connections: false, multi: false}],
 ])
 
 const SHAPE_STROKE_COLOR = "white";
@@ -247,11 +249,25 @@ function randomItem(arr) {
 }
 
 function fillSpaces(connections) {
+    fillItUp(connections, false);
+}
+
+function fillPieces(connections) {
+    fillItUp(connections, true);
+}
+
+function fillItUp(connections, rainbow = false) {
     if (connections === undefined) {
         connections = [];
         for (let i = 0; i < state.board.length; i++) {
-            if (state.board[i] === WHITE) {
-                connections.push(i);
+            if (rainbow) {
+                if (GAME_PIECES.includes(state.board[i])) {
+                    connections.push(i);
+                }
+            } else {
+                if (state.board[i] === WHITE) {
+                    connections.push(i);
+                }
             }
         }
     }
@@ -502,7 +518,7 @@ function prepareShapeContext() {
 function finalizeShapeDraw(ctx, opts) {
     // Draw border first
     ctx.strokeStyle = SHAPE_BORDER_COLOR;
-    ctx.lineWidth = SHAPE_LINE_WIDTH + SHAPE_BORDER_LINE_WIDTH * 2; // Ensure border is outside main line
+    ctx.lineWidth = SHAPE_LINE_WIDTH + SHAPE_BORDER_LINE_WIDTH + 1; // Ensure border is outside main line
     ctx.stroke();
     // Draw the main shape line
     if (opts) {
@@ -560,48 +576,89 @@ function drawDisc(x, y, size) {
     finalizeShapeDraw(ctx);
 }
 
-function drawSpike(x, y, size) {
+function drawExchangePowerUp(ctx, x, y, size, padding = 6) {
+    const arrowColor = 'white';
+    const borderColor = 'black';
+    const arrowWidth = size * 0.2; // thickness of the arrow shaft
+    const headLength = size * 0.2;  // length of arrowhead
+
+    // Center coordinates
+    const cx = x + size / 2;
+    const topY = y + padding + arrowWidth / 2 - 1;
+    const bottomY = y + size - padding - arrowWidth / 2 + 1;
+
+    function drawArrow(startX, endX, y, direction) {
+        ctx.beginPath();
+
+        // Shaft
+        ctx.moveTo(startX, y - arrowWidth / 2);
+        ctx.lineTo(endX, y - arrowWidth / 2);
+        ctx.lineTo(endX, y - arrowWidth);
+        ctx.lineTo(endX + direction * headLength, y);
+        ctx.lineTo(endX, y + arrowWidth);
+        ctx.lineTo(endX, y + arrowWidth / 2);
+        ctx.lineTo(startX, y + arrowWidth / 2);
+        ctx.closePath();
+
+        ctx.fillStyle = arrowColor;
+        ctx.fill();
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    // Top arrow: pointing right
+    const offset = 3;
+    drawArrow(cx - size * 0.2, cx + size * 0.2 + offset, topY, 1);
+
+    // Bottom arrow: pointing left
+    drawArrow(cx + size * 0.2 , cx - size * 0.2 - offset, bottomY, -1);
+}
+
+function drawExchange(x, y, size) {
+    const ctx = state.ctx;
+    ctx.save();
+    ctx.beginPath();
+    drawExchangePowerUp(ctx, x, y, size);
+    ctx.restore();
+}
+
+function drawSpike2(x, y, size) {
     const ctx = prepareShapeContext();
-    const padding = size * 0.2;
+    const padding = 3; //size * 0.2;
     const left = x + padding;
     const right = x + size - padding;
-    const centerY = y + size / 2;
-    const spikeHeight = size * 0.2;
+    const centerX = x + size / 2;
+    const topArrowY = y + size * 0.35; // Top arrow position
+    const bottomArrowY = y + size * 0.65; // Bottom arrow position
+    const arrowHeadSize = size * 0.15; // Size of arrow head
 
-    // Main horizontal line (with spike up and down at 1/3 and 2/3 points)
-    ctx.beginPath();
-    ctx.moveTo(left, centerY);
+    // Offset values for the arrows
+    const topArrowOffset = size * 0.2; // Offset to the right for top arrow
+    const bottomArrowOffset = size * 0.2; // Offset to the left for bottom arrow
 
-    // 1st segment
-    const spike1x = left + (right - left) / 3;
-    ctx.lineTo(spike1x, centerY);
+    // Draw top arrow (pointing right)
+    ctx.moveTo(left + topArrowOffset, topArrowY);
+    // Arrow shaft to a point before the right edge
+    ctx.lineTo(right - arrowHeadSize, topArrowY);
+    // Arrow head
+    ctx.lineTo(right - arrowHeadSize, topArrowY - arrowHeadSize);
+    ctx.lineTo(right, topArrowY);
+    ctx.lineTo(right - arrowHeadSize, topArrowY + arrowHeadSize);
+    ctx.lineTo(right - arrowHeadSize, topArrowY);
 
-    // Spike up
-    ctx.lineTo(spike1x + (right - left) * 0.05, centerY - spikeHeight);
-    ctx.lineTo(spike1x + (right - left) * 0.10, centerY);
+    // Move to bottom arrow starting point (without drawing)
+    ctx.moveTo(right - bottomArrowOffset, bottomArrowY);
+    // Arrow shaft to a point before the left edge
+    ctx.lineTo(left + arrowHeadSize, bottomArrowY);
+    // Arrow head
+    ctx.lineTo(left + arrowHeadSize, bottomArrowY - arrowHeadSize);
+    ctx.lineTo(left, bottomArrowY);
+    ctx.lineTo(left + arrowHeadSize, bottomArrowY + arrowHeadSize);
+    ctx.lineTo(left + arrowHeadSize, bottomArrowY);
 
-    // 2nd segment
-    const spike2x = left + 2 * (right - left) / 3;
-    ctx.lineTo(spike2x, centerY);
-
-    // Spike down
-    ctx.lineTo(spike2x + (right - left) * 0.05, centerY + spikeHeight);
-    ctx.lineTo(spike2x + (right - left) * 0.10, centerY);
-
-    // Last segment
-    ctx.lineTo(right, centerY);
-
-    ctx.strokeStyle = SHAPE_STROKE_COLOR;
-    ctx.lineWidth = SHAPE_LINE_WIDTH;
-    ctx.stroke();
-
-    // Border line (draw over main line for higher-line border effect)
-    ctx.save();
-    ctx.strokeStyle = SHAPE_BORDER_COLOR;
-    ctx.lineWidth = SHAPE_BORDER_LINE_WIDTH;
-    ctx.stroke();
+    // Let finalizeShapeDraw handle the styling and drawing
     ctx.restore();
-
     finalizeShapeDraw(ctx);
 }
 
@@ -695,32 +752,19 @@ function drawPowerUp(x, y, size, powerUpType) {
     const shapeX = x + (paddingFactor / 2);
     const shapeY = y + (paddingFactor / 2);
 
-    switch (powerUpType) {
-        case POWER_X:
-            drawX(shapeX, shapeY, shapeSize);
-            break;
-        case POWER_PLUS:
-            drawPlus(shapeX, shapeY, shapeSize);
-            break;
-        case POWER_RECT:
-            drawRect(shapeX, shapeY, shapeSize);
-            break;
-        case POWER_FILL:
-            drawPowerFill(shapeX, shapeY, shapeSize);
-            break;
-        case POWER_ROTATE_RIGHT:
-            drawRotateRight(shapeX, shapeY, shapeSize);
-            break;
-        case POWER_ROTATE_LEFT:
-            drawRotateLeft(shapeX, shapeY, shapeSize);
-            break;
-        case POWER_DISC:
-            drawDisc(shapeX, shapeY, shapeSize);
-            break;
-        default:
-            drawCircle(shapeX, shapeY, shapeSize);
-            break; // Default to circle
-    }
+    const powerUpDrawMap = {
+        [POWER_X]: drawX,
+        [POWER_PLUS]: drawPlus,
+        [POWER_RECT]: drawRect,
+        [POWER_FILL]: drawPowerFill,
+        [POWER_RIGHT]: drawRotateRight,
+        [POWER_LEFT]: drawRotateLeft,
+        [POWER_DISC]: drawDisc,
+        [POWER_EXCHANGE]: drawExchange,
+    };
+
+    const drawFn = powerUpDrawMap[powerUpType] || drawCircle;
+    drawFn(shapeX, shapeY, shapeSize);
 }
 
 function renderBoard() {
@@ -1093,12 +1137,23 @@ async function removeTargetedPieces(index) {
             renderBoard();
         }
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
-    } else if (powerUpType === POWER_ROTATE_RIGHT) {
+    } else if (powerUpType === POWER_EXCHANGE) {
+        state.board[index] = WHITE;
+        applyGravityAndShiftColumns();
+
+        if (ANIMATE) {
+            await animateTransformation(fillPieces);
+        } else {
+            fillPieces();
+            renderBoard();
+        }
+        return {count: 1, isSpecialAction: true}; // Special action, count is nominal
+    } else if (powerUpType === POWER_RIGHT) {
         state.board[index] = WHITE;
         rotateBoard(90);
         applyGravityAndShiftColumns();
         return {count: 1, isSpecialAction: true};
-    } else if (powerUpType === POWER_ROTATE_LEFT) {
+    } else if (powerUpType === POWER_LEFT) {
         state.board[index] = WHITE;
         rotateBoard(-90);
         applyGravityAndShiftColumns();
