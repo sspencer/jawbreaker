@@ -42,22 +42,21 @@ type GameMechanics struct {
 }
 
 type pageData struct {
-	DS         bool
-	DatastarJS string
-	GameCode   template.JS
-	GameSrc    string
-	StyleCSS   string
-	Rows       int
-	Cols       int
-	Block      int
-	MRows      int
-	MCols      int
-	MBlock     int
-	CookieName string
-	GameStyle  template.CSS
-	Game       template.HTML
-	LastScore  int
-	BestScore  int
+	DS          bool
+	DatastarUrl string
+	GameSrc     template.JS
+	GameUrl     string
+	GameStyle   template.CSS
+	StyleUrl    string
+	Rows        int
+	Cols        int
+	Block       int
+	MRows       int
+	MCols       int
+	MBlock      int
+	CookieName  string
+	LastScore   int
+	BestScore   int
 	GameMechanics
 }
 
@@ -65,8 +64,8 @@ func (app *Application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := app.cfg
 
 	data := pageData{
-		GameSrc:    fsys.HashName("static/jawbreaker.js"),
-		StyleCSS:   fsys.HashName("static/style.css"),
+		GameUrl:    fsys.HashName("static/jawbreaker.js"),
+		StyleUrl:   fsys.HashName("static/style.css"),
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
 		Block:      cfg.block,
@@ -94,8 +93,8 @@ func (app *Application) oneHandler(w http.ResponseWriter, r *http.Request) {
 
 	cfg := app.cfg
 	data := pageData{
-		GameCode:   template.JS(gameBytes),
-		StyleCSS:   fsys.HashName("static/style.css"),
+		GameSrc:    template.JS(gameBytes),
+		StyleUrl:   fsys.HashName("static/style.css"),
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
 		Block:      cfg.block,
@@ -122,19 +121,19 @@ func (app *Application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	data := pageData{
-		DS:         true,
-		DatastarJS: fsys.HashName("static/datastar.js"),
-		StyleCSS:   fsys.HashName("static/style.css"),
-		GameStyle:  template.CSS(app.gameSizeCSS()),
-		CookieName: app.getCookieName(),
-		Rows:       cfg.rows,
-		Cols:       cfg.cols,
-		Block:      cfg.block,
-		MRows:      cfg.mrows,
-		MCols:      cfg.mcols,
-		MBlock:     cfg.mblock,
-		LastScore:  scoreData.LastScore,
-		BestScore:  scoreData.BestScore,
+		DS:          true,
+		DatastarUrl: fsys.HashName("static/datastar.js"),
+		StyleUrl:    fsys.HashName("static/style.css"),
+		GameStyle:   template.CSS(app.gameSizeCSS()),
+		CookieName:  app.getCookieName(),
+		Rows:        cfg.rows,
+		Cols:        cfg.cols,
+		Block:       cfg.block,
+		MRows:       cfg.mrows,
+		MCols:       cfg.mcols,
+		MBlock:      cfg.mblock,
+		LastScore:   scoreData.LastScore,
+		BestScore:   scoreData.BestScore,
 		GameMechanics: GameMechanics{
 			PieceSpace:       jawbreaker.PieceSpace,
 			White:            jawbreaker.White,

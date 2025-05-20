@@ -1,1463 +1,1264 @@
-// Piece constants
-const TOKEN_SPACE = 1000;
-const WHITE = 0;
-const PURPLE = 1000;
-const BLUE = 2000;
-const GREEN = 3000;
-const RED = 4000;
-const YELLOW = 5000;
-const GRAY = 6000;
-const BLACK = 7000;
-
-const GAP = 1;
-const BORDER_WIDTH = 4;
-
-// standard game pieces
-const GAME_PIECES = [PURPLE, BLUE, GREEN, RED, YELLOW];
-
-const COLOR_MAP = new Map([
-    [PURPLE, "#8a2be2"],
-    [BLUE, "#00a0ff"],
-    [GREEN, "#00cc66"],
-    [RED, "#ff3333"],
-    [YELLOW, "#ffcc00"],
-    [GRAY, "#888888"],
-    [BLACK, "#333333"],
-    [WHITE, "#ffffff"],
-]);
-
-const GRADIENT_MAP = new Map([
-    [PURPLE, ["#d442ff", "#8a2be2"]],
-    [BLUE, ["#00f0ff", "#0070ff"]],
-    [GREEN,["#00ff99", "#00cc66"]],
-    [RED, ["#ff5500", "#dd0000"]],
-    [YELLOW, ["#ffee00", "#ff8800"]],
-    [GRAY, ["#777777", "#cccccc"]],
-]);
-
-const POWER_X = 1;
-const POWER_PLUS = 2;
-const POWER_CIRCLE = 3;
-const POWER_RECT = 4;
-const POWER_FILL = 5;
-const POWER_RIGHT = 6; // rotate right
-const POWER_LEFT = 7;
-const POWER_DISC = 8;
-const POWER_EXCHANGE = 9;
-
-const POWER = new Map([
-    [POWER_X,      {connections: true,  multi: true}],
-    [POWER_PLUS,   {connections: true,  multi: true}],
-    [POWER_CIRCLE, {connections: true,  multi: true}],
-    [POWER_RECT,   {connections: true,  multi: true}],
-    [POWER_DISC,   {connections: true,  multi: false}],
-    [POWER_FILL,   {connections: false, multi: false}],
-    [POWER_RIGHT,  {connections: false, multi: false}],
-    [POWER_LEFT,   {connections: false, multi: false}],
-    [POWER_EXCHANGE,  {connections: false, multi: false}],
-])
-
-const SHAPE_STROKE_COLOR = "white";
-const SHAPE_BORDER_COLOR = "black";
-const SHAPE_LINE_WIDTH = 3; // Adjusted for potentially more complex shapes
-const SHAPE_BORDER_LINE_WIDTH = 1; // Adjusted for potentially more complex shapes
-const ANIMATE_BOARD_SPEED = 6;
-const ANIMATE_PIECE_SPEED = 3;
-const ANIMATE = true;
-
-const POWER_UP_X_DIRECTIONS = [
-    {sr: -1, sc: -1, dr: -1, dc: -1}, // Top-left
-    {sr: -1, sc:  1, dr: -1, dc:  1}, // Top-right
-    {sr:  1, sc: -1, dr:  1, dc: -1}, // Bottom-left
-    {sr:  1, sc:  1, dr:  1, dc:  1}, // Bottom-right
-];
-
-const POWER_UP_PLUS_DIRECTIONS = [
-    {sr: -1, sc:  0, dr: -1, dc:  0}, // Up
-    {sr:  1, sc:  0, dr:  1, dc:  0}, // Down
-    {sr:  0, sc: -1, dr:  0, dc: -1}, // Left
-    {sr:  0, sc:  1, dr:  0, dc:  1}, // Right
-];
-
-const POWER_UP_RECT_DIRECTIONS = [
-    {sr: -2, sc: -2, dc:  0, dr:  1},
-    {sr:  2, sc: -2, dc:  1, dr:  0},
-    {sr:  2, sc:  2, dc:  0, dr: -1},
-    {sr: -2, sc:  2, dc: -1, dr:  0},
-];
-
-const POWER_UP_CIRCLE_DIRECTIONS = [
-    {sr: -1, sc: -3, dc:  0, dr:  1},
-    {sr:  3, sc: -1, dc:  1, dr:  0},
-    {sr:  1, sc:  3, dc:  0, dr: -1},
-    {sr: -3, sc:  1, dc: -1, dr: 0},
-];
-const POWER_UP_DISC1_DIRECTIONS = [
-    {sr: -1, sc: -2, dc:  0, dr:  1},
-    {sr:  2, sc: -1, dc:  1, dr:  0},
-    {sr:  1, sc:  2, dc:  0, dr: -1},
-    {sr: -2, sc:  1, dc: -1, dr: 0},
-];
-
-const POWER_UP_DISC2_DIRECTIONS = [
-    {sr: -1, sc: -1, dc:  0, dr:  1},
-    {sr:  1, sc: -1, dc:  1, dr:  0},
-    {sr:  1, sc:  1, dc:  0, dr: -1},
-    {sr: -1, sc:  1, dc: -1, dr: 0},
-];
-
-// --- Global Game State ---
-let state = {
-    rows: 0,
-    cols: 0,
-    blockSize: 0,
-    cookieName: "",
-    score: 0,
-    bonus: 0,
-    remainingPieces: 0,
-    lastScore: 0,
-    bestScore: 0,
-    board: [],
-    animateStart: [],
-    animateEnd: [],
-    animateIndices: [],
-    animatePosition: 0,
-    animatePieces: 8,
-    animateId: null,
-    animateResolve: null, // Promise resolve function for animation
-    hoverList: new Set(),
-    hoverIndex: -1,
-    mobile: false,
-    canvas: null,
-    ctx: null,
-    undo: null,
-    weightedFills: true,
-};
-
-function clamp(value, min, max) {
-    if (value === undefined || !Number.isInteger(value)) {
-        return min;
-    }
-
-    return Math.min(Math.max(value, min), max);
-}
-
-function getCookie(name) {
-    const cookies = document.cookie.split(";");
-
-    for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.startsWith(name + "=")) {
-            return cookie.substring(name.length + 1);
-        }
-    }
-    return "";
-}
-
-function setCookie(name, value, days = 365) {
-    const date = new Date();
-    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-    const expires = "expires=" + date.toUTCString();
-    document.cookie = name + "=" + value + ";" + expires + ";path=/";
-}
-
-function lightenColor(color, percent) {
-    const num = parseInt(color.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) + amt;
-    const G = (num >> 8 & 0x00FF) + amt;
-    const B = (num & 0x0000FF) + amt;
-    return rgbToString(R, G, B);
-}
-
-function darkenColor(color, percent) {
-    const num = parseInt(color.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) - amt;
-    const G = (num >> 8 & 0x00FF) - amt;
-    const B = (num & 0x0000FF) - amt;
-    return rgbToString(R, G, B);
-}
-
-function rgbToString(R, G, B) {
-    return "#" + (
-        0x1000000 +
-        (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-        (B < 255 ? B < 1 ? 0 : B : 255)
-    ).toString(16).slice(1);
-}
-
-// --- Game Logic Functions ---
-
-/**
- * Creates a new game board filled with random pieces and power-ups
- * @returns {Array} The newly created board
- */
-function createNewBoard() {
-    const size = state.rows * state.cols;
-
-    // Start with an empty board
-    let board = Array(size).fill(WHITE);
-
-    // Fill with random game pieces
-    for (let i = 0; i < size; i++) {
-        board[i] = randomItem(GAME_PIECES);
-    }
-
-    let indices = createShuffledIndexArray(size);
-
-    POWER.forEach((opts, power)  => {
-        let colors;
-        if (opts.multi) {
-            colors = [...GAME_PIECES, GRAY];
-        } else {
-            colors = [GRAY];
-        }
-
-        for (const color of colors) {
-            board[indices.shift()] = color + power;
-        }
-    });
-
-
-    // Set the game board and return it
-    state.board = board;
-    return board;
-}
-
-/**
- * Sets up animation for a new board appearing
- * @returns {Promise} Resolves when animation completes
- */
-async function animateNewBoard() {
-    const size = state.rows * state.cols;
-
-    // Set up animation from empty board to current board
-    state.animateStart =  Array(size).fill(WHITE);
-    state.animateEnd = state.board.slice();
-
-    // For new board animation, we want to animate all indices in random order
-    state.animateIndices = createShuffledIndexArray(size);
-
-    // Run the animation
-    return renderBoardAnimated(ANIMATE_BOARD_SPEED);
-}
-
-function randomItem(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function fillSpaces(connections) {
-    fillItUp(connections, false);
-}
-
-function fillPieces(connections) {
-    fillItUp(connections, true);
-}
-
-function fillItUp(connections, rainbow = false) {
-    if (connections === undefined) {
-        connections = [];
-        for (let i = 0; i < state.board.length; i++) {
-            if (rainbow) {
-                if (GAME_PIECES.includes(state.board[i])) {
-                    connections.push(i);
-                }
-            } else {
-                if (state.board[i] === WHITE) {
-                    connections.push(i);
-                }
-            }
-        }
-    }
-
-    if (state.weightedFills) {
-        // Use an object to count occurrences
-        const counts = {};
-        for (const item of state.board) {
-            const piece = getColor(item);
-            if (piece === WHITE || piece === GRAY) continue;
-            counts[piece] = (counts[piece] || 0) + 1;
-        }
-
-        const choices = Object.entries(counts).map(([value, count]) => ({value, count}));
-        const normalized = normalizeGaps(choices, 0.33);
-
-        for (let c in connections) {
-            state.board[connections[c]] = weightedRandom(normalized); // randomItem(GAME_PIECES);
-        }
-    } else {
-        for (let c in connections) {
-            state.board[connections[c]] = randomItem(GAME_PIECES);
-        }
-    }
-}
-
-function weightedRandom(choices) {
-    // Sum up all counts
-    const total = choices.reduce((sum, obj) => sum + obj.count, 0);
-    // Get a random number in [0, total)
-    let r = Math.random() * total;
-    // Walk through array, subtracting counts, find where it lands
-    for (let i = 0; i < choices.length; i++) {
-        if (r < choices[i].count) {
-            return choices[i].value;
-        }
-        r -= choices[i].count;
-    }
-}
-
-function normalizeGaps(choices, maxGapPercent) {
-    // Validate input
-    if (!Array.isArray(choices) || choices.length <= 1 || maxGapPercent < 0 || maxGapPercent > 1) {
-        throw new Error('Invalid input: choices must be an array with at least 2 items, maxGapPercent must be between 0 and 1');
-    }
-
-    // Clone the choices array to avoid modifying the original
-    const normalizedChoices = JSON.parse(JSON.stringify(choices));
-
-    // Sort by count in descending order
-    normalizedChoices.sort((a, b) => b.count - a.count);
-
-    // Store original ratios between adjacent items to preserve relative differences
-    const originalRatios = [];
-    for (let i = 0; i < normalizedChoices.length - 1; i++) {
-        if (normalizedChoices[i].count > 0) {
-            originalRatios.push(normalizedChoices[i + 1].count / normalizedChoices[i].count);
-        } else {
-            originalRatios.push(1); // Handle zero counts
-        }
-    }
-
-    // First pass: Fix large gaps from top to bottom
-    for (let i = 0; i < normalizedChoices.length - 1; i++) {
-        const current = normalizedChoices[i];
-        const next = normalizedChoices[i + 1];
-
-        // Calculate the current gap
-        const gap = current.count - next.count;
-
-        // Calculate the maximum allowed gap based on the current value
-        const maxAllowedGap = current.count * maxGapPercent;
-
-        // If the gap exceeds the maximum allowed, adjust the next value
-        if (gap > maxAllowedGap) {
-            // Adjust to maintain the maximum allowed gap
-            next.count = Math.round(current.count * (1 - maxGapPercent));
-        } else {
-            // For similar values, preserve the original ratio if possible
-            // This ensures we don't artificially increase gaps between similar values
-            const targetCount = Math.round(current.count * originalRatios[i]);
-            // Only use the target if it doesn't create a gap larger than original
-            if (current.count - targetCount <= gap) {
-                next.count = targetCount;
-            }
-        }
-    }
-
-    return normalizedChoices;
-}
-
-function getCanvasCoordinates(e) {
-    const rect = state.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    return {x, y};
-}
-
-function getBoardIndexFromCoordinates(x, y) {
-    const adjustedX = x - BORDER_WIDTH;
-    const adjustedY = y - BORDER_WIDTH;
-    const col = Math.floor(adjustedX / (state.blockSize + GAP));
-    const row = Math.floor(adjustedY / (state.blockSize + GAP));
-
-    if (col < 0 || col >= state.cols || row < 0 || row >= state.cols) {
-        return -1;
-    }
-    return row * state.cols + col;
-}
-
-function getPointFromIndex(index) {
-    const col = index % state.cols;
-    const row = Math.floor(index / state.cols);
-    return {col, row};
-}
-
-function getColor(piece) {
-    return Math.floor(piece / TOKEN_SPACE) * TOKEN_SPACE;
-}
-
-function getPowerUp(piece) {
-    return piece % TOKEN_SPACE;
-}
-
-function getColorCode(piece) {
-    return COLOR_MAP.get(getColor(piece));
-}
-
-function getGradient(piece) {
-    return GRADIENT_MAP.get(getColor(piece));
-}
-
-function getPositionOnCanvas(row, col) {
-    const x = BORDER_WIDTH + col * (state.blockSize + GAP);
-    const y = BORDER_WIDTH + row * (state.blockSize + GAP);
-    return {x, y};
-}
-
-function createShuffledIndexArray(n) {
-    let arr = Array.from({ length: n }, (_, index) => index);
-    shuffleArray(arr);
-    return arr;
-}
-
-// Fisher-Yates shuffle algorithm
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-}
-
-function findChangedIndices(array1, array2) {
-    if (array1.length !== array2.length) {
-        throw new Error("Arrays must be of the same length.");
-    }
-
-    const changed = [];
-
-    for (let i = 0; i < array1.length; i++) {
-        if (array1[i] !== array2[i]) {
-            changed.push(i);
-        }
-    }
-
-    return changed;
-}
-
-// --- Drawing Functions ---
-function drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize) {
-    const ctx = state.ctx;
-    ctx.save();
-    ctx.strokeStyle = darkenColor(COLOR_MAP.get(WHITE), 70);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.rect(x + outlineGap, y + outlineGap, outlineSize, outlineSize);
-    ctx.stroke();
-    ctx.restore();
-}
-
-function drawColoredPiece(x, y, pieceSize, piece, cornerRadius) {
-    const ctx = state.ctx;
-    ctx.save();
-
-    const size = state.blockSize;
-
-    const angle = 225 * Math.PI / 180;
-    const diagonal = Math.sqrt(size * size + size * size);
-
-    const startX = x + size / 2 + (Math.cos(angle) * diagonal) / 2;
-    const startY = y + size / 2 + (Math.sin(angle) * diagonal) / 2;
-    const endX = x + size / 2 - (Math.cos(angle) * diagonal) / 2;
-    const endY = y + size / 2 - (Math.sin(angle) * diagonal) / 2;
-
-    const gradBody = ctx.createLinearGradient(startX, startY, endX, endY);
-    const gradHighlight = ctx.createLinearGradient(x, y, x + size, y + size);
-    const color = getGradient(piece);
-    if (!color) {
-        console.log(`getGradient(${piece}) = ${color}`);
-    }
-    // highlight
-    ctx.beginPath();
-    gradHighlight.addColorStop(0, color[1]);
-    gradHighlight.addColorStop(1, lightenColor(color[0], 5));
-    ctx.fillStyle = gradHighlight;
-    ctx.roundRect(x, y, pieceSize, pieceSize, cornerRadius);
-    ctx.fill();
-
-    // inner fill
-    ctx.beginPath();
-    gradBody.addColorStop(0, darkenColor(color[0], 4));
-    gradBody.addColorStop(1, lightenColor(color[1], 8));
-    ctx.fillStyle = gradBody;
-    ctx.roundRect(x+2, y+2, pieceSize-4, pieceSize-4, cornerRadius);
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function drawHoverEffect(x, y, pieceSize, color, cornerRadius, glows) {
-    const ctx = state.ctx;
-    ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 15;
-    ctx.strokeStyle = lightenColor(color, 40);
-    ctx.lineWidth = glows ? 8 : 4; // Thicker highlight for "bigger" (extra power-ups)
-
-    let hoverSize = pieceSize + (glows ? 4 : 2);
-    let hoverX = x - (glows ? 2 : 1);
-    let hoverY = y - (glows ? 2 : 1);
-    if (glows) {
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.7)"; // Brighter for extra
-    }
-
-    ctx.beginPath();
-    ctx.roundRect(hoverX, hoverY, hoverSize, hoverSize, cornerRadius + 1);
-    ctx.stroke();
-    ctx.restore();
-}
-
-function prepareShapeContext() {
-    const ctx = state.ctx;
-    ctx.save();
-    ctx.beginPath();
-    return ctx;
-}
-
-function finalizeShapeDraw(ctx, opts) {
-    // Draw border first
-    ctx.strokeStyle = SHAPE_BORDER_COLOR;
-    ctx.lineWidth = SHAPE_LINE_WIDTH + SHAPE_BORDER_LINE_WIDTH + 1; // Ensure border is outside main line
-    ctx.stroke();
-    // Draw the main shape line
-    if (opts) {
-        ctx.strokeStyle = SHAPE_BORDER_COLOR;
-    } else {
-        ctx.strokeStyle = SHAPE_STROKE_COLOR;
-    }
-    ctx.lineWidth = SHAPE_LINE_WIDTH;
-    ctx.stroke();
-    ctx.restore();
-}
-
-
-function drawX(x, y, size) {
-    const ctx = prepareShapeContext();
-    const padding = size * 0.2; // Adjusted padding
-    ctx.moveTo(x + padding, y + padding);
-    ctx.lineTo(x + size - padding, y + size - padding);
-    ctx.moveTo(x + size - padding, y + padding);
-    ctx.lineTo(x + padding, y + size - padding);
-    finalizeShapeDraw(ctx);
-}
-
-function drawPlus(x, y, size) {
-    const ctx = prepareShapeContext();
-    const padding = size * 0.2; // Adjusted padding
-    ctx.moveTo(x + size / 2, y + padding);
-    ctx.lineTo(x + size / 2, y + size - padding);
-    ctx.moveTo(x + padding, y + size / 2);
-    ctx.lineTo(x + size - padding, y + size / 2);
-    finalizeShapeDraw(ctx);
-}
-
-function drawCircle(x, y, size) {
-    const ctx = prepareShapeContext();
-    const radius = size * 0.3; // Adjusted radius
-    ctx.arc(x + size / 2, y + size / 2, radius, 0, Math.PI * 2);
-    finalizeShapeDraw(ctx);
-}
-
-function drawDisc(x, y, size) {
-    const ctx = prepareShapeContext();
-    const radius = size * 0.3; // Adjust this value as needed
-    const cx = x + size / 2;
-    const cy = y + size / 2;
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.fillStyle = SHAPE_STROKE_COLOR
-    ctx.fill();
-    ctx.strokeStyle = SHAPE_BORDER_COLOR;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    finalizeShapeDraw(ctx);
-}
-
-function drawExchangePowerUp(ctx, x, y, size, padding = 6) {
-    const arrowColor = 'white';
-    const borderColor = 'black';
-    const arrowWidth = size * 0.2; // thickness of the arrow shaft
-    const headLength = size * 0.2;  // length of arrowhead
-
-    // Center coordinates
-    const cx = x + size / 2;
-    const topY = y + padding + arrowWidth / 2 - 1;
-    const bottomY = y + size - padding - arrowWidth / 2 + 1;
-
-    function drawArrow(startX, endX, y, direction) {
-        ctx.beginPath();
-
-        // Shaft
-        ctx.moveTo(startX, y - arrowWidth / 2);
-        ctx.lineTo(endX, y - arrowWidth / 2);
-        ctx.lineTo(endX, y - arrowWidth);
-        ctx.lineTo(endX + direction * headLength, y);
-        ctx.lineTo(endX, y + arrowWidth);
-        ctx.lineTo(endX, y + arrowWidth / 2);
-        ctx.lineTo(startX, y + arrowWidth / 2);
-        ctx.closePath();
-
-        ctx.fillStyle = arrowColor;
-        ctx.fill();
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    }
-
-    // Top arrow: pointing right
-    const offset = 3;
-    drawArrow(cx - size * 0.2, cx + size * 0.2 + offset, topY, 1);
-
-    // Bottom arrow: pointing left
-    drawArrow(cx + size * 0.2 , cx - size * 0.2 - offset, bottomY, -1);
-}
-
-function drawExchange(x, y, size) {
-    const ctx = state.ctx;
-    ctx.save();
-    ctx.beginPath();
-    drawExchangePowerUp(ctx, x, y, size);
-    ctx.restore();
-}
-
-function drawRect(x, y, size, opts) {
-    const ctx = prepareShapeContext();
-    const padding = size * 0.2; // Adjusted padding
-    const rectInnerSize = size - 2 * padding;
-    ctx.rect(x + padding, y + padding, rectInnerSize, rectInnerSize);
-    finalizeShapeDraw(ctx, opts);
-}
-
-function drawPowerFill(x, y, size) {
-    const ctx = state.ctx; // Direct context for multi-fill
-    ctx.save();
-    const halfSize = size / 2;
-    const centerSize = size * 0.3;
-    const centerOffset = (size - centerSize) / 2;
-
-    // Define colors for quadrants
-    const quadColors = [BLUE, GREEN, RED, YELLOW];
-    const positions = [
-        {qx: x, qy: y},                           // Top-left
-        {qx: x + halfSize, qy: y},                // Top-right
-        {qx: x, qy: y + halfSize},                // Bottom-left
-        {qx: x + halfSize, qy: y + halfSize}      // Bottom-right
-    ];
-
-    for (let i = 0; i < 4; i++) {
-        ctx.beginPath();
-        ctx.rect(positions[i].qx, positions[i].qy, halfSize, halfSize);
-        ctx.fillStyle = COLOR_MAP.get(quadColors[i]);
-        ctx.fill();
-    }
-    // Centerpiece
-    ctx.beginPath();
-    ctx.rect(x + centerOffset, y + centerOffset, centerSize, centerSize);
-    ctx.fillStyle = COLOR_MAP.get(PURPLE);
-    ctx.fill();
-    ctx.restore();
-
-    drawRect(x-8, y-8, size+16, "reverse");
-}
-
-function drawRotateRight(x, y, size) {
-    const ctx = prepareShapeContext();
-    const cx = x + size / 2;
-    const cy = y + size / 2;
-    const r = size * 0.3;
-    const arrowLength = size * 0.25; // Bigger arrowhead
-    const arrowWidth = size * 0.15;
-
-    // Draw the top semicircular arc (clockwise)
-    ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false);
-
-    // Arrowhead at the right end of the arc (pointing right)
-    const tipX = cx + r + 2;
-    const tipY = cy + 3;
-    ctx.moveTo(tipX - arrowLength, tipY - arrowWidth);
-    ctx.lineTo(tipX, tipY);
-    ctx.lineTo(tipX - arrowLength, tipY + arrowWidth);
-    ctx.closePath();
-
-    finalizeShapeDraw(ctx);
-}
-
-function drawRotateLeft(x, y, size) {
-    const ctx = prepareShapeContext();
-    const cx = x + size / 2;
-    const cy = y + size / 2;
-    const r = size * 0.3;
-    const arrowLength = size * 0.25;
-    const arrowWidth = size * 0.15;
-
-    // Draw the top semicircular arc (counter-clockwise)
-    ctx.arc(cx, cy, r, 0, Math.PI, true);
-
-    // Arrowhead at the left end of the arc (pointing left)
-    const tipX = cx - r - 2;
-    const tipY = cy + 3;
-    ctx.moveTo(tipX + arrowLength, tipY - arrowWidth);
-    ctx.lineTo(tipX, tipY);
-    ctx.lineTo(tipX + arrowLength, tipY + arrowWidth);
-    ctx.closePath();
-
-    finalizeShapeDraw(ctx);
-}
-
-function drawPowerUp(x, y, size, powerUpType) {
-    const paddingFactor = 8; // Padding from the edge of the piece to the power-up symbol
-    const shapeSize = size - paddingFactor;
-    const shapeX = x + (paddingFactor / 2);
-    const shapeY = y + (paddingFactor / 2);
-
-    const powerUpDrawMap = {
-        [POWER_X]: drawX,
-        [POWER_PLUS]: drawPlus,
-        [POWER_RECT]: drawRect,
-        [POWER_FILL]: drawPowerFill,
-        [POWER_RIGHT]: drawRotateRight,
-        [POWER_LEFT]: drawRotateLeft,
-        [POWER_DISC]: drawDisc,
-        [POWER_EXCHANGE]: drawExchange,
+class GameConfig {
+    static TOKEN_SPACE = 1000;
+    static COLORS = {
+        WHITE: 0,
+        PURPLE: 1000,
+        BLUE: 2000,
+        GREEN: 3000,
+        RED: 4000,
+        YELLOW: 5000,
+        GRAY: 6000,
+        BLACK: 7000,
     };
-
-    const drawFn = powerUpDrawMap[powerUpType] || drawCircle;
-    drawFn(shapeX, shapeY, shapeSize);
+    static GAME_PIECES = [
+        this.COLORS.PURPLE,
+        this.COLORS.BLUE,
+        this.COLORS.GREEN,
+        this.COLORS.RED,
+        this.COLORS.YELLOW,
+    ];
+    static COLOR_MAP = new Map([
+        [this.COLORS.PURPLE, "#8a2be2"],
+        [this.COLORS.BLUE, "#00a0ff"],
+        [this.COLORS.GREEN, "#00cc66"],
+        [this.COLORS.RED, "#ff3333"],
+        [this.COLORS.YELLOW, "#ffcc00"],
+        [this.COLORS.GRAY, "#888888"],
+        [this.COLORS.BLACK, "#333333"],
+        [this.COLORS.WHITE, "#ffffff"],
+    ]);
+    static GRADIENT_MAP = new Map([
+        [this.COLORS.PURPLE, ["#d442ff", "#8a2be2"]],
+        [this.COLORS.BLUE, ["#00f0ff", "#0070ff"]],
+        [this.COLORS.GREEN, ["#00ff99", "#00cc66"]],
+        [this.COLORS.RED, ["#ff5500", "#dd0000"]],
+        [this.COLORS.YELLOW, ["#ffee00", "#ff8800"]],
+        [this.COLORS.GRAY, ["#777777", "#cccccc"]],
+    ]);
+    static POWER_UPS = {
+        X: 1,
+        PLUS: 2,
+        CIRCLE: 3,
+        RECT: 4,
+        FILL: 5,
+        RIGHT: 6,
+        LEFT: 7,
+        DISC: 8,
+        EXCHANGE: 9,
+    };
+    static POWER_CONFIG = new Map([
+        [this.POWER_UPS.X, { connections: true, multi: true }],
+        [this.POWER_UPS.PLUS, { connections: true, multi: true }],
+        [this.POWER_UPS.CIRCLE, { connections: true, multi: true }],
+        [this.POWER_UPS.RECT, { connections: true, multi: true }],
+        [this.POWER_UPS.DISC, { connections: true, multi: false }],
+        [this.POWER_UPS.FILL, { connections: false, multi: false }],
+        [this.POWER_UPS.RIGHT, { connections: false, multi: false }],
+        [this.POWER_UPS.LEFT, { connections: false, multi: false }],
+        [this.POWER_UPS.EXCHANGE, { connections: false, multi: false }],
+    ]);
+    static POWER_UP_DIRECTIONS = {
+        X: [
+            { sr: -1, sc: -1, dr: -1, dc: -1 },
+            { sr: -1, sc: 1, dr: -1, dc: 1 },
+            { sr: 1, sc: -1, dr: 1, dc: -1 },
+            { sr: 1, sc: 1, dr: 1, dc: 1 },
+        ],
+        PLUS: [
+            { sr: -1, sc: 0, dr: -1, dc: 0 },
+            { sr: 1, sc: 0, dr: 1, dc: 0 },
+            { sr: 0, sc: -1, dr: 0, dc: -1 },
+            { sr: 0, sc: 1, dr: 0, dc: 1 },
+        ],
+        RECT: [
+            { sr: -2, sc: -2, dc: 0, dr: 1 },
+            { sr: 2, sc: -2, dc: 1, dr: 0 },
+            { sr: 2, sc: 2, dc: 0, dr: -1 },
+            { sr: -2, sc: 2, dc: -1, dr: 0 },
+        ],
+        CIRCLE: [
+            { sr: -1, sc: -3, dc: 0, dr: 1 },
+            { sr: 3, sc: -1, dc: 1, dr: 0 },
+            { sr: 1, sc: 3, dc: 0, dr: -1 },
+            { sr: -3, sc: 1, dc: -1, dr: 0 },
+        ],
+        DISC1: [
+            { sr: -1, sc: -2, dc: 0, dr: 1 },
+            { sr: 2, sc: -1, dc: 1, dr: 0 },
+            { sr: 1, sc: 2, dc: 0, dr: -1 },
+            { sr: -2, sc: 1, dc: -1, dr: 0 },
+        ],
+        DISC2: [
+            { sr: -1, sc: -1, dc: 0, dr: 1 },
+            { sr: 1, sc: -1, dc: 1, dr: 0 },
+            { sr: 1, sc: 1, dc: 0, dr: -1 },
+            { sr: -1, sc: 1, dc: -1, dr: 0 },
+        ],
+    };
+    static GAP = 1;
+    static BORDER_WIDTH = 4;
+    static SHAPE_STROKE_COLOR = "white";
+    static SHAPE_BORDER_COLOR = "black";
+    static SHAPE_LINE_WIDTH = 3;
+    static SHAPE_BORDER_LINE_WIDTH = 1;
+    static ANIMATE_BOARD_SPEED = 6;
+    static ANIMATE_PIECE_SPEED = 3;
+    static ANIMATE = true;
 }
 
-function renderBoard() {
-    state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
-    const cornerRadius = 3; // Slightly more rounded
-    const pieceSize = state.blockSize - GAP;
-    const outlineGap = 2;
-    const outlineSize = pieceSize - (2 * outlineGap);
+class CookieManager {
+    static getCookie(name) {
+        const cookies = document.cookie.split(";");
+        for (const cookie of cookies) {
+            const trimmed = cookie.trim();
+            if (trimmed.startsWith(`${name}=`)) {
+                return trimmed.substring(name.length + 1);
+            }
+        }
+        return "";
+    }
 
-    // First pass: Draw all pieces
-    for (let row = 0; row < state.rows; row++) {
-        for (let col = 0; col < state.cols; col++) {
-            const index = row * state.cols + col;
-            const piece = state.board[index];
-            const {x, y} = getPositionOnCanvas(row, col);
+    static setCookie(name, value, days = 365) {
+        const date = new Date();
+        date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+        document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+    }
+}
 
-            if (piece === WHITE) {
-                drawEmptySpace(x, y, pieceSize, outlineGap, outlineSize);
+class Board {
+    constructor(rows, cols) {
+        this.rows = rows;
+        this.cols = cols;
+        this.board = Array(rows * cols).fill(GameConfig.COLORS.WHITE);
+    }
+
+    getIndex(row, col) {
+        return row * this.cols + col;
+    }
+
+    getPoint(index) {
+        return {
+            row: Math.floor(index / this.cols),
+            col: index % this.cols,
+        };
+    }
+
+    initialize() {
+        const size = this.rows * this.cols;
+        for (let i = 0; i < size; i++) {
+            this.board[i] = this.randomPiece();
+        }
+        const indices = this.createShuffledIndices(size);
+        GameConfig.POWER_CONFIG.forEach((opts, power) => {
+            const colors = opts.multi
+                ? [...GameConfig.GAME_PIECES, GameConfig.COLORS.GRAY]
+                : [GameConfig.COLORS.GRAY];
+            for (const color of colors) {
+                this.board[indices.shift()] = color + power;
+            }
+        });
+    }
+
+    randomPiece() {
+        return GameConfig.GAME_PIECES[
+            Math.floor(Math.random() * GameConfig.GAME_PIECES.length)
+            ];
+    }
+
+    createShuffledIndices(n) {
+        const arr = Array.from({ length: n }, (_, i) => i);
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    to2DArray() {
+        const arr = [];
+        for (let r = 0; r < this.rows; r++) {
+            arr.push(this.board.slice(r * this.cols, (r + 1) * this.cols));
+        }
+        return arr;
+    }
+
+    from2DArray(arr) {
+        this.board = arr.flat();
+    }
+
+    rotate(degrees) {
+        const n = this.rows;
+        if (!Number.isInteger(Math.sqrt(this.board.length))) {
+            throw new Error("Board must be square for rotation.");
+        }
+        const rotation = ((degrees % 360) + 360) % 360;
+        const grid = this.to2DArray();
+        const rotated = Array.from({ length: n }, () => Array(n));
+        if (rotation === 90) {
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    rotated[c][n - 1 - r] = grid[r][c];
+                }
+            }
+        } else if (rotation === 270) {
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    rotated[n - 1 - c][r] = grid[r][c];
+                }
+            }
+        } else {
+            throw new Error("Rotation must be 90 or 270 degrees.");
+        }
+        this.from2DArray(rotated);
+    }
+
+    applyGravity() {
+        const board = this.to2DArray();
+        for (let c = 0; c < this.cols; c++) {
+            let writeRow = this.rows - 1;
+            for (let r = this.rows - 1; r >= 0; r--) {
+                if (board[r][c] !== GameConfig.COLORS.WHITE) {
+                    if (writeRow !== r) {
+                        board[writeRow][c] = board[r][c];
+                        board[r][c] = GameConfig.COLORS.WHITE;
+                    }
+                    writeRow--;
+                }
+            }
+        }
+        let writeCol = this.cols - 1;
+        for (let c = this.cols - 1; c >= 0; c--) {
+            const isEmpty = board.every((row) => row[c] === GameConfig.COLORS.WHITE);
+            if (!isEmpty) {
+                if (writeCol !== c) {
+                    for (let r = 0; r < this.rows; r++) {
+                        board[r][writeCol] = board[r][c];
+                        board[r][c] = GameConfig.COLORS.WHITE;
+                    }
+                }
+                writeCol--;
+            }
+        }
+        this.from2DArray(board);
+    }
+
+    fillSpaces(connections, weighted = true) {
+        if (!connections) {
+            connections = this.board
+            .map((piece, i) => (piece === GameConfig.COLORS.WHITE ? i : null))
+            .filter((i) => i !== null);
+        }
+        if (weighted) {
+            const counts = {};
+            for (const piece of this.board) {
+                const color = this.getColor(piece);
+                if (
+                    color !== GameConfig.COLORS.WHITE &&
+                    color !== GameConfig.COLORS.GRAY
+                ) {
+                    counts[color] = (counts[color] || 0) + 1;
+                }
+            }
+            const choices = Object.entries(counts).map(([value, count]) => ({
+                value: parseInt(value),
+                count,
+            }));
+            const normalized = this.normalizeGaps(choices, 0.33);
+            for (const i of connections) {
+                this.board[i] = this.weightedRandom(normalized);
+            }
+        } else {
+            for (const i of connections) {
+                this.board[i] = this.randomPiece();
+            }
+        }
+    }
+
+    fillPieces(connections) {
+        if (!connections) {
+            connections = this.board
+            .map((piece, i) =>
+                GameConfig.GAME_PIECES.includes(piece) ? i : null
+            )
+            .filter((i) => i !== null);
+        }
+        this.fillSpaces(connections, true);
+    }
+
+    weightedRandom(choices) {
+        const total = choices.reduce((sum, obj) => sum + obj.count, 0);
+        let r = Math.random() * total;
+        for (const choice of choices) {
+            if (r < choice.count) {
+                return choice.value;
+            }
+            r -= choice.count;
+        }
+        return choices[0].value;
+    }
+
+    normalizeGaps(choices, maxGapPercent) {
+        if (choices.length <= 1 || maxGapPercent < 0 || maxGapPercent > 1) {
+            throw new Error("Invalid normalizeGaps input.");
+        }
+        const normalized = JSON.parse(JSON.stringify(choices));
+        normalized.sort((a, b) => b.count - a.count);
+        const ratios = [];
+        for (let i = 0; i < normalized.length - 1; i++) {
+            ratios.push(
+                normalized[i].count > 0
+                    ? normalized[i + 1].count / normalized[i].count
+                    : 1
+            );
+        }
+        for (let i = 0; i < normalized.length - 1; i++) {
+            const current = normalized[i];
+            const next = normalized[i + 1];
+            const gap = current.count - next.count;
+            const maxGap = current.count * maxGapPercent;
+            if (gap > maxGap) {
+                next.count = Math.round(current.count * (1 - maxGapPercent));
             } else {
-                drawColoredPiece(x, y, pieceSize, piece, cornerRadius);
-            }
-        }
-    }
-
-    // Second pass: Draw power-ups and hover effects (to ensure they are on top)
-    for (let row = 0; row < state.rows; row++) {
-        for (let col = 0; col < state.cols; col++) {
-            const index = row * state.cols + col;
-            const piece = state.board[index];
-
-            if (piece !== WHITE) {
-                const {x, y} = getPositionOnCanvas(row, col);
-                const powerUp = getPowerUp(piece);
-                let glows = false;
-                if (powerUp > 0) {
-                    drawPowerUp(x, y, pieceSize, powerUp);
-                    glows = !POWER.get(powerUp).connections;
-                }
-
-                if (state.hoverList.has(index)) {
-                    const color = getColorCode(piece);
-                    drawHoverEffect(x, y, pieceSize, color, cornerRadius, glows);
+                const target = Math.round(current.count * ratios[i]);
+                if (current.count - target <= gap) {
+                    next.count = target;
                 }
             }
         }
+        return normalized;
+    }
+
+    getColor(piece) {
+        return (
+            Math.floor(piece / GameConfig.TOKEN_SPACE) * GameConfig.TOKEN_SPACE
+        );
+    }
+
+    getPowerUp(piece) {
+        return piece % GameConfig.TOKEN_SPACE;
     }
 }
 
-
-async function animateTransformation(transformFn, transformOpts) {
-    // Save the starting state
-    const startBoard = state.board.slice();
-
-    // Apply the transformation
-    if (typeof transformFn === 'function') {
-        transformFn(transformOpts);
+class AnimationManager {
+    constructor(renderer, board, speed) {
+        this.renderer = renderer;
+        this.board = board;
+        this.speed = speed;
+        this.startBoard = [];
+        this.endBoard = [];
+        this.indices = [];
+        this.position = 0;
+        this.piecesPerFrame = 8;
+        this.resolve = null;
+        this.frameId = null;
     }
 
-    // Set up animation state
-    state.animateStart = startBoard;
-    state.animateEnd = state.board.slice();
-    let changes = findChangedIndices(state.animateStart, state.animateEnd);
-    shuffleArray(changes);
-    state.animateIndices = changes;
-
-    // Run the animation
-    await renderBoardAnimated(ANIMATE_PIECE_SPEED);
-    return state.board;
-}
-
-function renderBoardAnimated(piecesToAnimate = 8) {
-    state.animatePieces = piecesToAnimate;
-    state.animatePosition = 0;
-    return new Promise((resolve) => {
-        state.animateResolve = resolve;
-        state.animateId = requestAnimationFrame(doRenderBoardAnimated);
-    });
-}
-
-function doRenderBoardAnimated() {
-    state.board = state.animateStart.slice();
-
-    const newPos = state.animatePosition + state.animatePieces;
-    const maxPos = state.animateIndices.length;
-    const endPos = Math.min(newPos, maxPos);
-
-    for (let iter = 0; iter < endPos; iter++) {
-        const index =state.animateIndices[iter];
-        state.board[index] = state.animateEnd[index];
-    }
-    renderBoard();
-
-    state.animateStart = state.board.slice();
-    state.animatePosition = endPos;
-
-    if (state.animatePosition < maxPos) {
-        state.animateId = requestAnimationFrame(doRenderBoardAnimated)
-        return;
+    start(startBoard, endBoard, indices, piecesPerFrame) {
+        this.startBoard = startBoard.slice();
+        this.endBoard = endBoard.slice();
+        this.indices = indices.slice();
+        this.piecesPerFrame = piecesPerFrame;
+        this.position = 0;
+        return new Promise((resolve) => {
+            this.resolve = resolve;
+            this.frameId = requestAnimationFrame(() => this.step());
+        });
     }
 
-    state.animateStart = [];
-    state.animateEnd = [];
-    state.animatePosition = 0;
-    state.animateId = null;
-
-    // Resolve the Promise if it exists
-    if (state.animateResolve) {
-        state.animateResolve();
-        state.animateResolve = null;
-    }
-}
-
-function getConnectedPieces(index) {
-    // This function is crucial. It determines which pieces are connected for removal or hover.
-    if (index < 0 || index >= state.board.length || state.board[index] === WHITE) return [];
-
-    const clickedPiece = state.board[index];
-    const baseColor = getColor(clickedPiece);
-    const powerUpType = getPowerUp(clickedPiece);
-
-    // 1. Handle EXTRA_PIECES (Fill, Rotations) - for hover, they usually highlight themselves.
-    // Their actual "connection" for removal is handled by their specific logic.
-    if (POWER.has(powerUpType) && POWER.get(powerUpType).connections === false) {
-        return [index]; // For hover, highlight the power-up itself.
-    }
-
-    let powerUpIndices = [];
-    // 2. Handle other POWER_PIECES (X, Plus, Circle, Rect)
-
-    if (POWER.has(powerUpType) && POWER.get(powerUpType).connections) {
-        powerUpIndices = getConnectedPowerUps(index, baseColor, powerUpType);
-        if (powerUpIndices.length > 0) {
-            powerUpIndices.unshift(index);
+    step() {
+        this.board.board = this.startBoard.slice();
+        const newPos = this.position + this.piecesPerFrame;
+        const endPos = Math.min(newPos, this.indices.length);
+        for (let i = 0; i < endPos; i++) {
+            this.board.board[this.indices[i]] = this.endBoard[this.indices[i]];
         }
-
-        if (baseColor === GRAY) {
-            return powerUpIndices;
+        this.renderer.render();
+        this.startBoard = this.board.board.slice();
+        this.position = endPos;
+        if (this.position < this.indices.length) {
+            this.frameId = requestAnimationFrame(() => this.step());
+        } else {
+            this.cleanup();
         }
     }
 
-    // 3. Standard Flood Fill for same-colored pieces (no power-up)
-    const connectedIndices = [];
-    const stack = [index];
-    const visited = new Array(state.board.length).fill(false);
-    visited[index] = true;
+    cleanup() {
+        this.startBoard = [];
+        this.endBoard = [];
+        this.indices = [];
+        this.position = 0;
+        this.frameId = null;
+        if (this.resolve) {
+            this.resolve();
+            this.resolve = null;
+        }
+    }
 
-    while (stack.length > 0) {
-        const currentIndex = stack.pop();
-        connectedIndices.push(currentIndex);
+    isAnimating() {
+        return this.frameId !== null;
+    }
+}
 
-        const {row, col} = getPointFromIndex(currentIndex);
-        const neighbors = [
-            (row > 0) ? currentIndex - state.cols : -1,             // Up
-            (row < state.cols - 1) ? currentIndex + state.cols : -1, // Down
-            (col > 0) ? currentIndex - 1 : -1,                          // Left
-            (col < state.cols - 1) ? currentIndex + 1 : -1,         // Right
+class Renderer {
+    constructor(ctx, board, blockSize, rows, cols) {
+        this.ctx = ctx;
+        this.board = board;
+        this.blockSize = blockSize;
+        this.rows = rows;
+        this.cols = cols;
+        this.pieceSize = blockSize - GameConfig.GAP;
+        this.outlineGap = 2;
+        this.outlineSize = this.pieceSize - 2 * this.outlineGap;
+        this.cornerRadius = 3;
+    }
+
+    getPosition(row, col) {
+        return {
+            x: GameConfig.BORDER_WIDTH + col * (this.blockSize + GameConfig.GAP),
+            y: GameConfig.BORDER_WIDTH + row * (this.blockSize + GameConfig.GAP),
+        };
+    }
+
+    drawEmptySpace(x, y) {
+        this.ctx.save();
+        this.ctx.strokeStyle = this.darkenColor(
+            GameConfig.COLOR_MAP.get(GameConfig.COLORS.WHITE),
+            70
+        );
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.rect(
+            x + this.outlineGap,
+            y + this.outlineGap,
+            this.outlineSize,
+            this.outlineSize
+        );
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+
+    drawColoredPiece(x, y, piece) {
+        this.ctx.save();
+        const size = this.blockSize;
+        const angle = (225 * Math.PI) / 180;
+        const diagonal = Math.sqrt(size * size + size * size);
+        const startX = x + size / 2 + (Math.cos(angle) * diagonal) / 2;
+        const startY = y + size / 2 + (Math.sin(angle) * diagonal) / 2;
+        const endX = x + size / 2 - (Math.cos(angle) * diagonal) / 2;
+        const endY = y + size / 2 - (Math.sin(angle) * diagonal) / 2;
+        const gradHighlight = this.ctx.createLinearGradient(x, y, x + size, y + size);
+        const colors = GameConfig.GRADIENT_MAP.get(this.board.getColor(piece));
+        gradHighlight.addColorStop(0, colors[1]);
+        gradHighlight.addColorStop(1, this.lightenColor(colors[0], 5));
+        this.ctx.fillStyle = gradHighlight;
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, this.pieceSize, this.pieceSize, this.cornerRadius);
+        this.ctx.fill();
+        const gradBody = this.ctx.createLinearGradient(startX, startY, endX, endY);
+        gradBody.addColorStop(0, this.darkenColor(colors[0], 4));
+        gradBody.addColorStop(1, this.lightenColor(colors[1], 8));
+        this.ctx.fillStyle = gradBody;
+        this.ctx.beginPath();
+        this.ctx.roundRect(
+            x + 2,
+            y + 2,
+            this.pieceSize - 4,
+            this.pieceSize - 4,
+            this.cornerRadius
+        );
+        this.ctx.fill();
+        this.ctx.restore();
+    }
+
+    drawHoverEffect(x, y, piece, glows) {
+        this.ctx.save();
+        const color = GameConfig.COLOR_MAP.get(this.board.getColor(piece));
+        this.ctx.shadowColor = color;
+        this.ctx.shadowBlur = 15;
+        this.ctx.strokeStyle = glows
+            ? "rgba(255, 255, 255, 0.7)"
+            : this.lightenColor(color, 40);
+        this.ctx.lineWidth = glows ? 8 : 4;
+        const hoverSize = this.pieceSize + (glows ? 4 : 2);
+        const hoverX = x - (glows ? 2 : 1);
+        const hoverY = y - (glows ? 2 : 1);
+        this.ctx.beginPath();
+        this.ctx.roundRect(
+            hoverX,
+            hoverY,
+            hoverSize,
+            hoverSize,
+            this.cornerRadius + 1
+        );
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+
+    drawPowerUp(x, y, powerUpType) {
+        const padding = 8;
+        const shapeSize = this.pieceSize - padding;
+        const shapeX = x + padding / 2;
+        const shapeY = y + padding / 2;
+        const drawFn =
+            {
+                [GameConfig.POWER_UPS.X]: this.drawX.bind(this),
+                [GameConfig.POWER_UPS.PLUS]: this.drawPlus.bind(this),
+                [GameConfig.POWER_UPS.RECT]: this.drawRect.bind(this),
+                [GameConfig.POWER_UPS.FILL]: this.drawPowerFill.bind(this),
+                [GameConfig.POWER_UPS.RIGHT]: this.drawRotateRight.bind(this),
+                [GameConfig.POWER_UPS.LEFT]: this.drawRotateLeft.bind(this),
+                [GameConfig.POWER_UPS.DISC]: this.drawDisc.bind(this),
+                [GameConfig.POWER_UPS.EXCHANGE]: this.drawExchange.bind(this),
+                [GameConfig.POWER_UPS.CIRCLE]: this.drawCircle.bind(this),
+            }[powerUpType] || this.drawCircle.bind(this);
+        drawFn(shapeX, shapeY, shapeSize);
+    }
+
+    drawX(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const padding = size * 0.2;
+        ctx.moveTo(x + padding, y + padding);
+        ctx.lineTo(x + size - padding, y + size - padding);
+        ctx.moveTo(x + size - padding, y + padding);
+        ctx.lineTo(x + padding, y + size - padding);
+        this.finalizeShapeDraw(ctx);
+    }
+
+    drawPlus(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const padding = size * 0.2;
+        ctx.moveTo(x + size / 2, y + padding);
+        ctx.lineTo(x + size / 2, y + size - padding);
+        ctx.moveTo(x + padding, y + size / 2);
+        ctx.lineTo(x + size - padding, y + size / 2);
+        this.finalizeShapeDraw(ctx);
+    }
+
+    drawCircle(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const radius = size * 0.3;
+        ctx.arc(x + size / 2, y + size / 2, radius, 0, Math.PI * 2);
+        this.finalizeShapeDraw(ctx);
+    }
+
+    drawDisc(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const radius = size * 0.3;
+        const cx = x + size / 2;
+        const cy = y + size / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = GameConfig.SHAPE_STROKE_COLOR;
+        ctx.fill();
+        ctx.strokeStyle = GameConfig.SHAPE_BORDER_COLOR;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        this.finalizeShapeDraw(ctx);
+    }
+
+    drawExchange(x, y, size) {
+        this.ctx.save();
+        this.ctx.beginPath();
+        const arrowColor = "white";
+        const borderColor = "black";
+        const arrowWidth = size * 0.2;
+        const headLength = size * 0.2;
+        const cx = x + size / 2;
+        const topY = y + 6 + arrowWidth / 2 - 1;
+        const bottomY = y + size - 6 - arrowWidth / 2 + 1;
+        const drawArrow = (startX, endX, y, direction) => {
+            this.ctx.beginPath();
+            this.ctx.moveTo(startX, y - arrowWidth / 2);
+            this.ctx.lineTo(endX, y - arrowWidth / 2);
+            this.ctx.lineTo(endX, y - arrowWidth);
+            this.ctx.lineTo(endX + direction * headLength, y);
+            this.ctx.lineTo(endX, y + arrowWidth);
+            this.ctx.lineTo(endX, y + arrowWidth / 2);
+            this.ctx.lineTo(startX, y + arrowWidth / 2);
+            this.ctx.closePath();
+            this.ctx.fillStyle = arrowColor;
+            this.ctx.fill();
+            this.ctx.strokeStyle = borderColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        };
+        drawArrow(cx - size * 0.2, cx + size * 0.2 + 3, topY, 1);
+        drawArrow(cx + size * 0.2, cx - size * 0.2 - 3, bottomY, -1);
+        this.ctx.restore();
+    }
+
+    drawRect(x, y, size, opts) {
+        const ctx = this.prepareShapeContext();
+        const padding = size * 0.2;
+        const rectSize = size - 2 * padding;
+        ctx.rect(x + padding, y + padding, rectSize, rectSize);
+        this.finalizeShapeDraw(ctx, opts);
+    }
+
+    drawPowerFill(x, y, size) {
+        this.ctx.save();
+        const halfSize = size / 2;
+        const centerSize = size * 0.3;
+        const centerOffset = (size - centerSize) / 2;
+        const quadColors = [
+            GameConfig.COLORS.BLUE,
+            GameConfig.COLORS.GREEN,
+            GameConfig.COLORS.RED,
+            GameConfig.COLORS.YELLOW,
         ];
+        const positions = [
+            { qx: x, qy: y },
+            { qx: x + halfSize, qy: y },
+            { qx: x, qy: y + halfSize },
+            { qx: x + halfSize, qy: y + halfSize },
+        ];
+        for (let i = 0; i < 4; i++) {
+            this.ctx.beginPath();
+            this.ctx.rect(positions[i].qx, positions[i].qy, halfSize, halfSize);
+            this.ctx.fillStyle = GameConfig.COLOR_MAP.get(quadColors[i]);
+            this.ctx.fill();
+        }
+        this.ctx.beginPath();
+        this.ctx.rect(x + centerOffset, y + centerOffset, centerSize, centerSize);
+        this.ctx.fillStyle = GameConfig.COLOR_MAP.get(GameConfig.COLORS.PURPLE);
+        this.ctx.fill();
+        this.ctx.restore();
+        this.drawRect(x - 8, y - 8, size + 16, "reverse");
+    }
 
-        for (const neighborIndex of neighbors) {
-            if (neighborIndex !== -1 && !visited[neighborIndex] &&
-                state.board[neighborIndex] !== WHITE &&
-                getColor(state.board[neighborIndex]) === baseColor) {
-                visited[neighborIndex] = true;
-                stack.push(neighborIndex);
+    drawRotateRight(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const cx = x + size / 2;
+        const cy = y + size / 2;
+        const r = size * 0.3;
+        const arrowLength = size * 0.25;
+        const arrowWidth = size * 0.15;
+        ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI, false);
+        const tipX = cx + r + 2;
+        const tipY = cy + 3;
+        ctx.moveTo(tipX - arrowLength, tipY - arrowWidth);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(tipX - arrowLength, tipY + arrowWidth);
+        ctx.closePath();
+        this.finalizeShapeDraw(ctx);
+    }
+
+    drawRotateLeft(x, y, size) {
+        const ctx = this.prepareShapeContext();
+        const cx = x + size / 2;
+        const cy = y + size / 2;
+        const r = size * 0.3;
+        const arrowLength = size * 0.25;
+        const arrowWidth = size * 0.15;
+        ctx.arc(cx, cy, r, 0, Math.PI, true);
+        const tipX = cx - r - 2;
+        const tipY = cy + 3;
+        ctx.moveTo(tipX + arrowLength, tipY - arrowWidth);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(tipX + arrowLength, tipY + arrowWidth);
+        ctx.closePath();
+        this.finalizeShapeDraw(ctx);
+    }
+
+    prepareShapeContext() {
+        this.ctx.save();
+        this.ctx.beginPath();
+        return this.ctx;
+    }
+
+    finalizeShapeDraw(ctx, opts) {
+        ctx.strokeStyle = GameConfig.SHAPE_BORDER_COLOR;
+        ctx.lineWidth =
+            GameConfig.SHAPE_LINE_WIDTH + GameConfig.SHAPE_BORDER_LINE_WIDTH + 1;
+        ctx.stroke();
+        ctx.strokeStyle = opts
+            ? GameConfig.SHAPE_BORDER_COLOR
+            : GameConfig.SHAPE_STROKE_COLOR;
+        ctx.lineWidth = GameConfig.SHAPE_LINE_WIDTH;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    lightenColor(color, percent) {
+        const num = parseInt(color.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = Math.min((num >> 16) + amt, 255);
+        const G = Math.min((num >> 8 & 0x00ff) + amt, 255);
+        const B = Math.min((num & 0x0000ff) + amt, 255);
+        return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`;
+    }
+
+    darkenColor(color, percent) {
+        const num = parseInt(color.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = Math.max((num >> 16) - amt, 0);
+        const G = Math.max((num >> 8 & 0x00ff) - amt, 0);
+        const B = Math.max((num & 0x0000ff) - amt, 0);
+        return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`;
+    }
+
+    render(hoverList = new Set(), hoverIndex = -1) {
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const i = this.board.getIndex(r, c);
+                const piece = this.board.board[i];
+                const { x, y } = this.getPosition(r, c);
+                if (piece === GameConfig.COLORS.WHITE) {
+                    this.drawEmptySpace(x, y);
+                } else {
+                    this.drawColoredPiece(x, y, piece);
+                }
             }
         }
-    }
-
-    // combineAndRemoveDuplicates
-    const combinedArray = [...powerUpIndices, ...connectedIndices];
-    const uniqueArray = [...new Set(combinedArray)];
-
-    // For normal pieces, only return if 2 or more are connected.
-    return uniqueArray.length >= 2 ? uniqueArray : [];
-}
-
-// --- Connection Logic ---
-function getConnectedPowerUps(index, targetColor, powerUpType) {
-    // This function determines the area of effect for non-EXTRA power-ups like X, Plus.
-    // It returns an array of indices affected by the power-up.
-    switch (powerUpType) {
-        case POWER_X:
-            return getXConnections(index, targetColor);
-        case POWER_PLUS:
-            return getPlusConnections(index, targetColor);
-        case POWER_RECT:
-            return getRectConnections(index, targetColor);
-        case POWER_CIRCLE:
-            return getCircularConnections(index, targetColor);
-        case POWER_DISC:
-            return getDiscConnections(index, targetColor);
-        default:
-            return [];
-    }
-}
-
-function getConnectedDirections(index, targetColor, directions, maxIterations) {
-    const point = getPointFromIndex(index);
-    let startRow = point.row;
-    let startCol = point.col;
-    let connectedIndices = [];
-
-    for (let iter = 0; iter < maxIterations; iter++) {
-        for (const dir of directions) {
-            const r = startRow + dir.sr + dir.dr * iter;
-            const c = startCol + dir.sc + dir.dc * iter;
-
-            if (r >= 0 && r < state.rows && c >= 0 && c < state.cols) {
-                const currentIndex = r * state.cols + c;
-                // Power ups affect pieces of their base color, or if GRAY, any non-WHITE piece.
-                const currentPieceBase = getColor(state.board[currentIndex]);
-                if ((targetColor === GRAY && pieceHasColor(currentPieceBase)) ||
-                    (targetColor !== GRAY && targetColor === currentPieceBase)) {
-                    if (!connectedIndices.includes(currentIndex)) {
-                        connectedIndices.push(currentIndex);
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const i = this.board.getIndex(r, c);
+                const piece = this.board.board[i];
+                if (piece !== GameConfig.COLORS.WHITE) {
+                    const { x, y } = this.getPosition(r, c);
+                    const powerUp = this.board.getPowerUp(piece);
+                    const glows = powerUp > 0 && !GameConfig.POWER_CONFIG.get(powerUp).connections;
+                    if (powerUp > 0) {
+                        this.drawPowerUp(x, y, powerUp);
+                    }
+                    if (hoverList.has(i)) {
+                        this.drawHoverEffect(x, y, piece, glows);
                     }
                 }
             }
         }
     }
-    return connectedIndices;
 }
 
-function pieceHasColor(p) {
-    return p !== WHITE && p !== GRAY;
-}
-
-function getXConnections(index, targetColor) {
-    const maxIters = Math.ceil(Math.sqrt(Math.pow(state.rows, 2) + Math.pow(state.cols, 2)));
-    return getConnectedDirections(index, targetColor, POWER_UP_X_DIRECTIONS, maxIters);
-}
-
-function getPlusConnections(index, targetColor) {
-    const maxIters = Math.max(state.rows, state.cols);
-    return getConnectedDirections(index, targetColor, POWER_UP_PLUS_DIRECTIONS, maxIters);
-}
-
-function getRectConnections(index, targetColor) {
-    return getConnectedDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 4);
-}
-
-function getCircularConnections(index, targetColor) {
-     const c1 = getConnectedDirections(index, targetColor, POWER_UP_RECT_DIRECTIONS, 1); // Inner ring
-     const c2 = getConnectedDirections(index, targetColor, POWER_UP_CIRCLE_DIRECTIONS, 3); // Outer ring
-     return [...c1, ...c2];
-}
-
-function getDiscConnections(index, targetColor) {
-    const c1 = getConnectedDirections(index, targetColor, POWER_UP_DISC1_DIRECTIONS, 3);
-    const c2 = getConnectedDirections(index, targetColor, POWER_UP_DISC2_DIRECTIONS, 2);
-    return [...c1, ...c2];
-}
-
-
-// --- Game State Manipulation ---
-function boardTo2DArray() {
-    let boardArray = [];
-    for (let r = 0; r < state.rows; r++) {
-        boardArray.push(state.board.slice(r * state.cols, (r + 1) * state.cols));
-    }
-    return boardArray;
-}
-
-function updateBoardFrom2DArray(boardArray) {
-    state.board = boardArray.flat();
-}
-
-function updateCanvasDimensions() {
-    state.canvas.width = state.cols * state.blockSize + (state.cols - 1) * GAP + 2 * BORDER_WIDTH
-    state.canvas.height = state.rows * state.blockSize + (state.rows - 1) * GAP + 2 * BORDER_WIDTH;
-}
-
-function rotateBoard(degrees) {
-    const arr = state.board;
-    const n = Math.sqrt(arr.length);
-    if (!Number.isInteger(n))
-        throw new Error("Array length must be a perfect square.");
-
-    // Normalize degrees to 0, 90, 180, or 270
-    let rotation = ((degrees % 360) + 360) % 360;
-
-    // Convert to 2D row-major grid
-    const grid = Array.from({ length: n }, (_, row) =>
-        arr.slice(row * n, row * n + n)
-    );
-
-    let rotated = Array.from({ length: n }, () => Array(n));
-
-    switch (rotation) {
-        case 90:
-            for (let row = 0; row < n; row++) {
-                for (let col = 0; col < n; col++) {
-                    rotated[col][n - 1 - row] = grid[row][col];
-                }
-            }
-            break;
-        case 270:
-            for (let row = 0; row < n; row++) {
-                for (let col = 0; col < n; col++) {
-                    rotated[n - 1 - col][row] = grid[row][col];
-                }
-            }
-            break;
-        default:
-            throw new Error("Rotation must be a multiple of 90 degrees.");
+class JawbreakerGame {
+    constructor() {
+        this.board = null;
+        this.renderer = null;
+        this.animator = null;
+        this.rows = 0;
+        this.cols = 0;
+        this.blockSize = 0;
+        this.cookieName = "";
+        this.score = 0;
+        this.bonus = 0;
+        this.remainingPieces = 0;
+        this.lastScore = 0;
+        this.bestScore = 0;
+        this.canvas = null;
+        this.hoverList = new Set();
+        this.hoverIndex = -1;
+        this.mobile = false;
+        this.undo = null;
+        this.weightedFills = true;
     }
 
-    // Flatten 2D grid back to 1D row-major array
-    state.board = rotated.flat();
-}
+    clamp(value, min, max) {
+        return Math.max(min, Math.min(max, Number.isInteger(value) ? value : min));
+    }
 
-function applyGravityAndShiftColumns() {
-    let boardArray = boardTo2DArray();
-
-    // Apply gravity (pieces fall down in each column)
-    for (let c = 0; c < state.cols; c++) {
-        let writeRow = state.rows - 1;
-        for (let r = state.rows - 1; r >= 0; r--) {
-            if (boardArray[r][c] !== WHITE) {
-                if (writeRow !== r) {
-                    boardArray[writeRow][c] = boardArray[r][c];
-                    boardArray[r][c] = WHITE;
-                }
-                writeRow--;
-            }
+    async init({
+                   rows = 8,
+                   cols = 8,
+                   blockSize = 36,
+                   cookieName = "jawbreaker_scores",
+                   mobile = false,
+               }) {
+        this.rows = this.clamp(rows, 8, 20);
+        this.cols = this.clamp(cols, 8, 20);
+        this.blockSize = blockSize;
+        this.cookieName = cookieName;
+        this.mobile = mobile;
+        this.score = 0;
+        this.canvas = document.getElementById("game-canvas");
+        if (!this.canvas) {
+            throw new Error("Canvas element 'game-canvas' not found.");
         }
-    }
-
-    // Shift columns to the left if a column becomes empty
-    let writeCol = state.cols - 1;
-    for (let c = state.cols - 1; c >= 0; c--) {
-        let isEmpty = true;
-        for (let r = 0; r < state.rows; r++) {
-            if (boardArray[r][c] !== WHITE) {
-                isEmpty = false;
-                break;
-            }
+        this.canvas.width =
+            this.cols * this.blockSize + (this.cols - 1) * GameConfig.GAP + 2 * GameConfig.BORDER_WIDTH;
+        this.canvas.height =
+            this.rows * this.blockSize + (this.rows - 1) * GameConfig.GAP + 2 * GameConfig.BORDER_WIDTH;
+        this.board = new Board(this.rows, this.cols);
+        this.renderer = new Renderer(
+            this.canvas.getContext("2d"),
+            this.board,
+            this.blockSize,
+            this.rows,
+            this.cols
+        );
+        this.animator = new AnimationManager(
+            this.renderer,
+            this.board,
+            GameConfig.ANIMATE ? GameConfig.ANIMATE_PIECE_SPEED : 0
+        );
+        this.board.initialize();
+        const scores = CookieManager.getCookie(this.cookieName);
+        if (scores) {
+            const [last, best] = scores.split("|").map((s) => parseInt(s, 10));
+            this.lastScore = isNaN(last) ? 0 : last;
+            this.bestScore = isNaN(best) ? 0 : best;
         }
-
-        if (!isEmpty) {
-            if (writeCol !== c) {
-                for (let row = 0; row < state.rows; row++) {
-                    boardArray[row][writeCol] = boardArray[row][c];
-                    boardArray[row][c] = WHITE;
-                }
-            }
-            writeCol--;
-        }
-    }
-
-    updateBoardFrom2DArray(boardArray);
-}
-
-async function removeTargetedPieces(index) {
-    // This function handles the removal of pieces based on the clicked piece (normal or power-up)
-    const clickedPieceOriginal = state.board[index]; // Store before modification
-    const powerUpType = getPowerUp(clickedPieceOriginal);
-
-    let piecesToRemove = [];
-    let piecesRemovedCount = 0;
-
-    if (powerUpType === POWER_FILL) {
-        state.board[index] = WHITE;
-        applyGravityAndShiftColumns();
-
-        if (ANIMATE) {
-            await animateTransformation(fillSpaces);
+        document.getElementById("current-score").innerText = this.score;
+        document.getElementById("last-score").innerText = this.lastScore;
+        document.getElementById("best-score").innerText = this.bestScore;
+        this.registerEvents();
+        if (GameConfig.ANIMATE) {
+            await this.animateNewBoard();
         } else {
-            fillSpaces();
-            renderBoard();
-        }
-        return {count: 1, isSpecialAction: true}; // Special action, count is nominal
-    } else if (powerUpType === POWER_EXCHANGE) {
-        state.board[index] = WHITE;
-        applyGravityAndShiftColumns();
-
-        if (ANIMATE) {
-            await animateTransformation(fillPieces);
-        } else {
-            fillPieces();
-            renderBoard();
-        }
-        return {count: 1, isSpecialAction: true}; // Special action, count is nominal
-    } else if (powerUpType === POWER_RIGHT) {
-        state.board[index] = WHITE;
-        rotateBoard(90);
-        applyGravityAndShiftColumns();
-        return {count: 1, isSpecialAction: true};
-    } else if (powerUpType === POWER_LEFT) {
-        state.board[index] = WHITE;
-        rotateBoard(-90);
-        applyGravityAndShiftColumns();
-        return {count: 1, isSpecialAction: true};
-    }
-
-    // For standard pieces or non-EXTRA power-ups
-    piecesToRemove = getConnectedPieces(index);
-
-    for (const i of piecesToRemove) {
-        if (state.board[i] !== WHITE) {
-            state.board[i] = WHITE;
-            piecesRemovedCount++;
+            this.renderer.render();
         }
     }
-    return {count: piecesRemovedCount, isSpecialAction: false};
-}
 
-function calculateMoveScore(piecesRemoved) {
-    if (piecesRemoved < 2) return 0;
-    // Standard Jawbreaker scoring: n * (n - 1)
-    return piecesRemoved * (piecesRemoved - 1);
-}
-
-function calculateRemainingPiecesScore(remainingPieces) {
-    const threshold = 10; // Bonus if 10 or fewer pieces remain
-    if (remainingPieces === 0) return 2000; // Bonus for clearing the board
-    if (remainingPieces <= threshold) {
-        return (threshold - remainingPieces + 1) * 100; // Scaled bonus
-    }
-    return 0; // Penalty or smaller bonus for more remaining pieces can be added here
-}
-
-function isGameOver() {
-    for (let i = 0; i < state.board.length; i++) {
-        if (state.board[i] === WHITE) continue;
-
-        const powerUpType = getPowerUp(state.board[i]);
-        if (POWER.has(powerUpType) && POWER.get(powerUpType).connections === false) {
-            return false;
-        }
-
-        const connections = getConnectedPieces(i); // Get potential connections
-        if (connections.length > 0) return false; // If any piece can make a valid move
-    }
-    return true;
-}
-
-async function processMove(index) {
-    // Save the starting board state for animation
-    const startBoard = state.board.slice();
-
-    // Process the piece removal
-    const removalResult = await removeTargetedPieces(index);
-    const n = removalResult.count;
-
-    if (n > 0 && !removalResult.isSpecialAction) { // Apply gravity only if pieces were removed by non-special actions
-        // First animate the piece removal
-        state.animateStart = startBoard;
-        state.animateEnd = state.board.slice();
-        state.animateIndices = findChangedIndices(state.animateStart, state.animateEnd, index);
-
-        if (ANIMATE) {
-            await renderBoardAnimated(1);
-        }
-        applyGravityAndShiftColumns();
-        renderBoard();
+    async animateNewBoard() {
+        const size = this.rows * this.cols;
+        const start = Array(size).fill(GameConfig.COLORS.WHITE);
+        const end = this.board.board.slice();
+        const indices = this.board.createShuffledIndices(size);
+        await this.animator.start(start, end, indices, GameConfig.ANIMATE_BOARD_SPEED);
     }
 
-    if (!removalResult.isSpecialAction) { // Score only for non-special actions based on count
-        state.score += calculateMoveScore(n);
-    }
-
-    const gameOver = isGameOver();
-    if (gameOver) {
-        let remainingPieces = 0;
-        state.board.forEach(p => {
-            if (p !== WHITE) remainingPieces++;
-        });
-        state.bonus = calculateRemainingPiecesScore(remainingPieces);
-        state.remainingPieces = remainingPieces;
-        state.score += state.bonus;
-    }
-
-    return {
-        score: state.score,
-        gameOver: gameOver,
-    };
-}
-
-function undoMove() {
-    if (state.undo === null) return;
-    const {board, score} = state.undo;
-    state.board = board.slice();
-    state.score = score;
-    state.undo = null;
-    document.getElementById('undo-btn').disabled = true;
-    document.getElementById("current-score").innerText = ""+score;
-
-    renderBoard();
-}
-
-function handleTouch(e) {
-    if (state.animateId !== null) {
-        return;
-    }
-
-    const {x, y} = getCanvasCoordinates(e);
-    const index = getBoardIndexFromCoordinates(x, y);
-    if (index === state.hoverIndex) {
-        handleClick(e).then(/*r => {}*/);
-        return
-    }
-
-    handleMouseMove(e);
-}
-
-// --- Event Handlers ---
-async function handleClick(e) {
-    if (state.animateId !== null) {
-        return;
-    }
-
-    const {x, y} = getCanvasCoordinates(e);
-    const index = getBoardIndexFromCoordinates(x, y);
-
-    if (index >= 0 && index < state.board.length && state.board[index] !== WHITE) {
-        state.undo = {
-            board: state.board.slice(),
-            score: state.score,
+    getCanvasCoordinates(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
         };
-        document.getElementById('undo-btn').disabled = false;
+    }
 
-        const status = await processMove(index);
-        document.getElementById("current-score").innerText = ""+status.score;
-
-        if (status.gameOver) {
-            state.undo = null;
-            state.lastScore = state.score; // Update last score before potential best score update
-            if (state.score > state.bestScore) {
-                state.bestScore = state.score;
-            }
-
-            document.getElementById("game-over-score").innerText = state.score;
-            document.getElementById("last-score").innerText = state.lastScore;
-            document.getElementById("best-score").innerText = state.bestScore;
-            document.getElementById("bonus-points").innerText = ""+state.bonus;
-            document.getElementById("remaining-pieces").innerText = ""+state.remainingPieces;
-            document.getElementById("pieces-text").innerText =  state.remainingPieces === 1 ? "piece" : "pieces";
-            document.getElementById("game-over-overlay").classList.add("visible");
-
-            setCookie(state.cookieName, `${state.lastScore}|${state.bestScore}`);
-            return; // Stop further processing/rendering
+    getBoardIndex(x, y) {
+        const adjustedX = x - GameConfig.BORDER_WIDTH;
+        const adjustedY = y - GameConfig.BORDER_WIDTH;
+        const col = Math.floor(adjustedX / (this.blockSize + GameConfig.GAP));
+        const row = Math.floor(adjustedY / (this.blockSize + GameConfig.GAP));
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return -1;
         }
+        return this.board.getIndex(row, col);
+    }
 
-        state.hoverList.clear(); // Clear hover after a click
-        state.hoverIndex = -1;
-        if (state.mobile) {
-            const pieces = getConnectedPieces(index);
-            if (pieces.length > 1) {
-                state.hoverIndex = index;
-                for (const i of pieces) {
-                    state.hoverList.add(i);
+    getConnectedPieces(index) {
+        if (
+            index < 0 ||
+            index >= this.board.board.length ||
+            this.board.board[index] === GameConfig.COLORS.WHITE
+        ) {
+            return [];
+        }
+        const piece = this.board.board[index];
+        const color = this.board.getColor(piece);
+        const powerUp = this.board.getPowerUp(piece);
+        if (
+            GameConfig.POWER_CONFIG.has(powerUp) &&
+            !GameConfig.POWER_CONFIG.get(powerUp).connections
+        ) {
+            return [index];
+        }
+        let powerUpIndices = [];
+        if (
+            GameConfig.POWER_CONFIG.has(powerUp) &&
+            GameConfig.POWER_CONFIG.get(powerUp).connections
+        ) {
+            powerUpIndices = this.getConnectedPowerUps(index, color, powerUp);
+            if (powerUpIndices.length > 0) {
+                powerUpIndices.unshift(index);
+            }
+            if (color === GameConfig.COLORS.GRAY) {
+                return powerUpIndices;
+            }
+        }
+        const connected = [];
+        const stack = [index];
+        const visited = new Array(this.board.board.length).fill(false);
+        visited[index] = true;
+        while (stack.length > 0) {
+            const current = stack.pop();
+            connected.push(current);
+            const { row, col } = this.board.getPoint(current);
+            const neighbors = [
+                row > 0 ? current - this.cols : -1,
+                row < this.rows - 1 ? current + this.cols : -1,
+                col > 0 ? current - 1 : -1,
+                col < this.cols - 1 ? current + 1 : -1,
+            ];
+            for (const n of neighbors) {
+                if (
+                    n !== -1 &&
+                    !visited[n] &&
+                    this.board.board[n] !== GameConfig.COLORS.WHITE &&
+                    this.board.getColor(this.board.board[n]) === color
+                ) {
+                    visited[n] = true;
+                    stack.push(n);
                 }
             }
         }
-
-        renderBoard(); // Re-render the board after the move
-    }
-}
-
-function handleMouseMove(e) {
-    if (state.animateId !== null) {
-        return;
+        const combined = [...new Set([...powerUpIndices, ...connected])];
+        return combined.length >= 2 ? combined : [];
     }
 
-    const {x, y} = getCanvasCoordinates(e);
-    const index = getBoardIndexFromCoordinates(x, y);
+    getConnectedPowerUps(index, color, powerUp) {
+        const handlers = {
+            [GameConfig.POWER_UPS.X]: () =>
+                this.getXConnections(index, color),
+            [GameConfig.POWER_UPS.PLUS]: () =>
+                this.getPlusConnections(index, color),
+            [GameConfig.POWER_UPS.RECT]: () =>
+                this.getRectConnections(index, color),
+            [GameConfig.POWER_UPS.CIRCLE]: () =>
+                this.getCircularConnections(index, color),
+            [GameConfig.POWER_UPS.DISC]: () =>
+                this.getDiscConnections(index, color),
+        };
+        return handlers[powerUp]?.() || [];
+    }
 
-    if (index === state.hoverIndex) return; // No change if hovering over the same piece
+    getConnectedDirections(index, color, directions, maxIterations) {
+        const { row, col } = this.board.getPoint(index);
+        const indices = [];
+        for (let iter = 0; iter < maxIterations; iter++) {
+            for (const dir of directions) {
+                const r = row + dir.sr + dir.dr * iter;
+                const c = col + dir.sc + dir.dc * iter;
+                if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+                    const i = this.board.getIndex(r, c);
+                    const pieceColor = this.board.getColor(this.board.board[i]);
+                    if (
+                        (color === GameConfig.COLORS.GRAY &&
+                            pieceColor !== GameConfig.COLORS.WHITE &&
+                            pieceColor !== GameConfig.COLORS.GRAY) ||
+                        (color !== GameConfig.COLORS.GRAY && color === pieceColor)
+                    ) {
+                        if (!indices.includes(i)) {
+                            indices.push(i);
+                        }
+                    }
+                }
+            }
+        }
+        return indices;
+    }
 
-    state.hoverList.clear();
-    state.hoverIndex = index;
+    getXConnections(index, color) {
+        const maxIters = Math.ceil(
+            Math.sqrt(this.rows ** 2 + this.cols ** 2)
+        );
+        return this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.X,
+            maxIters
+        );
+    }
 
-    if (index >= 0 && index < state.board.length && state.board[index] !== WHITE) {
-        const piecesToHighlight = getConnectedPieces(index);
-        if (piecesToHighlight.length > 0) {
-            piecesToHighlight.forEach(i => state.hoverList.add(i));
+    getPlusConnections(index, color) {
+        const maxIters = Math.max(this.rows, this.cols);
+        return this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.PLUS,
+            maxIters
+        );
+    }
+
+    getRectConnections(index, color) {
+        return this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.RECT,
+            4
+        );
+    }
+
+    getCircularConnections(index, color) {
+        const c1 = this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.RECT,
+            1
+        );
+        const c2 = this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.CIRCLE,
+            3
+        );
+        return [...c1, ...c2];
+    }
+
+    getDiscConnections(index, color) {
+        const c1 = this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.DISC1,
+            3
+        );
+        const c2 = this.getConnectedDirections(
+            index,
+            color,
+            GameConfig.POWER_UP_DIRECTIONS.DISC2,
+            2
+        );
+        return [...c1, ...c2];
+    }
+
+    async removePieces(index) {
+        const piece = this.board.board[index];
+        const powerUp = this.board.getPowerUp(piece);
+        let count = 0;
+        let isSpecial = false;
+        if (powerUp === GameConfig.POWER_UPS.FILL) {
+            this.board.board[index] = GameConfig.COLORS.WHITE;
+            this.board.applyGravity();
+            await this.animateTransformation(() => this.board.fillSpaces());
+            count = 1;
+            isSpecial = true;
+        } else if (powerUp === GameConfig.POWER_UPS.EXCHANGE) {
+            this.board.board[index] = GameConfig.COLORS.WHITE;
+            this.board.applyGravity();
+            await this.animateTransformation(() => this.board.fillPieces());
+            count = 1;
+            isSpecial = true;
+        } else if (powerUp === GameConfig.POWER_UPS.RIGHT) {
+            this.board.board[index] = GameConfig.COLORS.WHITE;
+            this.board.rotate(90);
+            this.board.applyGravity();
+            count = 1;
+            isSpecial = true;
+        } else if (powerUp === GameConfig.POWER_UPS.LEFT) {
+            this.board.board[index] = GameConfig.COLORS.WHITE;
+            this.board.rotate(270);
+            this.board.applyGravity();
+            count = 1;
+            isSpecial = true;
+        } else {
+            const pieces = this.getConnectedPieces(index);
+            for (const i of pieces) {
+                if (this.board.board[i] !== GameConfig.COLORS.WHITE) {
+                    this.board.board[i] = GameConfig.COLORS.WHITE;
+                    count++;
+                }
+            }
+        }
+        return { count, isSpecial };
+    }
+
+    async animateTransformation(transformFn) {
+        const start = this.board.board.slice();
+        transformFn();
+        const end = this.board.board.slice();
+        const indices = this.board.createShuffledIndices(this.board.board.length).filter(
+            (i) => start[i] !== end[i]
+        );
+        await this.animator.start(start, end, indices, GameConfig.ANIMATE_PIECE_SPEED);
+    }
+
+    calculateMoveScore(count) {
+        return count < 2 ? 0 : count * (count - 1);
+    }
+
+    calculateBonus(remaining) {
+        if (remaining === 0) return 2000;
+        if (remaining <= 10) return (11 - remaining) * 100;
+        return 0;
+    }
+
+    isGameOver() {
+        for (let i = 0; i < this.board.board.length; i++) {
+            if (this.board.board[i] === GameConfig.COLORS.WHITE) continue;
+            const powerUp = this.board.getPowerUp(this.board.board[i]);
+            if (
+                GameConfig.POWER_CONFIG.has(powerUp) &&
+                !GameConfig.POWER_CONFIG.get(powerUp).connections
+            ) {
+                return false;
+            }
+            if (this.getConnectedPieces(i).length > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    async processMove(index) {
+        this.undo = { board: this.board.board.slice(), score: this.score };
+        document.getElementById("undo-btn").disabled = false;
+        const start = this.board.board.slice();
+        const { count, isSpecial } = await this.removePieces(index);
+        if (count > 0 && !isSpecial) {
+            const changed = this.board.board
+            .map((p, i) => (p !== start[i] ? i : null))
+            .filter((i) => i !== null);
+            await this.animator.start(start, this.board.board, changed, 1);
+            this.board.applyGravity();
+        }
+        if (!isSpecial) {
+            this.score += this.calculateMoveScore(count);
+        }
+        const gameOver = this.isGameOver();
+        if (gameOver) {
+            this.remainingPieces = this.board.board.filter(
+                (p) => p !== GameConfig.COLORS.WHITE
+            ).length;
+            this.bonus = this.calculateBonus(this.remainingPieces);
+            this.score += this.bonus;
+            this.undo = null;
+            this.lastScore = this.score;
+            if (this.score > this.bestScore) {
+                this.bestScore = this.score;
+            }
+            document.getElementById("game-over-score").innerText = this.score;
+            document.getElementById("last-score").innerText = this.lastScore;
+            document.getElementById("best-score").innerText = this.bestScore;
+            document.getElementById("bonus-points").innerText = this.bonus;
+            document.getElementById("remaining-pieces").innerText = this.remainingPieces;
+            document.getElementById("pieces-text").innerText =
+                this.remainingPieces === 1 ? "piece" : "pieces";
+            document.getElementById("game-over-overlay").classList.add("visible");
+            CookieManager.setCookie(
+                this.cookieName,
+                `${this.lastScore}|${this.bestScore}`
+            );
+        }
+        document.getElementById("current-score").innerText = this.score;
+        this.hoverList.clear();
+        this.hoverIndex = -1;
+        if (this.mobile) {
+            const pieces = this.getConnectedPieces(index);
+            if (pieces.length > 1) {
+                this.hoverIndex = index;
+                pieces.forEach((i) => this.hoverList.add(i));
+            }
+        }
+        this.renderer.render(this.hoverList, this.hoverIndex);
+        return { score: this.score, gameOver };
+    }
+
+    undoMove() {
+        if (!this.undo) return;
+        this.board.board = this.undo.board.slice();
+        this.score = this.undo.score;
+        this.undo = null;
+        document.getElementById("undo-btn").disabled = true;
+        document.getElementById("current-score").innerText = this.score;
+        this.renderer.render();
+    }
+
+    async handleClick(e) {
+        if (this.animator.isAnimating()) return;
+        const { x, y } = this.getCanvasCoordinates(e);
+        const index = this.getBoardIndex(x, y);
+        if (
+            index >= 0 &&
+            index < this.board.board.length &&
+            this.board.board[index] !== GameConfig.COLORS.WHITE
+        ) {
+            await this.processMove(index);
         }
     }
-    // Always rerender on mouse move to update the hover effect or clear it
-    renderBoard();
-}
 
-function handleMouseLeave() {
-    if (state.animateId !== null) {
-        return;
+    handleMouseMove(e) {
+        if (this.animator.isAnimating()) return;
+        const { x, y } = this.getCanvasCoordinates(e);
+        const index = this.getBoardIndex(x, y);
+        if (index === this.hoverIndex) return;
+        this.hoverList.clear();
+        this.hoverIndex = index;
+        if (
+            index >= 0 &&
+            index < this.board.board.length &&
+            this.board.board[index] !== GameConfig.COLORS.WHITE
+        ) {
+            this.getConnectedPieces(index).forEach((i) => this.hoverList.add(i));
+        }
+        this.renderer.render(this.hoverList, this.hoverIndex);
     }
 
-    if (state.hoverList.size > 0) { // Only re-render if there was a hover to clear
-        state.hoverList.clear();
-        state.hoverIndex = -1;
-        renderBoard();
-    }
-}
-
-/**
- * Resets the game with a new board and clears game state
- */
-async function resetCurrentGame() {
-    // Create a new board
-    createNewBoard();
-
-    // Reset game state
-    state.hoverList.clear();
-    state.hoverIndex = -1;
-    state.score = 0;
-    state.bonus = 0;
-    state.remainingPieces = 0;
-    state.undo = null;
-    document.getElementById('undo-btn').disabled = true;
-    document.getElementById("current-score").innerText = state.score;
-    document.getElementById("game-over-overlay").classList.remove("visible");
-
-    // Animate the new board appearing
-    if (ANIMATE) {
-        await animateNewBoard();
-    } else {
-        renderBoard();
-    }
-}
-
-function registerGameEvents() {
-    if (!state.canvas) return;
-    if (state.mobile) {
-        state.canvas.addEventListener("click", handleTouch);
-    } else {
-        state.canvas.addEventListener("click", async (e) => {
-            await handleClick(e);
-        });
-        state.canvas.addEventListener("mousemove", handleMouseMove);
-        state.canvas.addEventListener("mouseleave", handleMouseLeave);
+    handleMouseLeave() {
+        if (this.animator.isAnimating() || this.hoverList.size === 0) return;
+        this.hoverList.clear();
+        this.hoverIndex = -1;
+        this.renderer.render();
     }
 
-    const newGameBtn = document.getElementById("new-game-btn");
-    if (newGameBtn) {
-        newGameBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await resetCurrentGame();
-        });
-    }
-    const gameOverRestartBtn = document.getElementById("restart-btn");
-    if (gameOverRestartBtn) {
-        gameOverRestartBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await resetCurrentGame();
-        });
+    handleTouch(e) {
+        if (this.animator.isAnimating()) return;
+        const { x, y } = this.getCanvasCoordinates(e);
+        const index = this.getBoardIndex(x, y);
+        if (index === this.hoverIndex) {
+            this.handleClick(e);
+        } else {
+            this.handleMouseMove(e);
+        }
     }
 
-    const undoBtn = document.getElementById("undo-btn");
-    if (undoBtn) {
-        undoBtn.disabled = true;
-        undoBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            undoMove()
-        });
+    async resetGame() {
+        this.board.initialize();
+        this.hoverList.clear();
+        this.hoverIndex = -1;
+        this.score = 0;
+        this.bonus = 0;
+        this.remainingPieces = 0;
+        this.undo = null;
+        document.getElementById("undo-btn").disabled = true;
+        document.getElementById("current-score").innerText = this.score;
+        document.getElementById("game-over-overlay").classList.remove("visible");
+        if (GameConfig.ANIMATE) {
+            await this.animateNewBoard();
+        } else {
+            this.renderer.render();
+        }
     }
 
-    // Help Modal Logic
-    const helpBtn = document.getElementById("help-btn");
-    const helpModal = document.getElementById("help-modal");
-    const closeBtn = helpModal ? helpModal.querySelector(".close") : null;
-
-    if (helpBtn && helpModal && closeBtn) {
-        helpBtn.addEventListener("click", () => {
-            helpModal.style.display = "block";
-        });
-        closeBtn.addEventListener("click", () => {
-            helpModal.style.display = "none";
-        });
-        window.addEventListener("click", (event) => {
-            if (event.target === helpModal) {
+    registerEvents() {
+        if (this.mobile) {
+            this.canvas.addEventListener("click", (e) => this.handleTouch(e));
+        } else {
+            this.canvas.addEventListener("click", (e) => this.handleClick(e));
+            this.canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
+            this.canvas.addEventListener("mouseleave", () => this.handleMouseLeave());
+        }
+        const newGameBtn = document.getElementById("new-game-btn");
+        if (newGameBtn) {
+            newGameBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.resetGame();
+            });
+        }
+        const restartBtn = document.getElementById("restart-btn");
+        if (restartBtn) {
+            restartBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.resetGame();
+            });
+        }
+        const undoBtn = document.getElementById("undo-btn");
+        if (undoBtn) {
+            undoBtn.disabled = true;
+            undoBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.undoMove();
+            });
+        }
+        const helpBtn = document.getElementById("help-btn");
+        const helpModal = document.getElementById("help-modal");
+        const closeBtn = helpModal?.querySelector(".close");
+        if (helpBtn && helpModal && closeBtn) {
+            helpBtn.addEventListener("click", () => {
+                helpModal.style.display = "block";
+            });
+            closeBtn.addEventListener("click", () => {
                 helpModal.style.display = "none";
-            }
-        });
-    } else {
-        console.warn("Help modal elements not found. Ensure #help-btn, #help-modal, and .close exist.");
+            });
+            window.addEventListener("click", (e) => {
+                if (e.target === helpModal) {
+                    helpModal.style.display = "none";
+                }
+            });
+        }
     }
 }
 
-// --- Initialization ---
-/**
- * Initializes the game with the given options
- * @param {Object} opts - Game options
- * @param {number} opts.size - Board size (number of cells per side)
- * @param {number} opts.blockSize - Size of each cell in pixels
- * @param {string} opts.cookieName - Name of the cookie to store scores
- * @param {boolean} opts.mobile - Whether the game is running on a mobile device
- */
 async function initGame(opts) {
-    // Initialize game state
-    state.rows = clamp(opts.rows, 8, 20); // Max size 20 for better playability
-    state.cols = clamp(opts.cols, 8, 20); // Max size 20 for better playability
-    state.blockSize = opts.blockSize || 36;
-    state.cookieName = opts.cookieName || "jawbreaker_functional_scores_v3"; // Unique cookie name
-    state.mobile = opts.mobile || false;
-    state.score = 0;
-
-    // Set up canvas
-    state.canvas = document.getElementById("game-canvas");
-    if (!state.canvas) {
-        console.error("Canvas element with ID 'game-canvas' not found. Game cannot start.");
-        return;
-    }
-    state.ctx = state.canvas.getContext("2d");
-    updateCanvasDimensions(); // Set canvas size based on game size and block size
-
-    // Create the initial game board
-    createNewBoard();
-
-    // Load scores from the cookie
-    const scoresCookie = getCookie(state.cookieName);
-    if (scoresCookie) {
-        const [last, best] = scoresCookie.split('|');
-        state.lastScore = parseInt(last, 10) || 0;
-        state.bestScore = parseInt(best, 10) || 0;
-    } else {
-        state.lastScore = 0;
-        state.bestScore = 0;
-    }
-
-    // Update score displays
-    document.getElementById('current-score').innerText = state.score;
-    document.getElementById('last-score').innerText = state.lastScore;
-    document.getElementById('best-score').innerText = state.bestScore;
-
-    // Register event handlers
-    registerGameEvents();
-
-    // Animate the initial board appearance
-    if (ANIMATE) {
-        await animateNewBoard();
-    } else {
-        renderBoard();
-    }
+    const game = new JawbreakerGame();
+    await game.init(opts);
 }

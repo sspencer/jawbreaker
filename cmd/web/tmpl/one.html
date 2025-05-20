@@ -9,8 +9,8 @@
     <meta name="description" content="Jawbreaker Game, also called Same Game"/>
     <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
     <meta name="rating" content="Safe For Kids"/>
-    <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
-    <link rel="stylesheet" href="{{.StyleCSS}}"/>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon"/>
+    <link rel="stylesheet" href="/{{.StyleUrl}}"/>
 </head>
 <body>
 
@@ -29,36 +29,8 @@
 
 {{ template "help" . }}
 
-<script>{{.GameCode}}</script>
-<script defer>
-    window.addEventListener('DOMContentLoaded', () => {
-        function isMobileDevice() {
-            const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            const isSmallScreen = window.matchMedia('(max-width: 768px)').matches;
-            return isTouchCapable && isSmallScreen;
-        }
-
-        const rows = isMobileDevice() ? parseInt('{{ .MRows }}') : parseInt('{{ .Rows }}');
-        const cols = isMobileDevice() ? parseInt('{{ .MCols }}') : parseInt('{{ .Cols }}');
-        const block = isMobileDevice() ? parseInt('{{ .MBlock }}') : parseInt('{{ .Block }}');
-        const opts = {
-            rows: rows,
-            cols: cols,
-            blockSize: block,
-            cookieName: "{{ .CookieName }}",
-            mobile: isMobileDevice(),
-        };
-
-        initGame(opts)
-
-        setTimeout(() => {
-            const header = document.getElementById('page-header');
-            if (header) {
-                header.classList.add('fade-out');
-            }
-        }, 2000);
-    })
-</script>
+<script>{{.GameSrc}}</script>
+{{ template "init" . }}
 </body>
 </html>
 {{ end }}

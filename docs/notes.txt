@@ -1,3 +1,16 @@
+
+AI Refactor
+
+Prompt:
+I've written a game in Javascript called Jawbreaker.  A user clicks on colored game pieces to remove two or more neighboring pieces from the rectangular game board.  It uses a HTML canvas to draw the game board and registers for mouse move and click events.  As I've added more features to the game, the code has become less and less organized. Please took your time to examine the code and improve it.  Just like you suggested a more efficient function dispatch, I'm sure you can find ways to improve the code.  I will attach the javascript file.  Please do your best and prepare a  downloadable file so I can quickly make sure the code still works.  I will let you know if any problems are introduced.
+
+ChatGPT -- ran out of tokens for 24 hours :(
+Grok -- about 200 lines shorter, still works, had to fix one syntax error (garbage text at end of line)
+Gemini -- about 20 lines shorter, many power ups broken
+DeepSeek -- generated some code.  Asked it to prepare a zip file (whole JS wasn't presented) and gave me server busy, please try again later
+Claude -- "this response paused because Claude reached its max length for a message.  Hit continue to nudge Claude along." generated 727
+
+
 func (c Piece) PowerUpName() string {
 	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
 	switch c.PowerUp() {
@@ -19,3 +32,49 @@ func (c Piece) PowerUpName() string {
 		return ""
 	}
 }
+
+function drawPowerBubble(x, y, size) {
+    const ctx = state.ctx;
+    ctx.save();
+
+    // Main circle for clipping and outline
+    const centerX = x + size / 2;
+    const centerY = y + size / 2;
+    const radius = size * 0.3;
+
+    // Clip to circle, so color doesn't bleed out
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Draw colored pie slices inside clip region
+    const quadColors = [BLUE, GREEN, RED, YELLOW];
+    for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(
+            centerX,
+            centerY,
+            radius,
+            (Math.PI / 2) * i,
+            (Math.PI / 2) * (i + 1)
+        );
+        ctx.closePath();
+        ctx.fillStyle = COLOR_MAP.get(quadColors[i]);
+        ctx.fill();
+    }
+
+    // Optional highlight
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - radius / 2, radius / 3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fill();
+
+    ctx.restore();
+
+    const f = state.blockSize / 9;
+    drawCircle(x-f, y-f, size+f*2);
+
+}
+
+
