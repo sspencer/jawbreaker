@@ -60,7 +60,8 @@ const SHAPE_BORDER_COLOR = "black";
 const SHAPE_LINE_WIDTH = 3; // Adjusted for potentially more complex shapes
 const SHAPE_BORDER_LINE_WIDTH = 1; // Adjusted for potentially more complex shapes
 const ANIMATE_BOARD_SPEED = 6;
-const ANIMATE_PIECE_SPEED = 1;
+const ANIMATE_PIECE_SPEED = 3;
+const ANIMATE = true;
 
 const POWER_UP_X_DIRECTIONS = [
     {sr: -1, sc: -1, dr: -1, dc: -1}, // Top-left
@@ -186,18 +187,6 @@ function rgbToString(R, G, B) {
 }
 
 // --- Game Logic Functions ---
-function generateUniqueRandomNums(n, max) {
-    if (n > max) { // n cannot be greater than the number of available spots (0 to max)
-        console.warn(`Attempting to generate ${n} unique numbers from a range of ${max + 1}. Clamping to ${max + 1}.`);
-        n = max + 1;
-    }
-    const randomNumbers = new Set();
-    while (randomNumbers.size < n) {
-        const randomNum = Math.floor(Math.random() * (max + 1));
-        randomNumbers.add(randomNum);
-    }
-    return Array.from(randomNumbers);
-}
 
 /**
  * Creates a new game board filled with random pieces and power-ups
@@ -277,9 +266,7 @@ function fillSpaces(connections) {
         }
 
         const choices = Object.entries(counts).map(([value, count]) => ({value, count}));
-        console.log("choices: ", choices.map(c => c.value + " (" + c.count + ")").join(","))
         const normalized = normalizeGaps(choices, 0.33);
-        console.log("normalized: ", normalized.map(c => c.value + " (" + c.count + ")").join(","))
 
         for (let c in connections) {
             state.board[connections[c]] = weightedRandom(normalized); // randomItem(GAME_PIECES);
@@ -462,7 +449,9 @@ function drawColoredPiece(x, y, pieceSize, piece, cornerRadius) {
     const gradBody = ctx.createLinearGradient(startX, startY, endX, endY);
     const gradHighlight = ctx.createLinearGradient(x, y, x + size, y + size);
     const color = getGradient(piece);
-
+    if (!color) {
+        console.log(`getGradient(${piece}) = ${color}`);
+    }
     // highlight
     ctx.beginPath();
     gradHighlight.addColorStop(0, color[1]);
@@ -796,6 +785,7 @@ async function animateTransformation(transformFn, transformOpts) {
     let changes = findChangedIndices(state.animateStart, state.animateEnd);
     shuffleArray(changes);
     state.animateIndices = changes;
+
     // Run the animation
     await renderBoardAnimated(ANIMATE_PIECE_SPEED);
     return state.board;
@@ -1095,8 +1085,13 @@ async function removeTargetedPieces(index) {
     if (powerUpType === POWER_FILL) {
         state.board[index] = WHITE;
         applyGravityAndShiftColumns();
-        // Animate filling empty spaces
-        await animateTransformation(fillSpaces);
+
+        if (ANIMATE) {
+            await animateTransformation(fillSpaces);
+        } else {
+            fillSpaces();
+            renderBoard();
+        }
         return {count: 1, isSpecialAction: true}; // Special action, count is nominal
     } else if (powerUpType === POWER_ROTATE_RIGHT) {
         state.board[index] = WHITE;
@@ -1166,6 +1161,9 @@ async function processMove(index) {
         state.animateEnd = state.board.slice();
         state.animateIndices = findChangedIndices(state.animateStart, state.animateEnd, index);
 
+        if (ANIMATE) {
+            await renderBoardAnimated(1);
+        }
         applyGravityAndShiftColumns();
         renderBoard();
     }
@@ -1211,7 +1209,7 @@ function handleTouch(e) {
     const {x, y} = getCanvasCoordinates(e);
     const index = getBoardIndexFromCoordinates(x, y);
     if (index === state.hoverIndex) {
-        handleClick(e).then(r => {});
+        handleClick(e).then(/*r => {}*/);
         return
     }
 
@@ -1326,7 +1324,11 @@ async function resetCurrentGame() {
     document.getElementById("game-over-overlay").classList.remove("visible");
 
     // Animate the new board appearing
-    await animateNewBoard();
+    if (ANIMATE) {
+        await animateNewBoard();
+    } else {
+        renderBoard();
+    }
 }
 
 function registerGameEvents() {
@@ -1437,5 +1439,9 @@ async function initGame(opts) {
     registerGameEvents();
 
     // Animate the initial board appearance
-    await animateNewBoard();
+    if (ANIMATE) {
+        await animateNewBoard();
+    } else {
+        renderBoard();
+    }
 }
