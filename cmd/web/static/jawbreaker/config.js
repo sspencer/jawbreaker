@@ -47,15 +47,15 @@ class GameConfig {
         EXCHANGE: 9,
     };
     static POWER_CONFIG = new Map([
-        [this.POWER_UPS.X, { connections: true, multi: true }],
-        [this.POWER_UPS.PLUS, { connections: true, multi: true }],
-        [this.POWER_UPS.CIRCLE, { connections: true, multi: true }],
-        [this.POWER_UPS.RECT, { connections: true, multi: true }],
-        [this.POWER_UPS.DISC, { connections: true, multi: false }],
-        [this.POWER_UPS.FILL, { connections: false, multi: false }],
-        [this.POWER_UPS.RIGHT, { connections: false, multi: false }],
-        [this.POWER_UPS.LEFT, { connections: false, multi: false }],
-        [this.POWER_UPS.EXCHANGE, { connections: false, multi: false }],
+        [this.POWER_UPS.X, { connections: true, multi: true, rect: true }],
+        [this.POWER_UPS.PLUS, { connections: true, multi: true, rect: true }],
+        [this.POWER_UPS.CIRCLE, { connections: true, multi: true, rect: true }],
+        [this.POWER_UPS.RECT, { connections: true, multi: true, rect: true }],
+        [this.POWER_UPS.DISC, { connections: true, multi: false, rect: true }],
+        [this.POWER_UPS.FILL, { connections: false, multi: false, rect: true }],
+        [this.POWER_UPS.RIGHT, { connections: false, multi: false, rect: false }],
+        [this.POWER_UPS.LEFT, { connections: false, multi: false, rect: false }],
+        [this.POWER_UPS.EXCHANGE, { connections: false, multi: false, rect: true }],
     ]);
     static POWER_UP_DIRECTIONS = {
         X: [

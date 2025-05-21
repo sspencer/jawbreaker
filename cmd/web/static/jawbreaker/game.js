@@ -25,14 +25,14 @@ class JawbreakerGame {
     }
 
     async init({
-                   rows = 8,
-                   cols = 8,
+                   rows = 10,
+                   cols = 10,
                    blockSize = 36,
                    cookieName = "jawbreaker_scores",
                    mobile = false,
                }) {
-        this.rows = this.clamp(rows, 8, 20);
-        this.cols = this.clamp(cols, 8, 20);
+        this.rows = this.clamp(rows, 10, 24);
+        this.cols = this.clamp(cols, 10, 24);
         this.blockSize = blockSize;
         this.cookieName = cookieName;
         this.mobile = mobile;
