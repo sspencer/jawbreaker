@@ -4,9 +4,9 @@
         const mobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
         const gameOptions = {
-            rows: mobile ? parseInt('{{ .MRows }}') : parseInt('{{ .Rows }}'),
-            cols: mobile ? parseInt('{{ .MCols }}') : parseInt('{{ .Cols }}'),
-            blockSize: mobile ? parseInt('{{ .MBlock }}') : parseInt('{{ .Block }}'),
+            rows: mobile ? {{ .MRows }} : {{ .Rows }},
+            cols: mobile ? {{ .MCols }} : {{ .Cols }},
+            blockSize: mobile ?{{ .MBlock }} : {{ .Block }},
             cookieName: "{{ .CookieName }}",
             mobile: mobile,
             weightedFills: true,

@@ -51,21 +51,21 @@
 {{ template "help" . }}
 
 <script>
-    const PieceSpace = parseInt('{{.GameMechanics.PieceSpace}}')
-    const White = parseInt('{{.GameMechanics.White}}');
-    const Purple = parseInt('{{.GameMechanics.Purple}}');
-    const Blue = parseInt('{{.GameMechanics.Blue}}');
-    const Green = parseInt('{{.GameMechanics.Green}}');
-    const Red = parseInt('{{.GameMechanics.Red}}');
-    const Yellow = parseInt('{{.GameMechanics.Yellow}}');
-    const PowerX = parseInt('{{.GameMechanics.PowerX}}');
-    const PowerPlus = parseInt('{{.GameMechanics.PowerPlus}}');
-    const PowerCircle = parseInt('{{.GameMechanics.PowerCircle}}');
-    const PowerRect = parseInt('{{.GameMechanics.PowerRect}}');
-    const PowerFill = parseInt('{{.GameMechanics.PowerFill}}');
-    const PowerRotateRight = parseInt('{{.GameMechanics.PowerRotateRight}}');
-    const PowerRotateLeft = parseInt('{{.GameMechanics.PowerRotateLeft}}');
-    const PieceSelected = parseInt('{{.GameMechanics.PieceSelected}}');
+    const PieceSpace = {{.GameMechanics.PieceSpace}};
+    const White = {{.GameMechanics.White}};
+    const Purple = {{.GameMechanics.Purple}};
+    const Blue = {{.GameMechanics.Blue}};
+    const Green = {{.GameMechanics.Green}};
+    const Red = {{.GameMechanics.Red}};
+    const Yellow = {{.GameMechanics.Yellow}};
+    const PowerX = {{.GameMechanics.PowerX}};
+    const PowerPlus = {{.GameMechanics.PowerPlus}};
+    const PowerCircle = {{.GameMechanics.PowerCircle}};
+    const PowerRect = {{.GameMechanics.PowerRect}};
+    const PowerFill = {{.GameMechanics.PowerFill}};
+    const PowerRotateRight = {{.GameMechanics.PowerRotateRight}};
+    const PowerRotateLeft = {{.GameMechanics.PowerRotateLeft}};
+    const PieceSelected = {{.GameMechanics.PieceSelected}};
 
     const PieceIcons = new Map([
         [PowerX, "&#10005;"],

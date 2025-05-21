@@ -1,0 +1,70 @@
+
+// old code 
+
+func (c Piece) PowerUpName() string {
+	// https://www.w3schools.com/charsets/ref_utf_symbols.asp
+	switch c.PowerUp() {
+	case PowerUpX:
+		return "&#10005;" // "&#9747;" // "╳" // 120143
+	case PowerUpPlus:
+		return "+" // "&#9532;" //box vh, 43, 9547
+	case PowerUpCircle:
+		return "O" // "&#1054;" // 9711 big circle -- also try 9675, ocy 1054, omicron 959
+	case PowerUpRect:
+		return "&#127020;" // "&#9744;" // 9723 empty small square, ballot box 9744
+	case PowerExtraFill:
+		return "&#9734;" //  infinity 8734, sext 10038, star 9734
+	case PowerExtraRotateLeft:
+		return "&#8617;" // 8617 hookleftarrow
+	case PowerExtraRotateRight:
+		return "&#8618;" // was 8631 8618 hookrightarrow
+	default:
+		return ""
+	}
+}
+
+function drawPowerBubble(x, y, size) {
+    const ctx = state.ctx;
+    ctx.save();
+
+    // Main circle for clipping and outline
+    const centerX = x + size / 2;
+    const centerY = y + size / 2;
+    const radius = size * 0.3;
+
+    // Clip to circle, so color doesn't bleed out
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Draw colored pie slices inside clip region
+    const quadColors = [BLUE, GREEN, RED, YELLOW];
+    for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(
+            centerX,
+            centerY,
+            radius,
+            (Math.PI / 2) * i,
+            (Math.PI / 2) * (i + 1)
+        );
+        ctx.closePath();
+        ctx.fillStyle = COLOR_MAP.get(quadColors[i]);
+        ctx.fill();
+    }
+
+    // Optional highlight
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - radius / 2, radius / 3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fill();
+
+    ctx.restore();
+
+    const f = state.blockSize / 9;
+    drawCircle(x-f, y-f, size+f*2);
+
+}
+
+

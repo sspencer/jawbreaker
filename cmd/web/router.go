@@ -1,16 +1,10 @@
 package main
 
 import (
-	"embed"
-
 	"github.com/benbjohnson/hashfs"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
-
-//go:embed static
-var staticFiles embed.FS
-var fsys = hashfs.NewFS(staticFiles)
 
 func (app *Application) routes() *chi.Mux {
 	mux := chi.NewRouter()
@@ -30,6 +24,7 @@ func (app *Application) routes() *chi.Mux {
 	mux.Post("/new", app.newGameHandler)
 
 	mux.Handle("/static/*", hashfs.FileServer(fsys))
+	mux.Handle("/js/*", hashfs.FileServer(jsys))
 
 	return mux
 }

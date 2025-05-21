@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	datastar "github.com/starfederation/datastar/sdk/go"
@@ -64,7 +63,7 @@ func (app *Application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := app.cfg
 
 	data := pageData{
-		GameUrl:    fsys.HashName("static/jawbreaker.js"),
+		GameUrl:    jsys.HashName("js/jawbreaker.js"),
 		StyleUrl:   fsys.HashName("static/style.css"),
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
@@ -85,15 +84,16 @@ func (app *Application) indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func (app *Application) oneHandler(w http.ResponseWriter, r *http.Request) {
 
-	gameBytes, err := os.ReadFile("cmd/web/static/jawbreaker.js")
+	code, err := bundleLiveJavascript()
 	if err != nil {
-		slog.Error("jawbreaker.js not found", "error", err)
-		gameBytes = gameCode
+		slog.Error("Error bundling javascript", "error", err)
+		http.Error(w, "Error loading javascript", http.StatusInternalServerError)
+		return
 	}
 
 	cfg := app.cfg
 	data := pageData{
-		GameSrc:    template.JS(gameBytes),
+		GameSrc:    template.JS(code),
 		StyleUrl:   fsys.HashName("static/style.css"),
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
