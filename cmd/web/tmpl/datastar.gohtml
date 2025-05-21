@@ -38,8 +38,8 @@
     {{ template "sidebar" . }}
     <main id="game-container"
           data-on-click="@post('click/'+evt.target.id)"
-          data-on-mouseover="@post('mouse/'+evt.target.id)"
-          data-on-mouseleave="@post('mouse/exit')"
+          data-notfornow-on-mouseover="@post('mouse/'+evt.target.id)"
+          data-notfornow-on-mouseleave="@post('mouse/exit')"
           data-on-signal-change-board="renderBoard($board)"
           data-on-signal-change-game-over="gameOver($score, $best)"
     >
