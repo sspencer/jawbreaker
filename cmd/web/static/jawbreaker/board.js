@@ -25,12 +25,13 @@ class Board {
         const indices = this.createShuffledIndices(size);
         GameConfig.POWER_CONFIG.forEach((opts, power) => {
             if (opts.rect === false && rect === true) return;
-            const colors = opts.multi
-                ? [...GameConfig.GAME_PIECES, GameConfig.COLORS.GRAY]
-                : [GameConfig.COLORS.GRAY];
-            for (const color of colors) {
-                this.board[indices.shift()] = color + power;
-            }
+            // const colors = opts.multi
+            //     ? [...GameConfig.GAME_PIECES, GameConfig.COLORS.GRAY]
+            //     : [GameConfig.COLORS.GRAY];
+            // for (const color of colors) {
+            //     this.board[indices.shift()] = color + power;
+            // }
+            this.board[indices.shift()] = GameConfig.COLORS.GRAY + power;
         });
     }
 
