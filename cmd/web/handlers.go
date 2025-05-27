@@ -47,6 +47,7 @@ type pageData struct {
 	GameUrl     string
 	GameStyle   template.CSS
 	StyleUrl    string
+	StyleSrc    template.CSS
 	Rows        int
 	Cols        int
 	Block       int
@@ -91,10 +92,17 @@ func (app *Application) oneHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	css, err := staticFiles.ReadFile("static/style.css")
+	if err != nil {
+		slog.Error("Error reading style.css", "error", err)
+		http.Error(w, "Error loading style.css", http.StatusInternalServerError)
+		return
+	}
+
 	cfg := app.cfg
 	data := pageData{
 		GameSrc:    template.JS(code),
-		StyleUrl:   fsys.HashName("static/style.css"),
+		StyleSrc:   template.CSS(css),
 		Rows:       cfg.rows,
 		Cols:       cfg.cols,
 		Block:      cfg.block,
