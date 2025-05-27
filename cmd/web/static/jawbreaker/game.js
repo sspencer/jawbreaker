@@ -15,7 +15,7 @@ class JawbreakerGame {
         this.canvas = null;
         this.hoverList = new Set();
         this.hoverIndex = -1;
-        this.mobile = false;
+        this.touch = false;
         this.undo = null;
         this.weightedFills = true;
     }
@@ -29,13 +29,13 @@ class JawbreakerGame {
                    cols = 10,
                    blockSize = 36,
                    cookieName = "jawbreaker_scores",
-                   mobile = false,
+                   touch = false,
                }) {
         this.rows = this.clamp(rows, 10, 24);
         this.cols = this.clamp(cols, 10, 24);
         this.blockSize = blockSize;
         this.cookieName = cookieName;
-        this.mobile = mobile;
+        this.touch = touch;
         this.score = 0;
         this.canvas = document.getElementById("game-canvas");
         if (!this.canvas) {
@@ -389,7 +389,7 @@ class JawbreakerGame {
         document.getElementById("current-score").innerText = this.score;
         this.hoverList.clear();
         this.hoverIndex = -1;
-        if (this.mobile) {
+        if (this.touch) {
             const pieces = this.getConnectedPieces(index);
             if (pieces.length > 1) {
                 this.hoverIndex = index;
@@ -477,7 +477,7 @@ class JawbreakerGame {
     }
 
     registerEvents() {
-        if (this.mobile) {
+        if (this.touch) {
             this.canvas.addEventListener("click", (e) => this.handleTouch(e));
         } else {
             this.canvas.addEventListener("click", (e) => this.handleClick(e));

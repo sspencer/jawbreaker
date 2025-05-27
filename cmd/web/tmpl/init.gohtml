@@ -1,14 +1,15 @@
 {{ define "init" }}
 <script defer>
     document.addEventListener("DOMContentLoaded", () => {
-        const mobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-
+        const hasTouchCapability = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+        const isTablet = hasTouchCapability && Math.min(window.innerWidth, window.innerHeight) >= 600;
+        const isMobile = hasTouchCapability && !isTablet;
         const gameOptions = {
-            rows: mobile ? {{ .MRows }} : {{ .Rows }},
-            cols: mobile ? {{ .MCols }} : {{ .Cols }},
-            blockSize: mobile ?{{ .MBlock }} : {{ .Block }},
+            rows: isMobile ? {{ .MRows }} : {{ .Rows }},
+            cols: isMobile ? {{ .MCols }} : {{ .Cols }},
+            blockSize: isMobile ?{{ .MBlock }} : {{ .Block }},
             cookieName: "{{ .CookieName }}",
-            mobile: mobile,
+            touch: hasTouchCapability,
             weightedFills: true,
         };
 
