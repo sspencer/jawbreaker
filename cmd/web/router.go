@@ -16,7 +16,8 @@ func (app *Application) routes() *chi.Mux {
 	compressionMiddleware(mux)
 
 	mux.Get("/", app.indexHandler)
-	mux.Get("/one", app.oneHandler)
+	mux.Get("/web", app.webHandler)
+	mux.Get("/dev", app.devHandler)
 	mux.Get("/datastar", app.datastarHandler)
 	mux.Post("/click/{id}", app.clickHandler)
 	mux.Post("/mouse/{id}", app.mouseHandler)

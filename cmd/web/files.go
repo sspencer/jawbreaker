@@ -22,6 +22,9 @@ var (
 	//go:embed static/jawbreaker/*.js
 	jawbreakerFS embed.FS
 	jsys         = hashfs.NewFS(NewConcatFS(jawbreakerFS, "js/jawbreaker.js"))
+
+	//go:embed index.html
+	indexHTML embed.FS
 )
 
 func init() {

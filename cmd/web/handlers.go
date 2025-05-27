@@ -83,7 +83,7 @@ func (app *Application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *Application) oneHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) devHandler(w http.ResponseWriter, r *http.Request) {
 
 	code, err := bundleLiveJavascript()
 	if err != nil {
@@ -170,6 +170,18 @@ func (app *Application) datastarHandler(w http.ResponseWriter, r *http.Request) 
 
 func (app *Application) newGameHandler(w http.ResponseWriter, r *http.Request) {
 	app.handleAction(w, r, newAction)
+}
+
+func (app *Application) webHandler(w http.ResponseWriter, r *http.Request) {
+	content, err := indexHTML.ReadFile("index.html")
+	if err != nil {
+		slog.Error("Error reading index.html", "error", err)
+		http.Error(w, "Error loading index.html", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(content)
 }
 
 func (app *Application) clickHandler(w http.ResponseWriter, r *http.Request) {
