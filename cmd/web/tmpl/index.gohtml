@@ -19,12 +19,14 @@
 </header>
 
 <div class="container">
-    {{ template "sidebar" . }}
+    {{ template "scores-sidebar" . }}
 
     <main id="game-container">
         <canvas id="game-canvas"></canvas>
         {{ template "gameover" . }}
     </main>
+
+    {{ template "buttons-sidebar" . }}
 </div>
 
 {{ template "help" . }}

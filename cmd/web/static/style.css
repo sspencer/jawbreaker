@@ -58,6 +58,14 @@ body::before {
     width: 200px;
 }
 
+.scores-sidebar {
+    order: 1;
+}
+
+.buttons-sidebar {
+    order: 3;
+}
+
 .title {
     font-size: 24px;
     font-weight: bold;
@@ -143,6 +151,7 @@ body::before {
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
+    order: 2;
 }
 
 #game {
@@ -397,9 +406,14 @@ input[type="checkbox"] {
         max-width: 450px;
         margin-top: 20px;
         margin-bottom: 0;
+    }
+    .scores-sidebar {
         order: 2;
     }
-    #game {
+    .buttons-sidebar {
+        order: 3;
+    }
+    #game-container {
         order: 1;
     }
     .score-container {

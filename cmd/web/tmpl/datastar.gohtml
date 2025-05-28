@@ -35,7 +35,7 @@
      help:false,
      gameOver:false}"
 >
-    {{ template "sidebar" . }}
+    {{ template "scores-sidebar" . }}
     <main id="game-container"
           data-on-click="@post('click/'+evt.target.id)"
           data-notfornow-on-mouseover="@post('mouse/'+evt.target.id)"
@@ -46,9 +46,11 @@
         <div id="game"></div>
         {{ template "gameover" . }}
     </main>
+    {{ template "buttons-sidebar" . }}
 </div>
 
 {{ template "help" . }}
+{{ template "settings" . }}
 
 <script>
     const PieceSpace = {{.GameMechanics.PieceSpace}};

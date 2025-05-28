@@ -1,4 +1,4 @@
-{{ define "one" }}
+{{ define "dev" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +9,7 @@
     <meta name="description" content="Jawbreaker Game, also called Same Game"/>
     <meta name="keywords" content="jawbreaker, same game, online games, free games"/>
     <meta name="rating" content="Safe For Kids"/>
-    <link rel="icon" href="/static/favicon.ico" type="image/x-icon"/>
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon"/>
     <style>{{.StyleSrc}}</style>
 </head>
 <body>
@@ -19,12 +19,14 @@
 </header>
 
 <div class="container">
-    {{ template "sidebar" . }}
+    {{ template "scores-sidebar" . }}
 
     <main id="game-container">
         <canvas id="game-canvas"></canvas>
         {{ template "gameover" . }}
     </main>
+
+    {{ template "buttons-sidebar" . }}
 </div>
 
 {{ template "help" . }}

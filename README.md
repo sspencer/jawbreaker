@@ -18,7 +18,7 @@ as simple as downloading Go and issuing the following command:
 
 Play on any browser by following the following links (depending on tech used for game)
 1. Javascript: [http://localhost:8000/](http://localhost:8000/)
-2. Javascript for development: [http://localhost:8000/one](http://localhost:8000/one) -- Javascript is served inline in the HTML file to make development easier without worrying about browser cache
+2. Javascript for development: [http://localhost:8000/dev](http://localhost:8000/dev) -- Javascript is served inline in the HTML file to make development easier without worrying about browser cache
 3. Datastar ("no" JS): [http://localhost:8000/datastar](http://localhost:8000/datastar) -- game logic is written in Go and the entire game board (256 divs) is served for every "animation" or action via SSE using [Datastar](https://data-star.dev/)
 
 ![Jawbreaker 2025 Screenshot](docs/jawbreaker.png "Jawbreaker")
