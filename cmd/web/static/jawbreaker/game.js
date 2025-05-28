@@ -6,7 +6,7 @@ class JawbreakerGame {
         this.rows = 0;
         this.cols = 0;
         this.blockSize = 0;
-        this.cookieName = "";
+        this.scoreCookieName = "";
         this.score = 0;
         this.bonus = 0;
         this.remainingPieces = 0;
@@ -30,7 +30,6 @@ class JawbreakerGame {
                    rows = 10,
                    cols = 10,
                    blockSize = 36,
-                   cookieName = "jawbreaker_scores",
                    touch = false,
                    weightedFills = true,
                }) {
@@ -50,7 +49,9 @@ class JawbreakerGame {
         this.rows = this.clamp(rows, 8, 20);
         this.cols = this.clamp(cols, 8, 20);
         this.blockSize = blockSize;
-        this.cookieName = cookieName;
+        this.scoreCookieName = `jawbreaker_score_${this.rows}x${this.cols}`;
+        this.hoverList = new Set();
+        this.hoverIndex = -1;
         this.touch = touch;
         this.weightedFills = weightedFills;
         this.score = 0;
@@ -76,7 +77,7 @@ class JawbreakerGame {
             GameConfig.ANIMATE ? GameConfig.ANIMATE_PIECE_SPEED : 0
         );
         this.initializeBoard();
-        const scores = CookieManager.getCookie(this.cookieName);
+        const scores = CookieManager.getCookie(this.scoreCookieName);
         if (scores) {
             const [last, best] = scores.split("|").map((s) => parseInt(s, 10));
             this.lastScore = isNaN(last) ? 0 : last;
@@ -403,7 +404,7 @@ class JawbreakerGame {
                 this.remainingPieces === 1 ? "piece" : "pieces";
             document.getElementById("game-over-overlay").classList.add("visible");
             CookieManager.setCookie(
-                this.cookieName,
+                this.scoreCookieName,
                 `${this.lastScore}|${this.bestScore}`
             );
         }

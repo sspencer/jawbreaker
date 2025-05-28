@@ -8,7 +8,6 @@
             rows: isMobile ? {{ .MRows }} : {{ .Rows }},
             cols: isMobile ? {{ .MCols }} : {{ .Cols }},
             blockSize: isMobile ?{{ .MBlock }} : {{ .Block }},
-            cookieName: "{{ .CookieName }}",
             touch: hasTouchCapability,
             weightedFills: true,
         };

@@ -10,14 +10,13 @@ import (
 )
 
 const (
-	defPort    = 8000
-	defRows    = 11
-	defCols    = 13
-	defBlock   = 40
-	defMRows   = 7
-	defMCols   = 9
-	defMBlock  = 30
-	cookieName = "score"
+	defPort   = 8000
+	defRows   = 11
+	defCols   = 13
+	defBlock  = 40
+	defMRows  = 7
+	defMCols  = 9
+	defMBlock = 30
 )
 
 type Config struct {

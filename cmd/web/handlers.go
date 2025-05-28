@@ -64,15 +64,14 @@ func (app *Application) indexHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := app.cfg
 
 	data := pageData{
-		GameUrl:    jsys.HashName("js/jawbreaker.js"),
-		StyleUrl:   fsys.HashName("static/style.css"),
-		Rows:       cfg.rows,
-		Cols:       cfg.cols,
-		Block:      cfg.block,
-		MRows:      cfg.mrows,
-		MCols:      cfg.mcols,
-		MBlock:     cfg.mblock,
-		CookieName: app.getCookieName(),
+		GameUrl:  jsys.HashName("js/jawbreaker.js"),
+		StyleUrl: fsys.HashName("static/style.css"),
+		Rows:     cfg.rows,
+		Cols:     cfg.cols,
+		Block:    cfg.block,
+		MRows:    cfg.mrows,
+		MCols:    cfg.mcols,
+		MBlock:   cfg.mblock,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -101,15 +100,14 @@ func (app *Application) devHandler(w http.ResponseWriter, r *http.Request) {
 
 	cfg := app.cfg
 	data := pageData{
-		GameSrc:    template.JS(code),
-		StyleSrc:   template.CSS(css),
-		Rows:       cfg.rows,
-		Cols:       cfg.cols,
-		Block:      cfg.block,
-		MRows:      cfg.mrows,
-		MCols:      cfg.mcols,
-		MBlock:     cfg.mblock,
-		CookieName: app.getCookieName(),
+		GameSrc:  template.JS(code),
+		StyleSrc: template.CSS(css),
+		Rows:     cfg.rows,
+		Cols:     cfg.cols,
+		Block:    cfg.block,
+		MRows:    cfg.mrows,
+		MCols:    cfg.mcols,
+		MBlock:   cfg.mblock,
 	}
 
 	w.Header().Set("Content-Type", "text/html")

@@ -19,7 +19,7 @@ func (app *Application) gameSizeCSS() string {
 }
 
 func (app *Application) getCookieName() string {
-	return fmt.Sprintf("%s_%dx%d", cookieName, app.cfg.rows, app.cfg.cols)
+	return fmt.Sprintf("jawbreaker_score_%dx%d", app.cfg.rows, app.cfg.cols)
 }
 
 // extractNumberFromPieceId checks if a string starts with "piece" followed by
