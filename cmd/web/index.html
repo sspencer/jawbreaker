@@ -39,6 +39,7 @@
         <button id="restart-btn" class="btn" >Restart</button>
         <button id="undo-btn" class="btn" >Undo</button>
         <button id="help-btn" class="btn"  >Help</button>
+        <button id="settings-btn" class="btn" >Settings</button>
     </div>
 
 
@@ -84,6 +85,28 @@
         <p><strong>Scoring:</strong></p>
         <p>Score = n × (n-1) where n is the number of balls removed.</p>
         <p>Bonus points are awarded if you finish with fewer than 20 balls remaining.</p>
+    </article>
+</section>
+
+<section id="settings-modal" class="modal" style="display: none;">
+    <article class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Game Settings</h2>
+        <div class="settings-container">
+            <div class="setting-item">
+                <label for="rows-slider">Rows: <span id="rows-value">14</span></label>
+                <input type="range" id="rows-slider" min="8" max="20" value="14" class="slider">
+            </div>
+            <div class="setting-item">
+                <label for="cols-slider">Columns: <span id="cols-value">14</span></label>
+                <input type="range" id="cols-slider" min="8" max="20" value="14" class="slider">
+            </div>
+            <div class="setting-item checkbox-container">
+                <input type="checkbox" id="powerups-checkbox" checked>
+                <label for="powerups-checkbox">Enable Power Ups</label>
+            </div>
+            <button id="settings-save-btn" class="btn">Save Settings</button>
+        </div>
     </article>
 </section>
 

@@ -1,0 +1,23 @@
+{{ define "settings" }}
+<section id="settings-modal" class="modal" style="display: none;" {{ if .DS }} data-if="$settings" {{ end }}>
+    <article class="modal-content">
+        <span class="close" {{ if .DS }} data-on-click="$settings=false" {{ end }}>&times;</span>
+        <h2>Game Settings</h2>
+        <div class="settings-container">
+            <div class="setting-item">
+                <label for="rows-slider">Rows: <span id="rows-value">14</span></label>
+                <input type="range" id="rows-slider" min="8" max="20" value="14" class="slider">
+            </div>
+            <div class="setting-item">
+                <label for="cols-slider">Columns: <span id="cols-value">14</span></label>
+                <input type="range" id="cols-slider" min="8" max="20" value="14" class="slider">
+            </div>
+            <div class="setting-item checkbox-container">
+                <input type="checkbox" id="powerups-checkbox" checked>
+                <label for="powerups-checkbox">Enable Power Ups</label>
+            </div>
+            <button id="settings-save-btn" class="btn" {{ if .DS }} data-on-click="@post('new')" {{ end }}>Save Settings</button>
+        </div>
+    </article>
+</section>
+{{ end }}

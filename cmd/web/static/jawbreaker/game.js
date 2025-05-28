@@ -18,6 +18,8 @@ class JawbreakerGame {
         this.touch = false;
         this.undo = null;
         this.weightedFills = true;
+        this.usePowerUps = true;
+        this.settingsCookieName = "jawbreaker_settings";
     }
 
     clamp(value, min, max) {
@@ -30,12 +32,27 @@ class JawbreakerGame {
                    blockSize = 36,
                    cookieName = "jawbreaker_scores",
                    touch = false,
+                   weightedFills = true,
                }) {
-        this.rows = this.clamp(rows, 10, 24);
-        this.cols = this.clamp(cols, 10, 24);
+        // Check for settings cookie
+        const settingsStr = CookieManager.getCookie(this.settingsCookieName);
+        if (settingsStr) {
+            try {
+                const settings = JSON.parse(settingsStr);
+                rows = settings.rows || rows;
+                cols = settings.cols || cols;
+                this.usePowerUps = settings.usePowerUps !== undefined ? settings.usePowerUps : true;
+            } catch (e) {
+                console.error("Error parsing settings cookie:", e);
+            }
+        }
+
+        this.rows = this.clamp(rows, 8, 20);
+        this.cols = this.clamp(cols, 8, 20);
         this.blockSize = blockSize;
         this.cookieName = cookieName;
         this.touch = touch;
+        this.weightedFills = weightedFills;
         this.score = 0;
         this.canvas = document.getElementById("game-canvas");
         if (!this.canvas) {
@@ -58,7 +75,7 @@ class JawbreakerGame {
             this.board,
             GameConfig.ANIMATE ? GameConfig.ANIMATE_PIECE_SPEED : 0
         );
-        this.board.initialize();
+        this.initializeBoard();
         const scores = CookieManager.getCookie(this.cookieName);
         if (scores) {
             const [last, best] = scores.split("|").map((s) => parseInt(s, 10));
@@ -82,6 +99,10 @@ class JawbreakerGame {
         const end = this.board.board.slice();
         const indices = this.board.createShuffledIndices(size);
         await this.animator.start(start, end, indices, GameConfig.ANIMATE_BOARD_SPEED);
+    }
+
+    initializeBoard() {
+        this.board.initialize(this.usePowerUps);
     }
 
     getCanvasCoordinates(e) {
@@ -459,7 +480,32 @@ class JawbreakerGame {
     }
 
     async resetGame() {
-        this.board.initialize();
+        // Update canvas size based on current rows and cols
+        this.canvas.width =
+            this.cols * this.blockSize + (this.cols - 1) * GameConfig.GAP + 2 * GameConfig.BORDER_WIDTH;
+        this.canvas.height =
+            this.rows * this.blockSize + (this.rows - 1) * GameConfig.GAP + 2 * GameConfig.BORDER_WIDTH;
+
+        // Update renderer with new dimensions
+        this.renderer = new Renderer(
+            this.canvas.getContext("2d"),
+            this.board,
+            this.blockSize,
+            this.rows,
+            this.cols
+        );
+
+        // Update animator with new renderer
+        this.animator = new AnimationManager(
+            this.renderer,
+            this.board,
+            GameConfig.ANIMATE ? GameConfig.ANIMATE_PIECE_SPEED : 0
+        );
+
+        // Create a new board with the updated dimensions
+        this.board = new Board(this.rows, this.cols);
+
+        this.initializeBoard();
         this.hoverList.clear();
         this.hoverIndex = -1;
         this.score = 0;
@@ -508,18 +554,89 @@ class JawbreakerGame {
         }
         const helpBtn = document.getElementById("help-btn");
         const helpModal = document.getElementById("help-modal");
-        const closeBtn = helpModal?.querySelector(".close");
-        if (helpBtn && helpModal && closeBtn) {
+        const helpCloseBtn = helpModal?.querySelector(".close");
+        if (helpBtn && helpModal && helpCloseBtn) {
             helpBtn.addEventListener("click", () => {
                 helpModal.style.display = "block";
             });
-            closeBtn.addEventListener("click", () => {
+            helpCloseBtn.addEventListener("click", () => {
                 helpModal.style.display = "none";
             });
             window.addEventListener("click", (e) => {
                 if (e.target === helpModal) {
                     helpModal.style.display = "none";
                 }
+            });
+        }
+
+        // Settings modal functionality
+        const settingsBtn = document.getElementById("settings-btn");
+        const settingsModal = document.getElementById("settings-modal");
+        const settingsCloseBtn = settingsModal?.querySelector(".close");
+        const rowsSlider = document.getElementById("rows-slider");
+        const colsSlider = document.getElementById("cols-slider");
+        const rowsValue = document.getElementById("rows-value");
+        const colsValue = document.getElementById("cols-value");
+        const powerupsCheckbox = document.getElementById("powerups-checkbox");
+        const settingsSaveBtn = document.getElementById("settings-save-btn");
+
+        if (settingsBtn && settingsModal && settingsCloseBtn && rowsSlider && colsSlider && 
+            rowsValue && colsValue && powerupsCheckbox && settingsSaveBtn) {
+
+            // Initialize settings values
+            rowsSlider.value = this.rows;
+            colsSlider.value = this.cols;
+            rowsValue.textContent = this.rows;
+            colsValue.textContent = this.cols;
+            powerupsCheckbox.checked = this.usePowerUps;
+
+            // Update value displays when sliders change
+            rowsSlider.addEventListener("input", () => {
+                rowsValue.textContent = rowsSlider.value;
+            });
+
+            colsSlider.addEventListener("input", () => {
+                colsValue.textContent = colsSlider.value;
+            });
+
+            // Open settings modal
+            settingsBtn.addEventListener("click", () => {
+                settingsModal.style.display = "block";
+            });
+
+            // Close settings modal
+            settingsCloseBtn.addEventListener("click", () => {
+                settingsModal.style.display = "none";
+            });
+
+            // Close modal when clicking outside
+            window.addEventListener("click", (e) => {
+                if (e.target === settingsModal) {
+                    settingsModal.style.display = "none";
+                }
+            });
+
+            // Save settings and restart game
+            settingsSaveBtn.addEventListener("click", () => {
+                const settings = {
+                    rows: parseInt(rowsSlider.value, 10),
+                    cols: parseInt(colsSlider.value, 10),
+                    usePowerUps: powerupsCheckbox.checked
+                };
+
+                // Save settings to cookie
+                CookieManager.setCookie(this.settingsCookieName, JSON.stringify(settings));
+
+                // Update game settings
+                this.rows = this.clamp(settings.rows, 8, 20);
+                this.cols = this.clamp(settings.cols, 8, 20);
+                this.usePowerUps = settings.usePowerUps;
+
+                // Close modal
+                settingsModal.style.display = "none";
+
+                // Restart game with new settings
+                this.resetGame();
             });
         }
     }
