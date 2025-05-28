@@ -46,10 +46,11 @@ class JawbreakerGame {
             }
         }
 
+        const baseCookie = this.usePowerUps ? "jawbreaker_powerup" : "jawbreaker_score";
         this.rows = this.clamp(rows, 8, 20);
         this.cols = this.clamp(cols, 8, 20);
         this.blockSize = blockSize;
-        this.scoreCookieName = `jawbreaker_score_${this.rows}x${this.cols}`;
+        this.scoreCookieName = `${baseCookie}_${this.rows}x${this.cols}`;
         this.hoverList = new Set();
         this.hoverIndex = -1;
         this.touch = touch;
@@ -82,6 +83,9 @@ class JawbreakerGame {
             const [last, best] = scores.split("|").map((s) => parseInt(s, 10));
             this.lastScore = isNaN(last) ? 0 : last;
             this.bestScore = isNaN(best) ? 0 : best;
+        } else {
+            this.lastScore = 0;
+            this.bestScore = 0;
         }
         document.getElementById("current-score").innerText = this.score;
         document.getElementById("last-score").innerText = this.lastScore;
@@ -636,8 +640,17 @@ class JawbreakerGame {
                 // Close modal
                 settingsModal.style.display = "none";
 
-                // Restart game with new settings
-                this.resetGame();
+                // Get current game options
+                const opts = {
+                    rows: this.rows,
+                    cols: this.cols,
+                    blockSize: this.blockSize,
+                    touch: this.touch,
+                    weightedFills: this.weightedFills
+                };
+
+                // Reinitialize the game with new settings
+                this.init(opts);
             });
         }
     }
