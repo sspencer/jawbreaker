@@ -33,8 +33,8 @@ class JawbreakerGame {
                    touch = false,
                    weightedFills = true,
                }) {
-        // Check for settings cookie
-        const settingsStr = CookieManager.getCookie(this.settingsCookieName);
+        // Check for settings in localStorage
+        const settingsStr = LocalStorageManager.getItem(this.settingsCookieName);
         if (settingsStr) {
             try {
                 const settings = JSON.parse(settingsStr);
@@ -42,7 +42,7 @@ class JawbreakerGame {
                 cols = settings.cols || cols;
                 this.usePowerUps = settings.usePowerUps !== undefined ? settings.usePowerUps : true;
             } catch (e) {
-                console.error("Error parsing settings cookie:", e);
+                console.error("Error parsing settings from localStorage:", e);
             }
         }
 
@@ -78,7 +78,7 @@ class JawbreakerGame {
             GameConfig.ANIMATE ? GameConfig.ANIMATE_PIECE_SPEED : 0
         );
         this.initializeBoard();
-        const scores = CookieManager.getCookie(this.scoreCookieName);
+        const scores = LocalStorageManager.getItem(this.scoreCookieName);
         if (scores) {
             const [last, best] = scores.split("|").map((s) => parseInt(s, 10));
             this.lastScore = isNaN(last) ? 0 : last;
@@ -407,7 +407,7 @@ class JawbreakerGame {
             document.getElementById("pieces-text").innerText =
                 this.remainingPieces === 1 ? "piece" : "pieces";
             document.getElementById("game-over-overlay").classList.add("visible");
-            CookieManager.setCookie(
+            LocalStorageManager.setItem(
                 this.scoreCookieName,
                 `${this.lastScore}|${this.bestScore}`
             );
@@ -629,8 +629,8 @@ class JawbreakerGame {
                     usePowerUps: powerupsCheckbox.checked
                 };
 
-                // Save settings to cookie
-                CookieManager.setCookie(this.settingsCookieName, JSON.stringify(settings));
+                // Save settings to localStorage
+                LocalStorageManager.setItem(this.settingsCookieName, JSON.stringify(settings));
 
                 // Update game settings
                 this.rows = this.clamp(settings.rows, 8, 20);
