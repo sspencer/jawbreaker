@@ -491,6 +491,9 @@ class JawbreakerGame {
         this.canvas.height =
             this.rows * this.blockSize + (this.rows - 1) * GameConfig.GAP + 2 * GameConfig.BORDER_WIDTH;
 
+        // Create a new board with the updated dimensions
+        this.board = new Board(this.rows, this.cols);
+
         // Update renderer with new dimensions
         this.renderer = new Renderer(
             this.canvas.getContext("2d"),
@@ -506,9 +509,6 @@ class JawbreakerGame {
             this.board,
             GameConfig.ANIMATE ? GameConfig.ANIMATE_PIECE_SPEED : 0
         );
-
-        // Create a new board with the updated dimensions
-        this.board = new Board(this.rows, this.cols);
 
         this.initializeBoard();
         this.hoverList.clear();
