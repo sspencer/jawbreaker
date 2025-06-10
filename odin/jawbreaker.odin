@@ -81,7 +81,7 @@ main :: proc() {
         rl.ClearBackground({ 43, 60, 80, 255 })
 
         if game_over {
-            if rl.IsKeyPressed(.SPACE) {
+            if rl.IsKeyPressed(.SPACE) || rl.IsMouseButtonPressed(.LEFT)  {
                 restart()
             }
         } else {
