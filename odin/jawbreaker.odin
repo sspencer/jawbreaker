@@ -5,7 +5,7 @@ import rl "vendor:raylib"
 
 Vec2i :: [2]int
 
-NUM_BLOCKS :: 8
+NUM_BLOCKS :: 14
 BLOCK_SIZE :: 23
 SCREEN_PADDING :: 24
 BOARD_PADDING :: 3
