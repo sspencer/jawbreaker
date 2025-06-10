@@ -177,3 +177,23 @@ reset :: proc() {
     game_bonus = 0
 }
 
+make_move :: proc(num_connected: int) {
+    game_score += num_connected * (num_connected - 1)
+    for c in 0 ..< NUM_BLOCKS {
+        for r in 0 ..< NUM_BLOCKS {
+            if connected_pieces[c][r] {
+                board[c][r] = .Empty
+            }
+        }
+    }
+
+    applyGravity()
+
+    game_over = is_game_over()
+
+    if game_over {
+        game_bonus = calculate_bonus()
+        game_score += game_bonus
+    }
+
+}

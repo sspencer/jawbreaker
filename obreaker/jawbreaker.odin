@@ -77,35 +77,23 @@ main :: proc() {
             board_size,
             board_size,
         }
+
+        // draw game board
         rl.DrawRectangleRounded(board_rec, 0.02, 16, { 20, 24, 33, 255 })
+
 
         mouse_pos := get_board_coords(rl.GetMousePosition() / camera_zoom)
         num_connected := get_connected_pieces(mouse_pos)
+
         made_move := false
         if rl.IsMouseButtonPressed(.LEFT) && num_connected > 1 {
+            make_move(num_connected)
             made_move = true
-            game_score += num_connected * (num_connected - 1)
-            for c in 0 ..< NUM_BLOCKS {
-                for r in 0 ..< NUM_BLOCKS {
-                    if connected_pieces[c][r] {
-                        board[c][r] = .Empty
-                    }
-                }
-            }
-
-            applyGravity()
-
-            game_over = is_game_over()
-
-            if game_over {
-                game_bonus = calculate_bonus()
-                game_score += game_bonus
-            }
         }
 
         draw_game_piece_colors()
 
-        if made_move == false && num_connected > 1 {
+        if !made_move && num_connected > 1 {
             draw_game_piece_highlights()
         }
 
