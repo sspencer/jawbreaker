@@ -2,11 +2,12 @@ package jawbreaker
 
 import "core:math"
 import "core:math/rand"
+import "core:mem"
 import rl "vendor:raylib"
 
 get_board_coords :: proc(mouse: rl.Vector2) -> Vec2i {
-    grid_x := mouse.x - DISPLAY_PADDING - BOARD_PADDING
-    grid_y := mouse.y - DISPLAY_PADDING - BOARD_PADDING
+    grid_x := mouse.x - SCREEN_PADDING - BOARD_PADDING
+    grid_y := mouse.y - SCREEN_PADDING - BOARD_PADDING
 
     // Check if within board bounds
     if grid_x < 0 ||
@@ -26,20 +27,19 @@ get_board_coords :: proc(mouse: rl.Vector2) -> Vec2i {
     return { int(math.floor(board_x)), int(math.floor(board_y)) }
 }
 
-get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) -> map[Vec2i]bool {
-    if start.x < 0 ||
-    start.x >= NUM_BLOCKS ||
-    start.y < 0 ||
-    start.y >= NUM_BLOCKS {
-        return nil
+get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) -> int {
+    // reset connected_pieces to false
+    mem.zero(&connected_pieces, size_of(connected_pieces));
+
+    if start.x < 0 || start.x >= NUM_BLOCKS || start.y < 0 || start.y >= NUM_BLOCKS {
+        return 0
     }
 
     target_value := board[start.x][start.y]
     if target_value == .Empty {
-        return nil
+        return 0
     }
 
-    result := make(map[Vec2i]bool, 0, allocator)
     visited := make(map[Vec2i]bool, allocator)
     defer delete(visited)
 
@@ -48,6 +48,7 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
     append(&stack, start)
 
     directions := [4]Vec2i{ { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } }
+    count := 0
 
     for len(stack) > 0 {
         current := pop(&stack)
@@ -56,7 +57,8 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
         }
 
         visited[current] = true
-        result[current] = true
+        connected_pieces[current.x][current.y] = true
+        count += 1
 
         for dir in directions {
             next := Vec2i{ current.x + dir.x, current.y + dir.y }
@@ -75,7 +77,7 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
         }
     }
 
-    return result
+    return count
 }
 
 applyGravity :: proc() {
@@ -114,8 +116,8 @@ is_game_over :: proc() -> bool {
     for c in 0 ..< NUM_BLOCKS {
         for r in 0 ..< NUM_BLOCKS {
             if board[c][r] != .Empty {
-                pieces := get_connected_pieces(Vec2i{ c, r })
-                if len(pieces) > 1 {
+                n := get_connected_pieces(Vec2i{ c, r })
+                if n > 1 {
                     return false
                 }
             }

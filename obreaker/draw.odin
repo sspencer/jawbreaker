@@ -7,8 +7,8 @@ draw_game_piece_colors :: proc() {
     for row in 0 ..< NUM_BLOCKS {
         for col in 0 ..< NUM_BLOCKS {
             rec := rl.Rectangle {
-                f32(col * BLOCK_SIZE + DISPLAY_PADDING + BOARD_PADDING),
-                f32(row * BLOCK_SIZE + DISPLAY_PADDING + BOARD_PADDING),
+                f32(col * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
+                f32(row * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
                 BLOCK_SIZE - BLOCK_PADDING,
                 BLOCK_SIZE - BLOCK_PADDING,
             }
@@ -18,18 +18,17 @@ draw_game_piece_colors :: proc() {
     }
 }
 
-draw_game_piece_highlights :: proc (selection: map[Vec2i]bool) {
+draw_game_piece_highlights :: proc () {
     for row in 0 ..< NUM_BLOCKS {
         for col in 0 ..< NUM_BLOCKS {
             rec := rl.Rectangle {
-                f32(col * BLOCK_SIZE + DISPLAY_PADDING + BOARD_PADDING),
-                f32(row * BLOCK_SIZE + DISPLAY_PADDING + BOARD_PADDING),
+                f32(col * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
+                f32(row * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
                 BLOCK_SIZE - BLOCK_PADDING,
                 BLOCK_SIZE - BLOCK_PADDING,
             }
 
-            point := Vec2i{ col, row }
-            if point in selection {
+            if connected_pieces[col][row] {
                 color := highlight_color_values[board[col][row]]
                 rl.DrawRectangleRoundedLinesEx(rec, 0.3, 16, 2, color)
             }
