@@ -96,18 +96,29 @@ applyGravity :: proc() {
         }
     }
 
-    // Pass 2: Move all non-zero values right within each row
-    for row in 0 ..< NUM_BLOCKS {
-        write_pos := NUM_BLOCKS - 1
+    // Pass 2: Move entire columns right to fill gaps from empty columns
+    write_col := NUM_BLOCKS - 1
 
-        for col := NUM_BLOCKS - 1; col >= 0; col -= 1 {
+    for col := NUM_BLOCKS - 1; col >= 0; col -= 1 {
+    // Check if this column has any non-empty pieces
+        column_has_pieces := false
+        for row in 0 ..< NUM_BLOCKS {
             if board[col][row] != .Empty {
-                if write_pos != col {
-                    board[write_pos][row] = board[col][row]
+                column_has_pieces = true
+                break
+            }
+        }
+
+        // If column has pieces, move it to the write position
+        if column_has_pieces {
+            if write_col != col {
+            // Move entire column
+                for row in 0 ..< NUM_BLOCKS {
+                    board[write_col][row] = board[col][row]
                     board[col][row] = .Empty
                 }
-                write_pos -= 1
             }
+            write_col -= 1
         }
     }
 }
