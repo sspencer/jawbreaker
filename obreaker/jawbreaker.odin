@@ -43,10 +43,30 @@ undo_board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
 connected_pieces: [NUM_BLOCKS][NUM_BLOCKS]bool
 
 game_score := 0
+last_score := 0
+best_score := 0
 undo_score := 0
 can_undo := false
 game_over := false
 game_bonus := 0
+
+
+restart :: proc() {
+    for row in 0 ..< NUM_BLOCKS {
+        for col in 0 ..< NUM_BLOCKS {
+            board[col][row] = get_random_block_color()
+        }
+    }
+
+    last_score = game_score
+    if game_score > best_score {
+        best_score = game_score
+    }
+    game_score = 0
+    game_over = false
+    game_bonus = 0
+    can_undo = false
+}
 
 main :: proc() {
     rl.SetConfigFlags({ .VSYNC_HINT })
@@ -54,7 +74,7 @@ main :: proc() {
 
     rl.InitWindow(i32(screen_size * 2), i32(screen_size * 2), "Jawbreaker")
     rl.SetTargetFPS(60)
-    reset()
+    restart()
 
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
@@ -62,7 +82,7 @@ main :: proc() {
 
         if game_over {
             if rl.IsKeyPressed(.SPACE) {
-                reset()
+                restart()
             }
         } else {
             if can_undo && rl.IsKeyPressed(.Z) {

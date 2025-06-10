@@ -6,3 +6,4 @@ scores.db*
 scores.json
 raw/
 *.old
+bin/

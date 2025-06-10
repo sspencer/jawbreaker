@@ -165,19 +165,6 @@ get_random_block_color :: proc() -> Block_Color {
     return valid_colors[random_index]
 }
 
-reset :: proc() {
-    for row in 0 ..< NUM_BLOCKS {
-        for col in 0 ..< NUM_BLOCKS {
-            board[col][row] = get_random_block_color()
-        }
-    }
-
-    game_score = 0
-    game_over = false
-    game_bonus = 0
-    can_undo = false
-}
-
 make_move :: proc(num_connected: int) {
     game_score += num_connected * (num_connected - 1)
     for c in 0 ..< NUM_BLOCKS {

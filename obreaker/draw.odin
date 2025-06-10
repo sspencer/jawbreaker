@@ -37,7 +37,7 @@ draw_game_piece_highlights :: proc () {
 }
 
 draw_score :: proc(ss: i32, font_size: i32 = 11) {
-    score_str := fmt.ctprintf("Score: %v", game_score)
+    score_str := fmt.ctprintf("Score: %d  /  Last: %d  / Best: %d", game_score, last_score, best_score)
     score_width := rl.MeasureText(score_str, font_size)
     rl.DrawText(score_str,
     ss / 2 - score_width / 2,
