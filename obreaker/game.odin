@@ -1,0 +1,166 @@
+package jawbreaker
+
+import "core:math"
+import "core:math/rand"
+import rl "vendor:raylib"
+
+get_board_coords :: proc(mouse: rl.Vector2) -> Vec2i {
+    grid_x := mouse.x - DISPLAY_PADDING - BOARD_PADDING
+    grid_y := mouse.y - DISPLAY_PADDING - BOARD_PADDING
+
+    // Check if within board bounds
+    if grid_x < 0 ||
+    grid_x >= BLOCK_SIZE * NUM_BLOCKS ||
+    grid_y < 0 ||
+    grid_y >= BLOCK_SIZE * NUM_BLOCKS {
+        return Vec2i{ -1, -1 }
+    }
+
+    board_x := grid_x / BLOCK_SIZE
+    board_y := grid_y / BLOCK_SIZE
+
+    if board_x >= NUM_BLOCKS || board_y >= NUM_BLOCKS {
+        return Vec2i{ -1, -1 }
+    }
+
+    return { int(math.floor(board_x)), int(math.floor(board_y)) }
+}
+
+get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) -> map[Vec2i]bool {
+    if start.x < 0 ||
+    start.x >= NUM_BLOCKS ||
+    start.y < 0 ||
+    start.y >= NUM_BLOCKS {
+        return nil
+    }
+
+    target_value := board[start.x][start.y]
+    if target_value == .Empty {
+        return nil
+    }
+
+    result := make(map[Vec2i]bool, 0, allocator)
+    visited := make(map[Vec2i]bool, allocator)
+    defer delete(visited)
+
+    stack := make([dynamic]Vec2i, 0, allocator)
+    defer delete(stack)
+    append(&stack, start)
+
+    directions := [4]Vec2i{ { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } }
+
+    for len(stack) > 0 {
+        current := pop(&stack)
+        if current in visited {
+            continue
+        }
+
+        visited[current] = true
+        result[current] = true
+
+        for dir in directions {
+            next := Vec2i{ current.x + dir.x, current.y + dir.y }
+
+            // Check bounds
+            if next.x < 0 ||
+            next.x >= NUM_BLOCKS ||
+            next.y < 0 ||
+            next.y >= NUM_BLOCKS {
+                continue
+            }
+
+            if board[next.x][next.y] == target_value && !(next in visited) {
+                append(&stack, next)
+            }
+        }
+    }
+
+    return result
+}
+
+applyGravity :: proc() {
+// Pass 1: Move all non-zero values down within each column
+    for col in 0 ..< NUM_BLOCKS {
+        write_pos := NUM_BLOCKS - 1
+
+        for row := NUM_BLOCKS - 1; row >= 0; row -= 1 {
+            if board[col][row] != .Empty {
+                if write_pos != row {
+                    board[col][write_pos] = board[col][row]
+                    board[col][row] = .Empty
+                }
+                write_pos -= 1
+            }
+        }
+    }
+
+    // Pass 2: Move all non-zero values right within each row
+    for row in 0 ..< NUM_BLOCKS {
+        write_pos := NUM_BLOCKS - 1
+
+        for col := NUM_BLOCKS - 1; col >= 0; col -= 1 {
+            if board[col][row] != .Empty {
+                if write_pos != col {
+                    board[write_pos][row] = board[col][row]
+                    board[col][row] = .Empty
+                }
+                write_pos -= 1
+            }
+        }
+    }
+}
+
+is_game_over :: proc() -> bool {
+    for c in 0 ..< NUM_BLOCKS {
+        for r in 0 ..< NUM_BLOCKS {
+            if board[c][r] != .Empty {
+                pieces := get_connected_pieces(Vec2i{ c, r })
+                if len(pieces) > 1 {
+                    return false
+                }
+            }
+        }
+    }
+
+    return true
+}
+
+calculate_bonus :: proc() -> int {
+    threshold :: 10 // Bonus if 10 or fewer pieces remain
+    pieces := 0
+    for c in 0 ..< NUM_BLOCKS {
+        for r in 0 ..< NUM_BLOCKS {
+            if board[r][c] != .Empty {
+                pieces += 1
+            }
+        }
+    }
+
+    if pieces == 0 {
+        return 2000
+    } else if pieces <= threshold {
+        return (threshold - pieces + 1) * 100
+    }
+
+    return 0
+}
+
+get_random_block_color :: proc() -> Block_Color {
+    valid_colors := []Block_Color{ .Purple, .Blue, .Green, .Red, .Yellow }
+
+    random_index := rand.int_max(len(valid_colors))
+    return valid_colors[random_index]
+}
+
+reset :: proc() {
+    for row in 0 ..< NUM_BLOCKS {
+        for col in 0 ..< NUM_BLOCKS {
+            board[col][row] = get_random_block_color()
+        }
+    }
+
+    game_score = 0
+    game_over = false
+    game_bonus = 0
+}
+
