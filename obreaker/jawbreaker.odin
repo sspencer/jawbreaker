@@ -1,10 +1,11 @@
 package jawbreaker
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 Vec2i :: [2]int
 
-NUM_BLOCKS :: 14
+NUM_BLOCKS :: 8
 BLOCK_SIZE :: 23
 SCREEN_PADDING :: 24
 BOARD_PADDING :: 3
@@ -38,9 +39,12 @@ highlight_color_values := [Block_Color]rl.Color {
 }
 
 board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
+undo_board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
 connected_pieces: [NUM_BLOCKS][NUM_BLOCKS]bool
 
 game_score := 0
+undo_score := 0
+can_undo := false
 game_over := false
 game_bonus := 0
 
@@ -59,6 +63,12 @@ main :: proc() {
         if game_over {
             if rl.IsKeyPressed(.SPACE) {
                 reset()
+            }
+        } else {
+            if can_undo && rl.IsKeyPressed(.Z) {
+                board = undo_board
+                game_score = undo_score
+                can_undo = false
             }
         }
 
@@ -81,14 +91,16 @@ main :: proc() {
         // draw game board
         rl.DrawRectangleRounded(board_rec, 0.02, 16, { 20, 24, 33, 255 })
 
-
         mouse_pos := get_board_coords(rl.GetMousePosition() / camera_zoom)
         num_connected := get_connected_pieces(mouse_pos)
 
         made_move := false
         if rl.IsMouseButtonPressed(.LEFT) && num_connected > 1 {
+            undo_score = game_score
+            undo_board = board
             make_move(num_connected)
             made_move = true
+            can_undo = true
         }
 
         draw_game_piece_colors()

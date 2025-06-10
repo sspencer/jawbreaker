@@ -175,6 +175,7 @@ reset :: proc() {
     game_score = 0
     game_over = false
     game_bonus = 0
+    can_undo = false
 }
 
 make_move :: proc(num_connected: int) {
