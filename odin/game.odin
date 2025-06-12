@@ -158,11 +158,33 @@ calculate_bonus :: proc() -> int {
     return 0
 }
 
-get_random_block_color :: proc() -> Block_Color {
+random_block_color :: proc() -> Block_Color {
     valid_colors := []Block_Color{ .Purple, .Blue, .Green, .Red, .Yellow }
 
     random_index := rand.int_max(len(valid_colors))
     return valid_colors[random_index]
+}
+
+select_random_positions :: proc(count: int) -> []Vec2i {
+    positions := make([]Vec2i, count, context.temp_allocator)
+    used := make(map[Vec2i]bool)
+    defer delete(used)
+
+    for i in 0..<count {
+        for {
+            x := rand.int_max(NUM_BLOCKS)
+            y := rand.int_max(NUM_BLOCKS)
+            pos := Vec2i{x, y}
+
+            if pos not_in used {
+                used[pos] = true
+                positions[i] = pos
+                break
+            }
+        }
+    }
+
+    return positions
 }
 
 make_move :: proc(num_connected: int) {

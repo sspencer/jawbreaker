@@ -1,6 +1,5 @@
 package jawbreaker
 
-import "core:fmt"
 import rl "vendor:raylib"
 
 Vec2i :: [2]int
@@ -18,24 +17,34 @@ Block_Color :: enum {
     Green,
     Red,
     Yellow,
+    PowerPlus,
+    PowerMinus,
+    PowerTimes,
 }
+
 
 block_color_values := [Block_Color]rl.Color {
     .Empty  = { 35, 38, 44, 255 },
-    .Purple = rl.DARKPURPLE,
-    .Blue   = rl.BLUE,
-    .Green  = rl.LIME,
-    .Red    = rl.RED,
-    .Yellow = rl.GOLD,
+    .Purple     = rl.DARKPURPLE,
+    .Blue       = rl.BLUE,
+    .Green      = rl.LIME,
+    .Red        = rl.RED,
+    .Yellow     = rl.GOLD,
+    .PowerPlus  = rl.DARKGRAY,
+    .PowerMinus = rl.DARKGRAY,
+    .PowerTimes = rl.DARKGRAY,
 }
 
 highlight_color_values := [Block_Color]rl.Color {
     .Empty  = { 105, 114, 132, 255 },
-    .Purple = rl.PURPLE,
-    .Blue   = rl.SKYBLUE,
-    .Green  = rl.GREEN,
-    .Red    = rl.PINK,
-    .Yellow = rl.YELLOW,
+    .Purple     = rl.PURPLE,
+    .Blue       = rl.SKYBLUE,
+    .Green      = rl.GREEN,
+    .Red        = rl.PINK,
+    .Yellow     = rl.YELLOW,
+    .PowerPlus  = rl.GRAY,
+    .PowerMinus = rl.GRAY,
+    .PowerTimes = rl.GRAY,
 }
 
 board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
@@ -54,8 +63,16 @@ game_bonus := 0
 restart :: proc() {
     for row in 0 ..< NUM_BLOCKS {
         for col in 0 ..< NUM_BLOCKS {
-            board[col][row] = get_random_block_color()
+            board[col][row] = random_block_color()
         }
+    }
+
+    // place power ups
+    power_ups := [3]Block_Color{.PowerPlus, .PowerMinus, .PowerTimes}
+
+    pos := select_random_positions(len(power_ups))
+    for p, i in pos {
+        board[p.x][p.y] = power_ups[i]
     }
 
     last_score = game_score
@@ -81,7 +98,7 @@ main :: proc() {
         rl.ClearBackground({ 43, 60, 80, 255 })
 
         if game_over {
-            if rl.IsKeyPressed(.SPACE) || rl.IsMouseButtonPressed(.LEFT)  {
+            if rl.IsKeyPressed(.SPACE) || rl.IsMouseButtonPressed(.LEFT) {
                 restart()
             }
         } else {
@@ -101,12 +118,7 @@ main :: proc() {
 
         board_size := f32(NUM_BLOCKS) * BLOCK_SIZE + BOARD_PADDING * 2
 
-        board_rec := rl.Rectangle {
-            SCREEN_PADDING,
-            SCREEN_PADDING,
-            board_size,
-            board_size,
-        }
+        board_rec := rl.Rectangle{ SCREEN_PADDING, SCREEN_PADDING, board_size, board_size }
 
         // draw game board
         rl.DrawRectangleRounded(board_rec, 0.02, 16, { 20, 24, 33, 255 })
@@ -123,10 +135,10 @@ main :: proc() {
             can_undo = true
         }
 
-        draw_game_piece_colors()
+        draw_block()
 
         if !made_move && num_connected > 1 {
-            draw_game_piece_highlights()
+            draw_highlight()
         }
 
         draw_score(i32(screen_size))
