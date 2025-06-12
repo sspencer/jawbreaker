@@ -4,6 +4,7 @@ import "core:math"
 import "core:math/rand"
 import "core:mem"
 import rl "vendor:raylib"
+import fmt "core:fmt"
 
 get_board_coords :: proc(mouse: rl.Vector2) -> Vec2i {
     grid_x := mouse.x - SCREEN_PADDING - BOARD_PADDING
@@ -38,6 +39,11 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
     target_value := board[start.x][start.y]
     if target_value == .Empty {
         return 0
+    }
+
+    #partial switch (target_value) {
+        case .PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle:
+            return get_powerup_selection(start, target_value)
     }
 
     visited := make(map[Vec2i]bool, allocator)
@@ -78,6 +84,61 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
     }
 
     return count
+}
+
+//c1 := g.getConnectionsWithDirections(index, rectDirection, 1)
+//c2 := g.getConnectionsWithDirections(index, circleDirection, 3)
+get_powerup_selection :: proc(start: Vec2i, target: Block_Color) -> int {
+    sel : []Selection
+    #partial switch(target) {
+    case .PowerPlus:
+        return powerup_selection(start, PlusSelection, NUM_BLOCKS)
+    case .PowerMinus:
+        return powerup_selection(start, MinusSelection, NUM_BLOCKS)
+    case .PowerTimes:
+        max := int(math.ceil(NUM_BLOCKS * math.sqrt_f32(2)))
+        return powerup_selection(start, TimesSelection, max)
+    case .PowerRect:
+        return powerup_selection(start, RectSelection, 4)
+    case .PowerCircle:
+        return powerup_selection(start, RectSelection, 1) +
+            powerup_selection(start, CircleSelection, 3)
+    }
+
+    return 0
+}
+
+powerup_selection :: proc(start: Vec2i, sel: []Selection, max_iters: int) -> int {
+    target_value := board[start.x][start.y]
+    num := 0
+
+    startRow := start.y
+    startCol := start.x
+
+    for iter in 0..<max_iters {
+        for s in sel {
+            r := startRow + s.Start.y + s.Dir.y * iter
+            c := startCol + s.Start.x + s.Dir.x * iter
+            if r < 0 || c < 0 || r >= NUM_BLOCKS || c >= NUM_BLOCKS {
+                continue
+            }
+
+            cur := board[c][r]
+            if cur == .Empty || block_color_values[cur] == rl.DARKGRAY {
+                continue
+            }
+
+            connected_pieces[c][r] = true
+            num += 1
+        }
+    }
+
+    if num > 0 {
+        connected_pieces[start.x][start.y] = true
+        num += 1
+    }
+
+    return num
 }
 
 applyGravity :: proc() {

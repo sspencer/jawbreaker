@@ -20,6 +20,8 @@ draw_block :: proc() {
             case .PowerPlus: draw_plus(rec)
             case .PowerMinus: draw_minus(rec)
             case .PowerTimes: draw_times(rec)
+            case .PowerRect: draw_rectangle(rec)
+            case .PowerCircle: draw_circle(rec)
             }
         }
     }
@@ -94,9 +96,6 @@ draw_minus :: proc(rect: rl.Rectangle) {
 
     // Draw white fill
     rl.DrawRectangleRec(minus_rect, rl.WHITE)
-
-//    // Draw black border
-//    rl.DrawRectangleLinesEx(minus_rect, 2, rl.BLACK)
 }
 
 draw_times :: proc(rect: rl.Rectangle) {
@@ -104,8 +103,8 @@ draw_times :: proc(rect: rl.Rectangle) {
     center_y := rect.y + rect.height / 2
 
     // Calculate dimensions for the X shape
-    thickness := rect.width / 8  // Thickness of the lines
-    arm_length := rect.width * 3 / 4  // Length of each diagonal arm
+    thickness := rect.width / 4  // Thickness of the lines
+    arm_length := rect.width * 3 / 4 - 6 // Length of each diagonal arm
     half_arm := arm_length / 2
 
     // Calculate diagonal offset for thickness
@@ -134,6 +133,26 @@ draw_times :: proc(rect: rl.Rectangle) {
         rl.DrawLineEx(diagonal1_points[i], diagonal1_points[next_i], 2, rl.WHITE)
         rl.DrawLineEx(diagonal2_points[i], diagonal2_points[next_i], 2, rl.WHITE)
     }
+}
+
+draw_rectangle :: proc(rect: rl.Rectangle) {
+    thickness := rect.width / 6 -1
+
+    x := rect.x + thickness + 1
+    y := rect.y + thickness + 1
+
+    width := rect.width - 2*thickness -2
+    height := rect.height - 2*thickness - 2
+
+    rl.DrawRectangleLinesEx(rl.Rectangle{f32(x), f32(y), f32(width), f32(height)}, thickness, rl.WHITE)
+}
+
+draw_circle :: proc(rect: rl.Rectangle) {
+    center_x := rect.x + rect.width / 2
+    center_y := rect.y + rect.height / 2
+    radius := min(rect.width, rect.height) / 2 - 4
+
+    rl.DrawRing({center_x, center_y}, radius - 1, radius + 2, 0, 360, 36, rl.WHITE)
 }
 
 draw_score :: proc(ss: i32, font_size: i32 = 11) {

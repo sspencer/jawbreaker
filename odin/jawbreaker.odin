@@ -20,32 +20,77 @@ Block_Color :: enum {
     PowerPlus,
     PowerMinus,
     PowerTimes,
+    PowerRect,
+    PowerCircle,
 }
 
 
 block_color_values := [Block_Color]rl.Color {
-    .Empty  = { 35, 38, 44, 255 },
-    .Purple     = rl.DARKPURPLE,
-    .Blue       = rl.BLUE,
-    .Green      = rl.LIME,
-    .Red        = rl.RED,
-    .Yellow     = rl.GOLD,
-    .PowerPlus  = rl.DARKGRAY,
-    .PowerMinus = rl.DARKGRAY,
-    .PowerTimes = rl.DARKGRAY,
+    .Empty       = { 35, 38, 44, 255 },
+    .Purple      = rl.DARKPURPLE,
+    .Blue        = rl.BLUE,
+    .Green       = rl.LIME,
+    .Red         = rl.RED,
+    .Yellow      = rl.GOLD,
+    .PowerPlus   = rl.DARKGRAY,
+    .PowerMinus  = rl.DARKGRAY,
+    .PowerTimes  = rl.DARKGRAY,
+    .PowerRect   = rl.DARKGRAY,
+    .PowerCircle = rl.DARKGRAY,
 }
 
 highlight_color_values := [Block_Color]rl.Color {
-    .Empty  = { 105, 114, 132, 255 },
-    .Purple     = rl.PURPLE,
-    .Blue       = rl.SKYBLUE,
-    .Green      = rl.GREEN,
-    .Red        = rl.PINK,
-    .Yellow     = rl.YELLOW,
-    .PowerPlus  = rl.GRAY,
-    .PowerMinus = rl.GRAY,
-    .PowerTimes = rl.GRAY,
+    .Empty       = { 105, 114, 132, 255 },
+    .Purple      = rl.PURPLE,
+    .Blue        = rl.SKYBLUE,
+    .Green       = rl.GREEN,
+    .Red         = rl.PINK,
+    .Yellow      = rl.YELLOW,
+    .PowerPlus   = rl.GRAY,
+    .PowerMinus  = rl.GRAY,
+    .PowerTimes  = rl.GRAY,
+    .PowerRect   = rl.GRAY,
+    .PowerCircle = rl.GRAY,
 }
+
+Selection :: struct{
+    Start: Vec2i,
+    Dir: Vec2i,
+}
+
+TimesSelection := []Selection {
+    {{-1, -1}, {-1, -1}},
+    {{ 1, -1}, { 1, -1}},
+    {{-1,  1}, {-1,  1}},
+    {{ 1,  1}, { 1,  1}},
+}
+
+PlusSelection := []Selection{
+    {{ 0, -1 }, { 0, -1}},
+    {{ 0,  1},  { 0,  1}},
+    {{-1,  0},  {-1,  0}},
+    {{ 1,  0},  { 1,  0}},
+}
+
+MinusSelection := []Selection{
+    {{-1,  0},  {-1,  0}},
+    {{ 1,  0},  { 1,  0}},
+}
+
+RectSelection := []Selection {
+    {{-2, -2}, { 0,  1}},
+    {{-2,  2}, { 1,  0}},
+    {{ 2,  2}, { 0, -1}},
+    {{ 2, -2}, {-1,  0}},
+}
+
+CircleSelection := []Selection {
+    {{-3, -1}, { 0,  1}},
+    {{-1,  3}, { 1,  0}},
+    {{ 3,  1}, { 0, -1}},
+    {{ 1, -3}, {-1,  0}},
+}
+
 
 board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
 undo_board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
@@ -68,7 +113,7 @@ restart :: proc() {
     }
 
     // place power ups
-    power_ups := [3]Block_Color{.PowerPlus, .PowerMinus, .PowerTimes}
+    power_ups := []Block_Color{.PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle}
 
     pos := select_random_positions(len(power_ups))
     for p, i in pos {
@@ -102,10 +147,14 @@ main :: proc() {
                 restart()
             }
         } else {
-            if can_undo && rl.IsKeyPressed(.Z) {
+            if can_undo && (rl.IsKeyPressed(.Z) || rl.IsKeyPressed(.U)) {
                 board = undo_board
                 game_score = undo_score
                 can_undo = false
+            }
+
+            if rl.IsKeyPressed(.R) {
+                restart()
             }
         }
 
@@ -120,8 +169,6 @@ main :: proc() {
 
         board_rec := rl.Rectangle{ SCREEN_PADDING, SCREEN_PADDING, board_size, board_size }
 
-        // draw game board
-        rl.DrawRectangleRounded(board_rec, 0.02, 16, { 20, 24, 33, 255 })
 
         mouse_pos := get_board_coords(rl.GetMousePosition() / camera_zoom)
         num_connected := get_connected_pieces(mouse_pos)
@@ -134,6 +181,9 @@ main :: proc() {
             made_move = true
             can_undo = true
         }
+
+        // draw game board
+        rl.DrawRectangleRounded(board_rec, 0.02, 16, { 20, 24, 33, 255 })
 
         draw_block()
 
