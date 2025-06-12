@@ -28,7 +28,7 @@ get_board_coords :: proc(mouse: rl.Vector2) -> Vec2i {
     return { int(math.floor(board_x)), int(math.floor(board_y)) }
 }
 
-get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) -> int {
+selected_blocks :: proc(start: Vec2i, allocator := context.temp_allocator) -> int {
     // reset connected_pieces to false
     mem.zero(&connected_pieces, size_of(connected_pieces));
 
@@ -36,16 +36,21 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
         return 0
     }
 
-    target_value := board[start.x][start.y]
-    if target_value == .Empty {
+    target := board[start.x][start.y]
+    if target == .Empty {
         return 0
     }
 
-    #partial switch (target_value) {
+    #partial switch (target) {
         case .PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle:
-            return get_powerup_selection(start, target_value)
+            return powerup_selection(start)
+        case:
+            return color_selection(start, allocator)
     }
+}
 
+color_selection :: proc(start: Vec2i, allocator := context.temp_allocator) -> int {
+    target := board[start.x][start.y]
     visited := make(map[Vec2i]bool, allocator)
     defer delete(visited)
 
@@ -77,7 +82,7 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
                 continue
             }
 
-            if board[next.x][next.y] == target_value && !(next in visited) {
+            if board[next.x][next.y] == target && !(next in visited) {
                 append(&stack, next)
             }
         }
@@ -86,30 +91,28 @@ get_connected_pieces :: proc(start: Vec2i, allocator := context.temp_allocator) 
     return count
 }
 
-//c1 := g.getConnectionsWithDirections(index, rectDirection, 1)
-//c2 := g.getConnectionsWithDirections(index, circleDirection, 3)
-get_powerup_selection :: proc(start: Vec2i, target: Block_Color) -> int {
+powerup_selection :: proc(start: Vec2i) -> int {
+    target := board[start.x][start.y]
     sel : []Selection
     #partial switch(target) {
     case .PowerPlus:
-        return powerup_selection(start, PlusSelection, NUM_BLOCKS)
+        return do_selection(start, PlusSelection, NUM_BLOCKS)
     case .PowerMinus:
-        return powerup_selection(start, MinusSelection, NUM_BLOCKS)
+        return do_selection(start, MinusSelection, NUM_BLOCKS)
     case .PowerTimes:
         max := int(math.ceil(NUM_BLOCKS * math.sqrt_f32(2)))
-        return powerup_selection(start, TimesSelection, max)
+        return do_selection(start, TimesSelection, max)
     case .PowerRect:
-        return powerup_selection(start, RectSelection, 4)
+        return do_selection(start, RectSelection, 4)
     case .PowerCircle:
-        return powerup_selection(start, RectSelection, 1) +
-            powerup_selection(start, CircleSelection, 3)
+        return do_selection(start, RectSelection, 1) +
+            do_selection(start, CircleSelection, 3)
     }
 
     return 0
 }
 
-powerup_selection :: proc(start: Vec2i, sel: []Selection, max_iters: int) -> int {
-    target_value := board[start.x][start.y]
+do_selection :: proc(start: Vec2i, sel: []Selection, max_iters: int) -> int {
     num := 0
 
     startRow := start.y
@@ -188,7 +191,7 @@ is_game_over :: proc() -> bool {
     for c in 0 ..< NUM_BLOCKS {
         for r in 0 ..< NUM_BLOCKS {
             if board[c][r] != .Empty {
-                n := get_connected_pieces(Vec2i{ c, r })
+                n := selected_blocks(Vec2i{ c, r })
                 if n > 1 {
                     return false
                 }

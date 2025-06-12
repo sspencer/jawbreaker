@@ -171,7 +171,7 @@ main :: proc() {
 
 
         mouse_pos := get_board_coords(rl.GetMousePosition() / camera_zoom)
-        num_connected := get_connected_pieces(mouse_pos)
+        num_connected := selected_blocks(mouse_pos)
 
         made_move := false
         if rl.IsMouseButtonPressed(.LEFT) && num_connected > 1 {
