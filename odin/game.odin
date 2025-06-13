@@ -42,7 +42,7 @@ selected_blocks :: proc(start: Vec2i, allocator := context.temp_allocator) -> in
     }
 
     #partial switch (target) {
-        case .PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle:
+        case .PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle, .PowerPipe:
             return powerup_selection(start)
         case:
             return color_selection(start, allocator)
@@ -99,6 +99,8 @@ powerup_selection :: proc(start: Vec2i) -> int {
         return do_selection(start, PlusSelection, NUM_BLOCKS)
     case .PowerMinus:
         return do_selection(start, MinusSelection, NUM_BLOCKS)
+    case .PowerPipe:
+        return do_selection(start, PipeSelection, NUM_BLOCKS)
     case .PowerTimes:
         max := int(math.ceil(NUM_BLOCKS * math.sqrt_f32(2)))
         return do_selection(start, TimesSelection, max)

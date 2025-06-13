@@ -17,10 +17,11 @@ draw_block :: proc() {
 
             block_type := board[col][row]
             #partial switch(board[col][row]) {
-            case .PowerPlus: draw_plus(rec)
-            case .PowerMinus: draw_minus(rec)
-            case .PowerTimes: draw_times(rec)
-            case .PowerRect: draw_rectangle(rec)
+            case .PowerPlus:   draw_plus(rec)
+            case .PowerMinus:  draw_minus(rec)
+            case .PowerPipe:   draw_pipe(rec)
+            case .PowerTimes:  draw_times(rec)
+            case .PowerRect:   draw_rectangle(rec)
             case .PowerCircle: draw_circle(rec)
             }
         }
@@ -50,8 +51,8 @@ draw_plus :: proc(rect: rl.Rectangle) {
     center_y := rect.y + rect.height / 2
 
     // Calculate dimensions for the plus shape
-    thickness := rect.width / 6  // Thickness of the lines
-    length := rect.width * 3 / 4  // Length of each arm
+    thickness := rect.width / 8  // Thickness of the lines
+    length := rect.width * 3 / 5  // Length of each arm
 
     // Vertical bar
     vertical_rect := rl.Rectangle{
@@ -69,13 +70,27 @@ draw_plus :: proc(rect: rl.Rectangle) {
         height = thickness,
     }
 
-    // Draw white fill
     rl.DrawRectangleRec(vertical_rect, rl.WHITE)
     rl.DrawRectangleRec(horizontal_rect, rl.WHITE)
-//
-//    // Draw black borders
-//    rl.DrawRectangleLinesEx(vertical_rect, 2, rl.BLACK)
-//    rl.DrawRectangleLinesEx(horizontal_rect, 2, rl.BLACK)
+}
+
+draw_pipe :: proc(rect: rl.Rectangle) {
+    center_x := rect.x + rect.width / 2
+    center_y := rect.y + rect.height / 2
+
+    // Calculate dimensions for the plus shape
+    thickness := rect.width / 8  // Thickness of the lines
+    length := rect.width * 3 / 5  // Length of each arm
+
+    // Vertical bar
+    vertical_rect := rl.Rectangle{
+        x = center_x - thickness / 2,
+        y = center_y - length / 2,
+        width = thickness,
+        height = length,
+    }
+
+    rl.DrawRectangleRec(vertical_rect, rl.WHITE)
 }
 
 draw_minus :: proc(rect: rl.Rectangle) {
@@ -83,8 +98,8 @@ draw_minus :: proc(rect: rl.Rectangle) {
     center_y := rect.y + rect.height / 2
 
     // Calculate dimensions for the minus shape
-    thickness := rect.width / 6  // Thickness of the line
-    length := rect.width * 3 / 4  // Length of the line
+    thickness := rect.width / 8  // Thickness of the line
+    length := rect.width * 3 / 5  // Length of the line
 
     // Horizontal bar
     minus_rect := rl.Rectangle{
@@ -103,8 +118,8 @@ draw_times :: proc(rect: rl.Rectangle) {
     center_y := rect.y + rect.height / 2
 
     // Calculate dimensions for the X shape
-    thickness := rect.width / 4  // Thickness of the lines
-    arm_length := rect.width * 3 / 4 - 6 // Length of each diagonal arm
+    thickness := rect.width / 6  // Thickness of the lines
+    arm_length := rect.width * 0.55
     half_arm := arm_length / 2
 
     // Calculate diagonal offset for thickness
@@ -136,7 +151,7 @@ draw_times :: proc(rect: rl.Rectangle) {
 }
 
 draw_rectangle :: proc(rect: rl.Rectangle) {
-    thickness := rect.width / 6 -1
+    thickness := rect.width / 8
 
     x := rect.x + thickness + 1
     y := rect.y + thickness + 1
@@ -150,9 +165,9 @@ draw_rectangle :: proc(rect: rl.Rectangle) {
 draw_circle :: proc(rect: rl.Rectangle) {
     center_x := rect.x + rect.width / 2
     center_y := rect.y + rect.height / 2
-    radius := min(rect.width, rect.height) / 2 - 4
+    radius := min(rect.width, rect.height) * 0.3
 
-    rl.DrawRing({center_x, center_y}, radius - 1, radius + 2, 0, 360, 36, rl.WHITE)
+    rl.DrawRing({center_x, center_y}, radius - 1, radius + 1.5, 0, 360, 24, rl.WHITE)
 }
 
 draw_score :: proc(ss: i32, font_size: i32 = 11) {

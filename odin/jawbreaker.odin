@@ -22,6 +22,7 @@ Block_Color :: enum {
     PowerTimes,
     PowerRect,
     PowerCircle,
+    PowerPipe,
 }
 
 
@@ -37,6 +38,7 @@ block_color_values := [Block_Color]rl.Color {
     .PowerTimes  = rl.DARKGRAY,
     .PowerRect   = rl.DARKGRAY,
     .PowerCircle = rl.DARKGRAY,
+    .PowerPipe   = rl.DARKGRAY,
 }
 
 highlight_color_values := [Block_Color]rl.Color {
@@ -51,6 +53,7 @@ highlight_color_values := [Block_Color]rl.Color {
     .PowerTimes  = rl.GRAY,
     .PowerRect   = rl.GRAY,
     .PowerCircle = rl.GRAY,
+    .PowerPipe = rl.GRAY,
 }
 
 Selection :: struct{
@@ -75,6 +78,11 @@ PlusSelection := []Selection{
 MinusSelection := []Selection{
     {{-1,  0},  {-1,  0}},
     {{ 1,  0},  { 1,  0}},
+}
+
+PipeSelection := []Selection{ // vertical selection
+    {{ 0, -1 }, { 0, -1}},
+    {{ 0,  1},  { 0,  1}},
 }
 
 RectSelection := []Selection {
@@ -113,7 +121,7 @@ restart :: proc() {
     }
 
     // place power ups
-    power_ups := []Block_Color{.PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle}
+    power_ups := []Block_Color{.PowerPlus, .PowerMinus, .PowerTimes, .PowerRect, .PowerCircle, .PowerPipe}
 
     pos := select_random_positions(len(power_ups))
     for p, i in pos {
