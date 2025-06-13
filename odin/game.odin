@@ -270,6 +270,18 @@ make_move :: proc(num_connected: int) {
     if game_over {
         game_bonus = calculate_bonus()
         game_score += game_bonus
+
+        last_score = game_score
+        if game_score > best_score {
+            best_score = game_score
+        }
+
+        state := Game_State{
+            best_score = best_score,
+            last_score = last_score
+        }
+
+        save_high_score(state)
     }
 
 }

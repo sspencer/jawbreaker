@@ -1,6 +1,7 @@
 package jawbreaker
 
 import rl "vendor:raylib"
+import "core:log"
 
 Vec2i :: [2]int
 
@@ -104,14 +105,13 @@ board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
 undo_board: [NUM_BLOCKS][NUM_BLOCKS]Block_Color // columns x rows
 connected_pieces: [NUM_BLOCKS][NUM_BLOCKS]bool
 
+undo_score := 0
 game_score := 0
 last_score := 0
 best_score := 0
-undo_score := 0
 can_undo := false
 game_over := false
 game_bonus := 0
-
 
 restart :: proc() {
     for row in 0 ..< NUM_BLOCKS {
@@ -146,12 +146,17 @@ main :: proc() {
     rl.SetTargetFPS(60)
     restart()
 
+    if state, ok := load_high_score(); ok {
+        best_score = state.best_score
+        last_score = state.last_score
+    }
+
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
         rl.ClearBackground({ 43, 60, 80, 255 })
 
         if game_over {
-            if rl.IsKeyPressed(.SPACE) || rl.IsMouseButtonPressed(.LEFT) {
+            if rl.IsKeyPressed(.SPACE) {
                 restart()
             }
         } else {
@@ -176,7 +181,6 @@ main :: proc() {
         board_size := f32(NUM_BLOCKS) * BLOCK_SIZE + BOARD_PADDING * 2
 
         board_rec := rl.Rectangle{ SCREEN_PADDING, SCREEN_PADDING, board_size, board_size }
-
 
         mouse_pos := get_board_coords(rl.GetMousePosition() / camera_zoom)
         num_connected := selected_blocks(mouse_pos)
