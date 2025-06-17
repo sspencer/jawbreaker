@@ -172,6 +172,17 @@ main :: proc() {
             if rl.IsKeyPressed(.R) {
                 restart()
             }
+
+            if rl.IsKeyPressed(.COMMA) {
+                rotate_array(.CLOCKWISE)
+                applyGravity()
+
+            }
+
+            if rl.IsKeyPressed(.PERIOD) {
+                rotate_array(.COUNTER_CLOCKWISE)
+                applyGravity()
+            }
         }
 
         camera_zoom := f32(rl.GetScreenHeight()) / f32(screen_size)
