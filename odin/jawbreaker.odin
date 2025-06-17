@@ -7,9 +7,10 @@ Vec2i :: [2]int
 
 NUM_BLOCKS :: 14
 BLOCK_SIZE :: 23
-SCREEN_PADDING :: 24
-BOARD_PADDING :: 3
-BLOCK_PADDING :: 2
+WINDOW_PADDING :: 30
+GRID_OUTER :: 2
+GRID_INNER :: 1
+BACKGROUND :: rl.Color{ 43, 60, 80, 255 }
 
 Block_Color :: enum {
     Empty,
@@ -29,11 +30,12 @@ Block_Color :: enum {
 
 block_color_values := [Block_Color]rl.Color {
     .Empty       = { 35, 38, 44, 255 },
+    //.Empty       = { 43, 60, 80, 255 },
     .Purple      = rl.DARKPURPLE,
     .Blue        = rl.BLUE,
     .Green       = rl.LIME,
     .Red         = rl.RED,
-    .Yellow      = rl.GOLD,
+    .Yellow      = rl.ORANGE,
     .PowerPlus   = rl.DARKGRAY,
     .PowerMinus  = rl.DARKGRAY,
     .PowerTimes  = rl.DARKGRAY,
@@ -43,7 +45,8 @@ block_color_values := [Block_Color]rl.Color {
 }
 
 highlight_color_values := [Block_Color]rl.Color {
-    .Empty       = { 105, 114, 132, 255 },
+    //.Empty       = { 105, 114, 132, 153 },
+    .Empty       = { 38, 55, 75, 204 },
     .Purple      = rl.PURPLE,
     .Blue        = rl.SKYBLUE,
     .Green       = rl.GREEN,
@@ -140,7 +143,7 @@ restart :: proc() {
 
 main :: proc() {
     rl.SetConfigFlags({ .VSYNC_HINT })
-    screen_size := BLOCK_SIZE * NUM_BLOCKS + (SCREEN_PADDING + BOARD_PADDING) * 2
+    screen_size := BLOCK_SIZE * NUM_BLOCKS + (WINDOW_PADDING + GRID_OUTER) * 2
 
     rl.InitWindow(i32(screen_size * 2), i32(screen_size * 2), "Jawbreaker")
     rl.SetTargetFPS(60)
@@ -153,7 +156,7 @@ main :: proc() {
 
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
-        rl.ClearBackground({ 43, 60, 80, 255 })
+        rl.ClearBackground(BACKGROUND)
 
         if game_over {
             if rl.IsKeyPressed(.SPACE) {
@@ -178,9 +181,9 @@ main :: proc() {
 
         rl.BeginMode2D(camera)
 
-        board_size := f32(NUM_BLOCKS) * BLOCK_SIZE + BOARD_PADDING * 2
+        board_size := f32(NUM_BLOCKS) * BLOCK_SIZE -GRID_INNER + GRID_OUTER * 2
 
-        board_rec := rl.Rectangle{ SCREEN_PADDING, SCREEN_PADDING, board_size, board_size }
+        board_rec := rl.Rectangle{ WINDOW_PADDING, WINDOW_PADDING, board_size, board_size }
 
         mouse_pos := get_board_coords(rl.GetMousePosition() / camera_zoom)
         num_connected := selected_blocks(mouse_pos)

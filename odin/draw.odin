@@ -7,14 +7,20 @@ draw_block :: proc() {
     for row in 0 ..< NUM_BLOCKS {
         for col in 0 ..< NUM_BLOCKS {
             rec := rl.Rectangle {
-                f32(col * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
-                f32(row * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
-                BLOCK_SIZE - BLOCK_PADDING,
-                BLOCK_SIZE - BLOCK_PADDING,
+                f32(col * BLOCK_SIZE + WINDOW_PADDING + GRID_OUTER),
+                f32(row * BLOCK_SIZE + WINDOW_PADDING + GRID_OUTER),
+                BLOCK_SIZE - GRID_INNER,
+                BLOCK_SIZE - GRID_INNER,
             }
 
-            rl.DrawRectangleRounded(rec, 0.3, 16, block_color_values[board[col][row]])
+            lo := block_color_values[board[col][row]]
+            hi := highlight_color_values[board[col][row]]
 
+            if board[col][row] == .Empty {
+                rl.DrawRectangleRounded(rec, 0.3, 16, hi)
+            } else {
+                rl.DrawRectangleGradientEx(rec, hi, lo, lo, lo)
+            }
             block_type := board[col][row]
             #partial switch(board[col][row]) {
             case .PowerPlus:   draw_plus(rec)
@@ -32,10 +38,10 @@ draw_highlight :: proc () {
     for row in 0 ..< NUM_BLOCKS {
         for col in 0 ..< NUM_BLOCKS {
             rec := rl.Rectangle {
-                f32(col * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
-                f32(row * BLOCK_SIZE + SCREEN_PADDING + BOARD_PADDING),
-                BLOCK_SIZE - BLOCK_PADDING,
-                BLOCK_SIZE - BLOCK_PADDING,
+                f32(col * BLOCK_SIZE + WINDOW_PADDING + GRID_OUTER),
+                f32(row * BLOCK_SIZE + WINDOW_PADDING + GRID_OUTER),
+                BLOCK_SIZE - GRID_INNER,
+                BLOCK_SIZE - GRID_INNER,
             }
 
             if connected_pieces[col][row] {
@@ -175,7 +181,7 @@ draw_score :: proc(ss: i32, font_size: i32 = 11) {
     score_width := rl.MeasureText(score_str, font_size)
     rl.DrawText(score_str,
     ss / 2 - score_width / 2,
-    ss - 18,
+    12,
     font_size,
     rl.WHITE,
     )

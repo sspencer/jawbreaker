@@ -7,8 +7,8 @@ import rl "vendor:raylib"
 import fmt "core:fmt"
 
 get_board_coords :: proc(mouse: rl.Vector2) -> Vec2i {
-    grid_x := mouse.x - SCREEN_PADDING - BOARD_PADDING
-    grid_y := mouse.y - SCREEN_PADDING - BOARD_PADDING
+    grid_x := mouse.x - WINDOW_PADDING - GRID_OUTER
+    grid_y := mouse.y - WINDOW_PADDING - GRID_OUTER
 
     // Check if within board bounds
     if grid_x < 0 ||
