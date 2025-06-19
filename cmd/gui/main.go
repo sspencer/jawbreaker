@@ -61,29 +61,18 @@ var (
 	colorBlackEnd   = color.RGBA{R: 22, G: 22, B: 22, A: 255} // Dark background for contrast
 )
 
-type history struct {
-	board jb.Board
-	score int
-}
-
 // Game implements ebiten.Game interface
 type Game struct {
 	jawbreaker   *jb.Game
 	currentScore int
 	lastScore    int
 	bestScore    int
-	hover        map[int]bool
-	images       map[jb.Piece]*ebiten.Image // Map to store texture images for each color and state
+	connections  []jb.Vec2i
+	images       map[jb.Tile]*ebiten.Image // Map to store texture images for each color and state
 	smallFont    font.Face
 	normalFont   font.Face
 	titleFont    font.Face
 	valueFont    font.Face
-	undo         util.Stack[history]
-}
-
-// coordsToIndex converts 2D coordinates to 1D index
-func coordsToIndex(x, y int) int {
-	return y*gridSize + x
 }
 
 // loadFonts loads and initializes font faces of different sizes and weights
@@ -150,15 +139,12 @@ func NewGame() *Game {
 
 	lastScore, bestScore, _ := util.LoadScores()
 	game := &Game{
-		jawbreaker: jb.NewGame(gridSize, gridSize),
-		lastScore:  lastScore,
-		bestScore:  bestScore,
+		jawbreaker: jb.New(jb.WithSize(gridSize), jb.WithLastScore(lastScore), jb.WithBestScore(bestScore), jb.WithoutExtras()),
 		smallFont:  smallFont,
 		normalFont: normalFont,
 		titleFont:  titleFont,
 		valueFont:  valueFont,
-		images:     make(map[jb.Piece]*ebiten.Image),
-		hover:      make(map[int]bool),
+		images:     make(map[jb.Tile]*ebiten.Image),
 	}
 
 	// Create all the texture images we'll need
@@ -170,12 +156,12 @@ func NewGame() *Game {
 // generateTextures creates all necessary texture images
 func (g *Game) generateTextures() {
 	// Generate stained glass textures
-	g.images[jb.Purple] = createStainedGlassTexture(colorPurpleStart, colorPurpleEnd, false)
-	g.images[jb.Blue] = createStainedGlassTexture(colorBlueStart, colorBlueEnd, false)
-	g.images[jb.Green] = createStainedGlassTexture(colorGreenStart, colorGreenEnd, false)
-	g.images[jb.Red] = createStainedGlassTexture(colorRedStart, colorRedEnd, false)
-	g.images[jb.Yellow] = createStainedGlassTexture(colorYellowStart, colorYellowEnd, false)
-	g.images[jb.White] = createStainedGlassTexture(colorBlackEnd, colorBlackStart, false)
+	g.images[jb.TilePurple] = createStainedGlassTexture(colorPurpleStart, colorPurpleEnd, false)
+	g.images[jb.TileBlue] = createStainedGlassTexture(colorBlueStart, colorBlueEnd, false)
+	g.images[jb.TileGreen] = createStainedGlassTexture(colorGreenStart, colorGreenEnd, false)
+	g.images[jb.TileRed] = createStainedGlassTexture(colorRedStart, colorRedEnd, false)
+	g.images[jb.TileYellow] = createStainedGlassTexture(colorYellowStart, colorYellowEnd, false)
+	g.images[jb.TileEmpty] = createStainedGlassTexture(colorBlackEnd, colorBlackStart, false)
 }
 
 // createStainedGlassTexture creates a modern gradient texture for a block
@@ -227,9 +213,6 @@ func (g *Game) handleInput() error {
 	// Get current mouse position for hover effect
 	x, y := ebiten.CursorPosition()
 
-	// Reset hover coordinates
-	g.hover = make(map[int]bool)
-
 	// This approach is less efficient (O(n) time) but may be preferred if:
 	// You want to keep the exact same map allocation (though in practice this is rarely needed)
 	// The map is shared and you don't want to change the reference
@@ -247,13 +230,7 @@ func (g *Game) handleInput() error {
 		gridX := adjustedX / blockSize
 		gridY := adjustedY / blockSize
 
-		// Ensure within bounds
-		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
-			connectedPieces := g.jawbreaker.GetConnectedPieces(coordsToIndex(gridX, gridY))
-			for _, piece := range connectedPieces {
-				g.hover[piece] = true
-			}
-		}
+		g.connections = g.jawbreaker.Connections(jb.Vec2i{X: gridX, Y: gridY})
 	}
 
 	// Check for mouse click
@@ -268,10 +245,13 @@ func (g *Game) handleInput() error {
 
 	// Undo the last move if U key is pressed
 	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
-		g.undoLastMove()
+		if g.jawbreaker.CanUndo() {
+			g.jawbreaker.Undo()
+			g.currentScore = g.jawbreaker.Score()
+		}
 	}
 
-	if inpututil.IsKeyJustReleased(ebiten.KeyQ) {
+	if inpututil.IsKeyJustReleased(ebiten.KeyQ) || inpututil.IsKeyJustReleased(ebiten.KeyEscape) {
 		_ = util.SaveScores(g.currentScore, g.bestScore)
 		return ebiten.Termination
 	}
@@ -293,22 +273,12 @@ func (g *Game) handleMouseClick(x, y int) {
 
 		// Ensure within bounds
 		if gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize {
-			// Get the index in the 1D array
-			index := coordsToIndex(gridX, gridY)
+			g.jawbreaker.Move(g.connections)
+			g.currentScore = g.jawbreaker.Score()
 
-			// Save current state for undo
-			g.undo.Push(history{
-				board: append(jb.Board{}, g.jawbreaker.Board()...),
-				score: g.currentScore,
-			})
-
-			status := g.jawbreaker.Move(index)
-			g.currentScore = status.Score
-
-			if status.GameOver {
-				if g.currentScore > g.bestScore {
-					g.bestScore = g.currentScore
-				}
+			if g.jawbreaker.GameOver() {
+				g.lastScore = g.jawbreaker.LastScore()
+				g.bestScore = g.jawbreaker.BestScore()
 				g.resetGame()
 			}
 		}
@@ -317,29 +287,9 @@ func (g *Game) handleMouseClick(x, y int) {
 
 // resetGame resets the game state
 func (g *Game) resetGame() {
-	g.lastScore = g.currentScore
+	g.jawbreaker.Restart()
 	g.currentScore = 0
-	_ = util.SaveScores(g.lastScore, g.bestScore)
-	g.jawbreaker = jb.NewGame(gridSize, gridSize)
-	g.undo.Clear()
-}
-
-// undoLastMove restores the game state to the previous move
-func (g *Game) undoLastMove() {
-	lastState, ok := g.undo.Pop()
-	if !ok {
-		return
-	}
-
-	// Restore the game state
-	var err error
-	g.jawbreaker, err = jb.RestoreGame(string(lastState.board), gridSize, gridSize, lastState.score)
-	if err != nil {
-		return
-	}
-
-	// Restore the score
-	g.currentScore = lastState.score
+	_ = util.SaveScores(g.jawbreaker.LastScore(), g.jawbreaker.BestScore())
 }
 
 // Update updates the game state
@@ -369,22 +319,26 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 // drawGrid draws the game grid
 func (g *Game) drawGrid(screen *ebiten.Image) {
-	// Draw grid with stained glass blocks
-	for i, p := range g.jawbreaker.Board() {
-		x := i % gridSize
-		y := i / gridSize
+	hover := make(map[jb.Vec2i]bool)
 
-		posX := float64(x*blockSize + 2*borderSize)
-		posY := float64(y*blockSize + 2*borderSize)
+	for _, c := range g.connections {
+		hover[c] = true
+	}
 
-		hovered := g.hover[i]
-		g.drawBlock(screen, p, posX, posY, hovered)
+	board := g.jawbreaker.Board()
+	for y := range board {
+		for x := range board[y] {
+			posX := float64(x*blockSize + 2*borderSize)
+			posY := float64(y*blockSize + 2*borderSize)
 
+			hovered := hover[jb.Vec2i{X: x, Y: y}]
+			g.drawBlock(screen, board[y][x], posX, posY, hovered)
+		}
 	}
 }
 
 // drawBlock draws a single block
-func (g *Game) drawBlock(screen *ebiten.Image, piece jb.Piece, posX, posY float64, isHovered bool) {
+func (g *Game) drawBlock(screen *ebiten.Image, piece jb.Tile, posX, posY float64, isHovered bool) {
 
 	// Draw the block with modern gradient texture
 	op := &ebiten.DrawImageOptions{}
@@ -402,18 +356,18 @@ func (g *Game) drawBlock(screen *ebiten.Image, piece jb.Piece, posX, posY float6
 }
 
 // drawHighlightedBorder draws a border of the same color as the piece around highlighted pieces
-func (g *Game) drawHighlightedBorder(screen *ebiten.Image, piece jb.Piece, posX, posY float64) {
+func (g *Game) drawHighlightedBorder(screen *ebiten.Image, piece jb.Tile, posX, posY float64) {
 	var borderColor color.RGBA
 	switch piece {
-	case jb.Red:
+	case jb.TileRed:
 		borderColor = colorRedStart
-	case jb.Blue:
+	case jb.TileBlue:
 		borderColor = colorBlueStart
-	case jb.Yellow:
+	case jb.TileYellow:
 		borderColor = colorYellowStart
-	case jb.Green:
+	case jb.TileGreen:
 		borderColor = colorGreenStart
-	case jb.Purple:
+	case jb.TilePurple:
 		borderColor = colorPurpleStart
 	default:
 		return

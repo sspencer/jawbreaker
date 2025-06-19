@@ -1,756 +1,564 @@
 package jawbreaker
 
 import (
-	"encoding/base64"
-	"errors"
-	"fmt"
-	"log"
-	"log/slog"
 	"math"
 	"math/rand/v2"
 )
 
-type Piece byte
+type Tile byte
 
-type Board []Piece
-
-func (b Board) String() string {
-	return string(b)
+type Vec2i struct {
+	X, Y int
 }
 
-// Game represents the state of a Jawbreaker game.
-// It contains the game board, dimensions, and current score.
-type Game struct {
-	board           Board // board represents the game board as a flat array of color bytes
-	rows            int   // number of rows in the game board
-	cols            int   // number of columns in the game board
-	score           int   // current score of the game
-	lastScore       int   // stored for convenience
-	bestScore       int   // stored for convenience
-	bonus           int
-	remainingPieces int
-}
-
-type Status struct {
-	Board     Board
-	Score     int
-	Bonus     int
-	Last      int
-	Best      int
-	Remaining int
-	GameOver  bool
-}
-
-func (s Status) String() string {
-	return fmt.Sprintf("Score: %d, Bonus: %d, Last: %d, Best: %d, Remaining: %d, GameOver: %t", s.Score, s.Bonus, s.Last, s.Best, s.Remaining, s.GameOver)
-}
-
-type direction struct {
-	sr int // start row
-	sc int // start column
-	dc int // direction column
-	dr int // direction row
-}
-
-var xDirection = []direction{
-	{sr: -1, sc: -1, dr: -1, dc: -1},
-	{sr: -1, sc: 1, dr: -1, dc: 1},
-	{sr: 1, sc: -1, dr: 1, dc: -1},
-	{sr: 1, sc: 1, dr: 1, dc: 1},
-}
-
-var plusDirection = []direction{
-	{sr: -1, sc: 0, dr: -1, dc: 0},
-	{sr: 1, sc: 0, dr: 1, dc: 0},
-	{sr: 0, sc: -1, dr: 0, dc: -1},
-	{sr: 0, sc: 1, dr: 0, dc: 1},
-}
-
-var rectDirection = []direction{
-	{sr: -2, sc: -2, dc: 0, dr: 1},
-	{sr: 2, sc: -2, dc: 1, dr: 0},
-	{sr: 2, sc: 2, dc: 0, dr: -1},
-	{sr: -2, sc: 2, dc: -1, dr: 0},
-}
-
-var circleDirection = []direction{
-	{sr: -1, sc: -3, dc: 0, dr: 1},
-	{sr: 3, sc: -1, dc: 1, dr: 0},
-	{sr: 1, sc: 3, dc: 0, dr: -1},
-	{sr: -3, sc: 1, dc: -1, dr: 0},
-}
-
-// Piece constants used to represent different colored board in the game.
-// Each color is represented by a single byte character.
 const (
-	PieceSpace       = 32
-	White            = 0 // "empty" or removed piece
-	Purple           = 32
-	Blue             = 64
-	Green            = 96
-	Red              = 128
-	Yellow           = 160
-	PowerX           = 1
-	PowerPlus        = 2
-	PowerCircle      = 3
-	PowerRect        = 4
-	PowerFill        = 5
-	PowerRotateRight = 6
-	PowerRotateLeft  = 7
-	PieceSelected    = 16
+	defaultSize   = 14
+	defaultExtras = true
+)
+
+type Game struct {
+	width     int
+	height    int
+	board     [][]Tile
+	undo      [][]Tile
+	undoScore int
+	gameOver  bool
+	canUndo   bool
+	gameScore int
+	gameBonus int
+	lastScore int
+	bestScore int
+	extras    bool
+	//madeMove  bool
+}
+
+type TileSelection struct {
+	Pos Vec2i
+	Dir Vec2i
+}
+
+const (
+	TileEmpty Tile = iota
+	TilePurple
+	TileBlue
+	TileGreen
+	TileRed
+	TileYellow
+	TileTimes
+	TilePlus
+	TileMinus
+	TilePipe
+	TileRect
+	TileCircle
 )
 
 var (
-	// colorPieces is a slice of all available colored board used for random piece generation.
-	colorPieces       = []Piece{Purple, Blue, Green, Red, Yellow}
-	allColorPieces    = []Piece{White, Purple, Blue, Green, Red, Yellow}
-	powerPieces       = []Piece{PowerX, PowerPlus, PowerCircle, PowerRect}
-	extraPieces       = []Piece{PowerFill, PowerRotateRight, PowerRotateLeft}
-	squarePowerPieces = append(powerPieces, extraPieces...)
-	rectPowerPieces   = append(powerPieces, PowerFill)
-
-	// ErrGameSize is returned when attempting to restore a game with a board size
-	// that doesn't match the expected dimensions.
-	ErrGameSize = errors.New("game board does not match expected size")
+	tileSelection = map[Tile][]TileSelection{
+		TileTimes: {
+			{Vec2i{-1, -1}, Vec2i{-1, -1}},
+			{Vec2i{1, -1}, Vec2i{1, -1}},
+			{Vec2i{-1, 1}, Vec2i{-1, 1}},
+			{Vec2i{1, 1}, Vec2i{1, 1}},
+		},
+		TilePlus: {
+			{Vec2i{0, -1}, Vec2i{0, -1}},
+			{Vec2i{0, 1}, Vec2i{0, 1}},
+			{Vec2i{-1, 0}, Vec2i{-1, 0}},
+			{Vec2i{1, 0}, Vec2i{1, 0}},
+		},
+		TileMinus: {
+			{Vec2i{-1, 0}, Vec2i{-1, 0}},
+			{Vec2i{1, 0}, Vec2i{1, 0}},
+		},
+		TilePipe: {
+			{Vec2i{0, -1}, Vec2i{0, -1}},
+			{Vec2i{0, 1}, Vec2i{0, 1}},
+		},
+		TileRect: {
+			{Vec2i{-2, -2}, Vec2i{0, 1}},
+			{Vec2i{-2, 2}, Vec2i{1, 0}},
+			{Vec2i{2, 2}, Vec2i{0, -1}},
+			{Vec2i{2, -2}, Vec2i{-1, 0}},
+		},
+		TileCircle: {
+			{Vec2i{-3, -1}, Vec2i{0, 1}},
+			{Vec2i{-1, 3}, Vec2i{1, 0}},
+			{Vec2i{3, 1}, Vec2i{0, -1}},
+			{Vec2i{1, -3}, Vec2i{-1, 0}},
+		},
+	}
 )
 
-// Color returns each piece as a string representing its color.
-// It returns "white" for any other piece.
-func (c Piece) Color() int {
-	return int(c/PieceSpace) * PieceSpace
+type Option func(*Game)
+
+func WithExtras() Option {
+	return func(g *Game) {
+		g.extras = true
+	}
 }
 
-func (c Piece) Power() int {
-	power := c % PieceSpace
-	if power >= PieceSelected {
-		return int(power - PieceSelected)
+func WithoutExtras() Option {
+	return func(g *Game) {
+		g.extras = false
+	}
+}
+
+func WithWidth(width int) Option {
+	return func(g *Game) {
+		g.width = width
+	}
+}
+
+func WithHeight(height int) Option {
+	return func(g *Game) {
+		g.height = height
+	}
+}
+
+func WithSize(size int) Option {
+	return func(g *Game) {
+		g.width = size
+		g.height = size
+	}
+}
+
+func WithScore(score int) Option {
+	return func(g *Game) {
+		g.gameScore = score
+	}
+}
+
+func WithLastScore(score int) Option {
+	return func(g *Game) {
+		g.lastScore = score
+	}
+}
+
+func WithBestScore(score int) Option {
+	return func(g *Game) {
+		g.bestScore = score
+	}
+}
+
+func New(opts ...Option) *Game {
+	g := &Game{
+		width:  defaultSize,
+		height: defaultSize,
+		extras: defaultExtras,
 	}
 
-	return int(power)
-}
-
-func (c Piece) isSelected() bool {
-	power := c % PieceSpace
-	return power >= PieceSelected
-}
-
-func (c Piece) isPowerExtra() bool {
-	power := c.Power()
-	return power == PowerFill || power == PowerRotateRight || power == PowerRotateLeft
-}
-
-func (c Piece) isPowerDirection() bool {
-	power := c.Power()
-	return c.Color() == White && (power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
-}
-
-func (c Piece) isPowerUp() bool {
-	power := c.Power()
-	return c.Color() == White && power > 0 //(power == PowerX || power == PowerPlus || power == PowerCircle || power == PowerRect)
-}
-
-type GameOptions struct {
-	powerUps   bool
-	startEmpty bool
-}
-
-func (o *GameOptions) PowerUps() *GameOptions {
-	o.powerUps = true
-	return o
-}
-
-func (o *GameOptions) StartEmpty() *GameOptions {
-	o.startEmpty = true
-	return o
-}
-
-// NewGame initializes a new Game instance with the given rows and columns, populating the board with random board.
-func NewGame(rows, cols int) *Game {
-	return NewGameWithOptions(rows, cols, nil)
-}
-
-// NewGameWithOptions initializes a new Game instance with the given rows and columns, populating the board with random board.
-func NewGameWithOptions(rows, cols int, opts *GameOptions) *Game {
-	rows = max(rows, 6)
-	cols = max(cols, 6)
-
-	size := rows * cols
-	board := make(Board, size)
-	if opts == nil {
-		opts = &GameOptions{}
+	for _, opt := range opts {
+		opt(g)
 	}
 
-	game := &Game{board: board, rows: rows, cols: cols}
-	if opts.startEmpty {
-		return game
+	g.board = make([][]Tile, g.height)
+	g.undo = make([][]Tile, g.height)
+
+	for y := 0; y < g.height; y++ {
+		g.board[y] = make([]Tile, g.width)
+		g.undo[y] = make([]Tile, g.width)
 	}
 
-	// fill game board with random pieces
-	game.fillEmpties()
+	g.Restart()
 
-	// fill the game board with random power-ups
-	if opts.powerUps {
-		all := ShuffledIndices(size)
-		index := 0
-
-		// there are 27 power ups (20 for the colors + 7 specials)
-		var extras []Piece
-		if rows == cols {
-			extras = squarePowerPieces
-		} else {
-			extras = rectPowerPieces
-		}
-
-		for a := range allColorPieces {
-			for p := range extras {
-				i := all[index]
-				color := allColorPieces[a]
-				powerUp := extras[p]
-
-				if powerUp.isPowerExtra() && color != White {
-					continue
-				}
-
-				game.board[i] = color + powerUp
-				index++
-			}
-		}
-	}
-
-	return game
+	return g
 }
 
-// RestoreGame restores a game state based on the given board string, dimensions, and score.
-// It returns a pointer to a Game instance or an error if the board size does not match the expected size.
-func RestoreGame(encodedBoard string, rows, cols, score int) (*Game, error) {
-	b, err := base64ToBytes(encodedBoard)
-	if err != nil {
-		return nil, err
-	}
+//func NewGame(width, height int, extras bool) *Game {
+//	g := &Game{
+//		width:     width,
+//		height:    height,
+//		board:     make([][]Tile, height),
+//		undo:      make([][]Tile, height),
+//		gameOver:  false,
+//		gameScore: 0,
+//		gameBonus: 0,
+//		lastScore: 0,
+//		extras:    extras,
+//	}
+//
+//	for y := 0; y < height; y++ {
+//		g.board[y] = make([]Tile, width)
+//		g.undo[y] = make([]Tile, width)
+//	}
+//
+//	g.Restart()
+//
+//	return g
+//}
 
-	if len(b) != rows*cols {
-		return nil, ErrGameSize
-	}
-
-	board := convertBytesToBoard(b)
-	for i, p := range board {
-		if p.isSelected() {
-			board[i] -= PieceSelected
+func (g *Game) Restart() {
+	tiles := []Tile{TilePurple, TileBlue, TileGreen, TileRed, TileYellow}
+	for y := 0; y < g.height; y++ {
+		for x := 0; x < g.width; x++ {
+			g.board[y][x] = tiles[rand.IntN(len(tiles))]
 		}
 	}
 
-	return &Game{board: board, rows: rows, cols: cols, score: score}, nil
+	if g.extras {
+		extras := []Tile{TilePlus, TileMinus, TileTimes, TileRect, TileCircle, TilePipe}
+		pos := g.getRandomPositions(len(extras))
+		for i, p := range pos {
+			g.board[p.Y][p.X] = extras[i]
+		}
+	}
+
+	g.lastScore = g.gameScore
+	if g.gameScore > g.bestScore {
+		g.bestScore = g.gameScore
+	}
+
+	g.gameScore = 0
+	g.gameOver = false
+	g.gameBonus = 0
+	g.canUndo = false
 }
 
-// Board returns the current state of the board as bytes
-func (g *Game) Board() Board {
+func (g *Game) GameOver() bool {
+	return g.gameOver
+}
+
+func (g *Game) Score() int {
+	return g.gameScore
+}
+
+func (g *Game) Bonus() int {
+	return g.gameBonus
+}
+
+func (g *Game) RemainingTiles() int {
+	return g.countTiles()
+}
+
+func (g *Game) Board() [][]Tile {
 	return g.board
 }
 
-// BoardWithConnections returns the board with the selected piece and all of its
-// connections highlighted.
-func (g *Game) BoardWithConnections(index int) Board {
-	connected := g.GetConnectedPieces(index)
-
-	board := make(Board, len(g.board))
-	copy(board, g.board)
-
-	for _, idx := range connected {
-		board[idx] += PieceSelected
-	}
-
-	return board
+func (g *Game) CanUndo() bool {
+	return g.canUndo
 }
 
-func (b Board) Base64() string {
-	return bytesToBase64(convertBoardToBytes(b))
-}
-
-// Score returns the current score of the game.
-func (g *Game) Score() int {
-	return g.score
-}
-
-func (g *Game) Rows() int {
-	return g.rows
-}
-
-func (g *Game) Cols() int {
-	return g.cols
-}
-
-func (g *Game) powerMove(index int) Status {
-	powerUp := g.board[index].Power()
-
-	g.board[index] = White
-
-	switch powerUp {
-	case PowerFill:
-		g.fillEmpties()
-	case PowerRotateLeft:
-		g.rotateLeft()
-	case PowerRotateRight:
-		g.rotateRight()
-	default:
-		log.Fatalf("Unknown power move: %d\n", powerUp)
-	}
-
-	g.applyGravityAndShiftRight()
-
-	return Status{
-		Board:    g.board,
-		Score:    g.score,
-		GameOver: g.IsGameOver(),
-	}
-}
-
-// Move removes connected pieces of the same color from the board and updates the score.
-// It takes the index of the clicked piece and removes all connected pieces of the same color.
-// If less than 2 connected pieces are found, no pieces are removed and the score remains unchanged.
-// After removing board, gravity is applied to make pieces fall down, and empty columns are shifted right.
-// If the game is over after the move, a bonus score is added based on the number of remaining pieces.
-func (g *Game) Move(index int) Status {
-	if index < 0 || index >= len(g.board) {
-		return Status{
-			Board:    g.board,
-			Score:    g.score,
-			GameOver: g.IsGameOver(),
-		}
-	}
-
-	if g.board[index].isPowerExtra() {
-		return g.powerMove(index)
-	}
-
-	n := g.floodFill(index)
-	if n < 2 {
-		return Status{
-			Board:    g.board,
-			Score:    g.score,
-			GameOver: g.IsGameOver(),
-		}
-	}
-
-	g.applyGravityAndShiftRight()
-	g.score += calculateMoveScore(n)
-	gameOver := g.IsGameOver()
-	g.bonus = 0
-	g.remainingPieces = 0
-
-	if gameOver {
-		for _, p := range g.board {
-			if p != White {
-				g.remainingPieces++
+func (g *Game) Undo() {
+	if g.canUndo {
+		for y := 0; y < g.height; y++ {
+			for x := 0; x < g.width; x++ {
+				g.board[y][x] = g.undo[y][x]
 			}
 		}
-		g.bonus = calculateBonusScore(g.remainingPieces)
-		g.score += g.bonus
-		g.lastScore = g.score
-		if g.score > g.bestScore {
-			g.bestScore = g.score
+	}
+
+	g.gameScore = g.undoScore
+	g.canUndo = false
+}
+
+func (g *Game) LastScore() int {
+	return g.lastScore
+}
+
+func (g *Game) BestScore() int {
+	return g.bestScore
+}
+
+func (g *Game) getRandomPositions(n int) []Vec2i {
+	pos := make([]Vec2i, 0, n)
+	used := make(map[Vec2i]bool)
+
+	for i := 0; i < n; i++ {
+		x := rand.IntN(g.width)
+		y := rand.IntN(g.height)
+		if _, ok := used[Vec2i{x, y}]; ok {
+			continue
+		}
+		pos = append(pos, Vec2i{x, y})
+		used[Vec2i{x, y}] = true
+	}
+
+	return pos
+}
+
+func (g *Game) Move(sel []Vec2i) {
+	numConnected := len(sel)
+	if numConnected < 2 {
+		return
+	}
+
+	// UNDO
+	g.canUndo = true
+	g.undoScore = g.gameScore
+	for y := 0; y < g.height; y++ {
+		for x := 0; x < g.width; x++ {
+			g.undo[y][x] = g.board[y][x]
 		}
 	}
 
-	return Status{
-		Board:     g.board,
-		Bonus:     g.bonus,
-		Score:     g.score,
-		Last:      g.lastScore,
-		Best:      g.bestScore,
-		Remaining: g.remainingPieces,
-		GameOver:  gameOver,
+	// MOVE
+	g.gameScore += numConnected * (numConnected - 1)
+	for _, s := range sel {
+		g.board[s.Y][s.X] = TileEmpty
+	}
+
+	g.applyGravity()
+
+	g.gameOver = g.isGameOver()
+
+	if g.gameOver {
+		g.canUndo = false
+		g.gameBonus = g.calculateBonus()
+		g.gameScore += g.gameBonus
+		g.lastScore = g.gameScore
+		if g.gameScore > g.bestScore {
+			g.bestScore = g.gameScore
+		}
+
+		// save high score
 	}
 }
 
-// IsGameOver checks if the game is over by determining if there are any valid moves left.
-// A valid move requires at least two connected pieces of the same color.
-// Returns true if the game is over (no valid moves), false otherwise.
-func (g *Game) IsGameOver() bool {
-	for i := 0; i < len(g.board); i++ {
-		if g.board[i] == White {
-			continue
+func (g *Game) applyGravity() {
+	// Pass 1: Move all non-zero values down within each column
+	for col := 0; col < g.width; col++ {
+		writePos := g.height - 1
+
+		for row := g.height - 1; row >= 0; row -= 1 {
+			if g.board[row][col] != TileEmpty {
+				if writePos != row {
+					g.board[writePos][col] = g.board[row][col]
+					g.board[row][col] = TileEmpty
+				}
+				writePos -= 1
+			}
 		}
-		if len(g.GetConnectedPieces(i)) > 1 {
-			return false
+	}
+
+	// Pass 2: Move entire columns right to fill gaps from empty columns
+	writeCol := g.width - 1
+
+	for col := g.width - 1; col >= 0; col -= 1 {
+		// Check if this column has any non-empty pieces
+		columnHasPieces := false
+		for row := 0; row < g.height; row++ {
+			if g.board[row][col] != TileEmpty {
+				columnHasPieces = true
+				break
+			}
+		}
+
+		// If column has pieces, move it to the write position
+		if columnHasPieces {
+			if writeCol != col {
+				// Move entire column
+				for row := 0; row < g.height; row++ {
+					g.board[row][writeCol] = g.board[row][col]
+					g.board[row][col] = TileEmpty
+				}
+			}
+			writeCol -= 1
+		}
+	}
+}
+
+func (g *Game) isGameOver() bool {
+	for y := 0; y < len(g.board); y++ {
+		for x := 0; x < len(g.board[y]); x++ {
+			if g.board[y][x] != TileEmpty {
+				sel := g.Connections(Vec2i{x, y})
+				if len(sel) > 1 {
+					return false
+				}
+			}
 		}
 	}
 
 	return true
 }
 
-// calculateMoveScore computes the score for removing a group of connected board.
-// The score is calculated as n * (n-1), where n is the number of pieces removed.
-// If less than 2 pieces are removed, the score is 0.
-// This scoring system rewards removing larger groups of pieces with a quadratic score increase.
-func calculateMoveScore(piecesRemoved int) int {
-	if piecesRemoved < 2 {
-		return 0
-	}
-	return piecesRemoved * (piecesRemoved - 1)
-}
-
-// calculateBonusScore computes a bonus score at the end of the game
-// based on the number of pieces remaining on the board.
-func calculateBonusScore(remainingPieces int) int {
+func (g *Game) calculateBonus() int {
 	const threshold = 10 // Bonus if 10 or fewer pieces remain
-	if remainingPieces == 0 {
-		// Bonus for clearing the board
+	pieces := g.countTiles()
+	if pieces == 0 {
 		return 2000
-	} else if remainingPieces <= threshold {
-		// Scaled bonus
-		return (threshold - remainingPieces + 1) * 100
+	} else if pieces <= threshold {
+		return (threshold - pieces + 1) * 100
 	}
 
 	return 0
 }
 
-// GetConnectedPieces returns a slice of all indices that are connected to the piece at the given index.
-// It is a non-destructive operation that doesn't modify the game state.
-func (g *Game) GetConnectedPieces(index int) []int {
-	if index < 0 || index >= len(g.board) {
-		return nil
+func (g *Game) countTiles() int {
+	tiles := 0
+	for y := 0; y < g.height; y++ {
+		for x := 0; x < g.width; x++ {
+			if g.board[y][x] != TileEmpty {
+				tiles++
+			}
+		}
 	}
 
-	target := g.board[index]
-	if target == White {
-		return nil
+	return tiles
+}
+
+func (g *Game) Connections(start Vec2i) []Vec2i {
+	var sel []Vec2i
+
+	if start.X < 0 || start.X >= g.width || start.Y < 0 || start.Y >= g.height {
+		return sel
 	}
 
-	connectedIndices := g.getPowerUpConnections(index)
+	target := g.board[start.Y][start.X]
 
-	stack := []int{index}
-	// Pre-allocate the visited map with a reasonable capacity
-	visited := make([]bool, g.rows*g.cols)
+	switch target {
+	case TileEmpty:
+		return sel
+	case TilePlus, TileMinus, TileTimes, TileRect, TileCircle, TilePipe:
+		return g.connectedExtras(start)
+	default:
+		return g.connectedColors(start)
+	}
+}
+
+func (g *Game) connectedColors(start Vec2i) []Vec2i {
+	var sel []Vec2i
+	target := g.board[start.Y][start.X]
+	visited := make(map[Vec2i]bool)
+
+	var stack []Vec2i
+	stack = append(stack, start)
+
+	directions := [4]Vec2i{{-1, 0}, {0, 1}, {1, 0}, {0, -1}}
 
 	for len(stack) > 0 {
-		i := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
+		current := stack[len(stack)-1]
+		stack = stack[:len(stack)-1] // pop
 
-		if i < 0 || i >= len(g.board) || g.board[i].Color() != target.Color() || visited[i] || g.board[i] == White || g.board[i].isPowerUp() {
+		if visited[current] {
 			continue
 		}
-		visited[i] = true
-		connectedIndices[i] = true
 
-		row, col := i/g.cols, i%g.cols
-		// Check all four adjacent positions (up, down, left, right)
-		if row > 0 {
-			stack = append(stack, i-g.cols) // Up
-		}
-		if row < g.rows-1 {
-			stack = append(stack, i+g.cols) // Down
-		}
-		if col > 0 {
-			stack = append(stack, i-1) // Left
-		}
-		if col < g.cols-1 {
-			stack = append(stack, i+1) // Right
-		}
-	}
+		visited[current] = true
+		sel = append(sel, current)
 
-	if len(connectedIndices) < 2 {
-		if !(len(connectedIndices) == 1 && connectedIndices[index] && g.board[index].isPowerExtra()) {
-			return nil
-		}
-	}
-
-	indices := make([]int, 0, len(connectedIndices))
-	for i := range connectedIndices {
-		indices = append(indices, i)
-	}
-
-	return indices
-}
-
-func (g *Game) getPowerUpConnections(index int) map[int]bool {
-	connectedIndices := make(map[int]bool)
-	powerUp := g.board[index].Power()
-	switch powerUp {
-	case PowerX:
-		return g.getXConnections(index)
-	case PowerPlus:
-		return g.getPlusConnections(index)
-	case PowerRect:
-		return g.getRectConnections(index)
-	case PowerCircle:
-		return g.getCircularConnections(index)
-	case PowerFill, PowerRotateRight, PowerRotateLeft:
-		connectedIndices[index] = true
-		return connectedIndices
-	default:
-		return connectedIndices
-	}
-}
-
-func (g *Game) getXConnections(index int) map[int]bool {
-	maxIters := int(math.Ceil(math.Sqrt(float64(g.rows*g.rows + g.cols*g.cols))))
-	return g.getConnectionsWithDirections(index, xDirection, maxIters)
-}
-
-func (g *Game) getPlusConnections(index int) map[int]bool {
-	maxIters := max(g.rows, g.cols)
-	return g.getConnectionsWithDirections(index, plusDirection, maxIters)
-}
-
-func (g *Game) getRectConnections(index int) map[int]bool {
-	return g.getConnectionsWithDirections(index, rectDirection, 4)
-}
-
-func (g *Game) getCircularConnections(index int) map[int]bool {
-	c1 := g.getConnectionsWithDirections(index, rectDirection, 1)
-	c2 := g.getConnectionsWithDirections(index, circleDirection, 3)
-	for k, v := range c1 {
-		c2[k] = v
-	}
-	return c2
-}
-
-func (g *Game) getConnectionsWithDirections(index int, directions []direction, maxIters int) map[int]bool {
-	target := g.board[index]
-	connectedIndices := make(map[int]bool)
-	startRow, startCol := g.pointFromIndex(index)
-	for iter := 0; iter < maxIters; iter++ {
 		for _, dir := range directions {
-			r := startRow + dir.sr + dir.dr*iter
-			c := startCol + dir.sc + dir.dc*iter
-			if r >= 0 && r < g.rows && c >= 0 && c < g.cols {
-				currentIndex := r*g.cols + c
-				piece := g.board[currentIndex]
-				color := piece.Color()
-				if color != White && (color == target.Color() || target.isPowerDirection()) {
-					connectedIndices[currentIndex] = true
-				}
+			next := Vec2i{current.X + dir.X, current.Y + dir.Y}
+
+			if next.X < 0 || next.X >= g.width || next.Y < 0 || next.Y >= g.height {
+				continue
+			}
+
+			if g.board[next.Y][next.X] == target && !(visited[next]) {
+				stack = append(stack, next)
 			}
 		}
 	}
 
-	return connectedIndices
-}
-
-func (g *Game) pointFromIndex(index int) (int, int) {
-	row := index / g.cols
-	col := index % g.cols
-
-	return row, col
-}
-
-// floodFill performs a flood-fill operation starting at the given index,
-// marking connected board of the same color as White.
-// Returns the number of connected pieces modified.
-// If less than two connected pieces are found, no changes are made.
-func (g *Game) floodFill(index int) int {
-	connectedPieces := g.GetConnectedPieces(index)
-	if len(connectedPieces) < 2 {
-		return 0
+	if len(sel) > 1 {
+		return sel
 	}
 
-	for _, i := range connectedPieces {
-		g.board[i] = White
-	}
-
-	return len(connectedPieces)
+	return nil
 }
 
-// ApplyGravityAndShiftRight modifies the board in-place to apply vertical gravity
-// and then right-align non-empty columns.
-func (g *Game) applyGravityAndShiftRight() {
-	// Gravity Phase: shift non-'w' characters down in each column
-	for col := 0; col < g.cols; col++ {
-		writeRow := g.rows - 1
-		for row := g.rows - 1; row >= 0; row-- {
-			index := row*g.cols + col
-			if g.board[index] != White {
-				g.board[writeRow*g.cols+col] = g.board[index]
-				if writeRow != row {
-					g.board[index] = White
-				}
-				writeRow--
-			}
-		}
-	}
-
-	// Right Shift Phase: move non-empty columns (columns that have any non-'w') to the right
-	writeCol := g.cols - 1
-	for col := g.cols - 1; col >= 0; col-- {
-		isEmpty := true
-		for row := 0; row < g.rows; row++ {
-			if g.board[row*g.cols+col] != White {
-				isEmpty = false
-				break
-			}
-		}
-		if !isEmpty {
-			if writeCol != col {
-				// Copy column to new position
-				for row := 0; row < g.rows; row++ {
-					g.board[row*g.cols+writeCol] = g.board[row*g.cols+col]
-					g.board[row*g.cols+col] = White
-				}
-			}
-			writeCol--
-		}
-	}
-}
-
-func ShuffledIndices(size int) []int {
-	all := AllIndices(size)
-	shuffle(all)
-	return all
-}
-
-func AllIndices(size int) []int {
-	slice := make([]int, size)
-	for i := 0; i < size; i++ {
-		slice[i] = i
-	}
-
-	return slice
-}
-
-// Shuffle randomizes the order of elements in a slice of integers
-func shuffle(slice []int) {
-	for i := len(slice) - 1; i > 0; i-- {
-		j := rand.IntN(i + 1)
-		slice[i], slice[j] = slice[j], slice[i]
-	}
-}
-
-func base64ToBytes(encoded string) ([]byte, error) {
-	// Try standard decoding first
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err == nil {
-		return decoded, nil
-	}
-
-	// If the standard fails, try URL encoding
-	decoded, err = base64.URLEncoding.DecodeString(encoded)
-	if err == nil {
-		return decoded, nil
-	}
-
-	// If both fail, return the error
-	return nil, fmt.Errorf("input is not valid base64 (std or url)")
-}
-
-func bytesToBase64(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
-}
-
-// convertBytesToBoard manually converts a []byte to a Board.
-// It creates a new Board and copies elements, converting each byte to a Piece.
-func convertBytesToBoard(byteSlice []byte) Board {
-	if byteSlice == nil {
-		// Depending on desired semantics, you might return Board{} for nil input,
-		// but returning nil is often preferred if the input can be nil.
+func (g *Game) connectedExtras(start Vec2i) []Vec2i {
+	target := g.board[start.Y][start.X]
+	selection, ok := tileSelection[target]
+	if !ok {
 		return nil
 	}
 
-	// Create a new Board with the same length as the byteSlice.
-	gameBoard := make(Board, len(byteSlice))
+	maxIters := 0
 
-	// Iterate over the byteSlice, convert each byte to Piece, and assign to gameBoard.
-	for i, bVal := range byteSlice {
-		gameBoard[i] = Piece(bVal) // Convert byte to Piece
-	}
-	return gameBoard
-}
-
-// convertBoardToBytes manually converts a Board to a []byte.
-// It creates a new []byte and copies elements, converting each Piece to a byte.
-func convertBoardToBytes(gameBoard Board) []byte {
-	if gameBoard == nil {
-		return nil
-	}
-
-	// Create a new []byte with the same length as the gameBoard.
-	byteSlice := make([]byte, len(gameBoard))
-
-	// Iterate over the gameBoard, convert each Piece to byte, and assign to byteSlice.
-	for i, pVal := range gameBoard {
-		byteSlice[i] = byte(pVal) // Convert Piece to byte
-	}
-	return byteSlice
-}
-
-// AnimateBoard applies up to numValues from the game board at given indices into a new slice.
-// Both the game board and indices must have the same length.
-func (g *Game) AnimateBoard(indices []int, numValues int) (Board, error) {
-	size := len(g.board)
-	if len(indices) != size {
-		return nil, errors.New("goal and indices slices must have the same length")
-	}
-
-	// Create a zero-initialized result slice
-	result := make(Board, size)
-
-	// Apply up to numValues from goal using indices
-	count := 0
-	for i := 0; i < size && count < numValues; i++ {
-		idx := indices[i]
-		if idx >= 0 && idx < size {
-			result[idx] = g.board[idx]
-			count++
-		}
-	}
-
-	return result, nil
-}
-
-func (g *Game) fillEmpties() {
-	for i := range g.board {
-		if g.board[i] == White {
-			g.board[i] = colorPieces[rand.IntN(len(colorPieces))]
-		}
+	switch target {
+	case TileRect:
+		return g.computeConnectedExtras(start, selection, 4)
+	case TileCircle:
+		maxIters = 3
+		s1 := g.computeConnectedExtras(start, selection, 3)
+		sel2, _ := tileSelection[TileRect]
+		s2 := g.computeConnectedExtras(start, sel2, 1)
+		return append(s1, s2...)
+	default:
+		maxIters = int(math.Ceil(math.Sqrt(float64(g.width*g.width + g.height*g.height))))
+		return g.computeConnectedExtras(start, selection, maxIters)
 	}
 }
 
-func (g *Game) rotateRight() {
-	board, err := rotateSlice(g.board, g.rows, g.cols, -90)
-	if err != nil {
-		slog.Error("rotateRight", "error", err.Error())
-		return
-	}
+func (g *Game) computeConnectedExtras(start Vec2i, selections []TileSelection, maxIters int) []Vec2i {
+	var sel []Vec2i
 
-	g.board = board
-}
+	startRow := start.Y
+	startCol := start.X
 
-func (g *Game) rotateLeft() {
-	board, err := rotateSlice(g.board, g.rows, g.cols, 90)
-	if err != nil {
-		slog.Error("rotateLeft", "error", err.Error())
-		return
-	}
-
-	g.board = board
-}
-
-// RotateSlice rotates a 1D slice (row-major) by 90 or -90 degrees.
-// `rows` and `cols` are the dimensions of the input matrix.
-// Positive degree means clockwise, negative means counter-clockwise.
-func rotateSlice(data Board, rows, cols, degree int) (Board, error) {
-	if len(data) != rows*cols {
-		return nil, errors.New("invalid dimensions for the given slice length")
-	}
-
-	result := make(Board, len(data))
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
-			val := data[r*cols+c]
-			if degree > 0 {
-				// 90 degrees
-				// New row becomes the column index from the bottom
-				newRow := c
-				newCol := rows - 1 - r
-				result[newRow*rows+newCol] = val
-			} else {
-				// -90 degrees
-				newRow := cols - 1 - c
-				newCol := r
-				result[newRow*rows+newCol] = val
+	for iter := 0; iter < maxIters; iter++ {
+		for _, s := range selections {
+			y := startRow + s.Pos.Y + s.Dir.Y*iter
+			x := startCol + s.Pos.X + s.Dir.X*iter
+			if y < 0 || x < 0 || y >= g.height || x >= g.width {
+				continue
 			}
+
+			cur := g.board[y][x]
+			if cur == TileEmpty {
+				continue
+			}
+
+			sel = append(sel, Vec2i{x, y})
 		}
 	}
 
-	// New dimensions are transposed
-	return result, nil
+	if len(sel) > 0 {
+		sel = append(sel, start)
+	}
+
+	return sel
+}
+
+func (g *Game) Rotate(clockwise bool) {
+	if clockwise {
+		rotateClockwise(g.board)
+	} else {
+		rotateCounterClockwise(g.board)
+	}
+}
+
+// rotateClockwise rotates a square 2D slice 90 degrees clockwise in-place
+func rotateClockwise(matrix [][]Tile) {
+	n := len(matrix)
+	if n == 0 || n != len(matrix[0]) {
+		return
+	}
+
+	// Step 1: Transpose the matrix (swap elements across diagonal)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			matrix[i][j], matrix[j][i] = matrix[j][i], matrix[i][j]
+		}
+	}
+
+	// Step 2: Reverse each row
+	for i := 0; i < n; i++ {
+		for j := 0; j < n/2; j++ {
+			matrix[i][j], matrix[i][n-1-j] = matrix[i][n-1-j], matrix[i][j]
+		}
+	}
+}
+
+// RotateCounterClockwise rotates a square 2D slice 90 degrees counter-clockwise in-place
+func rotateCounterClockwise(matrix [][]Tile) {
+	n := len(matrix)
+	if n == 0 || n != len(matrix[0]) {
+		panic("matrix must be square and non-empty")
+	}
+
+	// Step 1: Reverse each row
+	for i := 0; i < n; i++ {
+		for j := 0; j < n/2; j++ {
+			matrix[i][j], matrix[i][n-1-j] = matrix[i][n-1-j], matrix[i][j]
+		}
+	}
+
+	// Step 2: Transpose the matrix (swap elements across diagonal)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			matrix[i][j], matrix[j][i] = matrix[j][i], matrix[i][j]
+		}
+	}
 }
