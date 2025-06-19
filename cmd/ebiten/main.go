@@ -24,9 +24,9 @@ import (
 // Game constants
 const (
 	scoreHeight = 100
-	blockSize   = 50
-	borderSize  = 3 // Size of the black border between blocks
-	gridSize    = 12
+	blockSize   = 46
+	borderSize  = 1 // Size of the black border between blocks
+	gridSize    = 14
 )
 
 // Game configuration (can be modified by command line args)
@@ -517,7 +517,7 @@ func main() {
 
 	// Set up the game
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	ebiten.SetWindowTitle("Grid Puzzle")
+	ebiten.SetWindowTitle("Jawbreaker")
 
 	// Prevent screen from being cleared to white every frame
 	// This helps prevent the white flash when the game starts
